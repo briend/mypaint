@@ -24,6 +24,7 @@ import math
 from warnings import warn
 import weakref
 import logging
+import time
 
 from gi.repository import Gtk
 from gi.repository import Gdk
@@ -48,6 +49,8 @@ from gui.widgets import with_wait_cursor
 from lib.gettext import gettext as _
 from lib.gettext import C_
 from lib.modes import PASS_THROUGH_MODE
+import lib.color
+from overlays import ColorAdjustOverlay
 
 logger = logging.getLogger(__name__)
 
@@ -324,7 +327,19 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         self.tdw.zoom_max = max(self.zoomlevel_values)
 
         # Device-specific brushes: save at end of stroke
+        # Also track stroke state for color swatch splashing
         self.input_stroke_ended += self._input_stroke_ended_cb
+        self.input_stroke_started += self._input_stroke_started_cb
+
+        # Color Adjuster data
+        self.last_brighter = None
+        self.last_darker = None
+        self.last_purer = None
+        self.last_grayer = None
+        self.last_increase_hue = None
+        self.last_decrease_hue = None
+        self.in_input_stroke = False
+        self.last_colorpick_time = None
 
         self._init_stategroups()
 
@@ -1489,57 +1504,230 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
     def brighter_cb(self, action):
         """``Brighter`` GtkAction callback: lighten the brush color"""
-        # TODO: use HCY?
-        h, s, v = self.app.brush.get_color_hsv()
-        v += 0.08
-        if v > 1.0:
-            v = 1.0
-        self.app.brush.set_color_hsv((h, s, v))
+        t, x, y = self.get_last_event_info(self.tdw)
+
+        if t <= self.last_brighter:
+            t = (time.time() * 1000)
+
+        if self.last_brighter:
+            elapsed = t - self.last_brighter
+            if elapsed < 100:
+                return
+
+        brushcolor = self._get_app_brush_color()
+
+        if self.app.brush.displayexceeded:
+            return
+
+        if self.app.preferences['color.dynamic_step_size']:
+            # pressing faster=bigger jump (max 25)
+            if not self.last_brighter:
+                e = 0.1
+            else:
+                e = min(1000 * self.app.preferences['color.tune_step_size'] /
+                        (t - self.last_brighter), 25)
+        else:
+            e = 1 * self.app.preferences['color.tune_step_size']
+
+        brushcolor.v = brushcolor.v + e
+        r, g, b = brushcolor.get_rgb()
+        if ((self.app.preferences['color.splash_before_stroke'] is True
+             and self.in_input_stroke is False)
+            or
+            (self.app.preferences['color.splash_during_stroke'] is True
+             and self.in_input_stroke is True)):
+                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+
+        self.last_brighter = t
+        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def darker_cb(self, action):
         """``Darker`` GtkAction callback: darken the brush color"""
-        # TODO: use HCY?
-        h, s, v = self.app.brush.get_color_hsv()
-        v -= 0.08
-        # stop a little higher than 0.0, to avoid resetting hue to 0
-        if v < 0.005:
-            v = 0.005
-        self.app.brush.set_color_hsv((h, s, v))
+        t, x, y = self.get_last_event_info(self.tdw)
+
+        if t <= self.last_darker:
+            t = (time.time() * 1000)
+
+        if self.last_darker:
+            elapsed = t - self.last_darker
+            if elapsed < 100:
+                return
+
+        brushcolor = self._get_app_brush_color()
+
+        if self.app.preferences['color.dynamic_step_size']:
+            # pressing faster=bigger jump (max 25)
+            if not self.last_darker:
+                e = 0.1
+            else:
+                e = min(1000 * self.app.preferences['color.tune_step_size'] /
+                        (t - self.last_darker), 25)
+        else:
+            e = 1 * self.app.preferences['color.tune_step_size']
+
+        brushcolor.v = brushcolor.v - e
+        r, g, b = brushcolor.get_rgb()
+        if ((self.app.preferences['color.splash_before_stroke'] is True
+             and self.in_input_stroke is False)
+            or
+            (self.app.preferences['color.splash_during_stroke'] is True
+             and self.in_input_stroke is True)):
+                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+
+        self.last_darker = t
+        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def increase_hue_cb(self, action):
         """Clockwise hue rotation ("IncreaseHue" action)."""
-        # TODO: use HCY?
-        h, s, v = self.app.brush.get_color_hsv()
-        e = 0.015
-        h = (h + e) % 1.0
-        self.app.brush.set_color_hsv((h, s, v))
+        t, x, y = self.get_last_event_info(self.tdw)
+
+        if t <= self.last_increase_hue:
+            t = (time.time() * 1000)
+
+        if self.last_increase_hue:
+            elapsed = t - self.last_increase_hue
+
+            if elapsed < 100:
+                return
+
+        brushcolor = self._get_app_brush_color()
+        if self.app.preferences['color.dynamic_step_size']:
+            # pressing faster=bigger jump (max 90)
+            if not self.last_increase_hue:
+                e = 0.1
+            else:
+                e = min(1500 * self.app.preferences['color.tune_step_size'] /
+                        (t - self.last_increase_hue), 90)
+        else:
+            e = 1 * self.app.preferences['color.tune_step_size']
+
+        brushcolor.h = (brushcolor.h - e) % 360
+        r, g, b = brushcolor.get_rgb()
+        if ((self.app.preferences['color.splash_before_stroke'] is True
+             and self.in_input_stroke is False)
+            or
+            (self.app.preferences['color.splash_during_stroke'] is True
+             and self.in_input_stroke is True)):
+                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+
+        self.last_increase_hue = t
+        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def decrease_hue_cb(self, action):
         """Anticlockwise hue rotation ("DecreaseHue" action)."""
-        # TODO: use HCY?
-        h, s, v = self.app.brush.get_color_hsv()
-        e = 0.015
-        h = (h - e) % 1.0
-        self.app.brush.set_color_hsv((h, s, v))
+        t, x, y = self.get_last_event_info(self.tdw)
+
+        if t <= self.last_decrease_hue:
+            t = (time.time() * 1000)
+
+        if self.last_decrease_hue:
+            elapsed = t - self.last_decrease_hue
+            if elapsed < 100:
+                return
+
+        brushcolor = self._get_app_brush_color()
+        if self.app.preferences['color.dynamic_step_size']:
+            # pressing faster=bigger jump (max 90)
+            if not self.last_decrease_hue:
+                e = 0.1
+            else:
+                e = min(1500 * self.app.preferences['color.tune_step_size'] /
+                        (t - self.last_decrease_hue), 90)
+        else:
+            e = 1 * self.app.preferences['color.tune_step_size']
+
+        brushcolor.h = (brushcolor.h + e) % 360
+        r, g, b = brushcolor.get_rgb()
+        if ((self.app.preferences['color.splash_before_stroke'] is True
+             and self.in_input_stroke is False)
+            or
+            (self.app.preferences['color.splash_during_stroke'] is True
+             and self.in_input_stroke is True)):
+                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+
+        self.last_decrease_hue = t
+        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def purer_cb(self, action):
         """``Purer`` GtkAction callback: make the brush color less grey"""
-        # TODO: use HCY?
-        h, s, v = self.app.brush.get_color_hsv()
-        s += 0.08
-        if s > 1.0:
-            s = 1.0
-        self.app.brush.set_color_hsv((h, s, v))
+        t, x, y = self.get_last_event_info(self.tdw)
+
+        if t <= self.last_purer:
+            t = (time.time() * 1000)
+
+        if self.last_purer:
+            elapsed = t - self.last_purer
+            if elapsed < 100:
+                return
+
+        brushcolor = self._get_app_brush_color()
+
+        if self.app.brush.gamutexceeded:
+            return
+
+        if self.app.preferences['color.dynamic_step_size']:
+            # pressing faster=bigger jump (max 25)
+            if not self.last_purer:
+                e = 0.1
+            else:
+                e = min(2000 * self.app.preferences['color.tune_step_size'] /
+                        (t - self.last_purer), 25)
+        else:
+            e = 1 * self.app.preferences['color.tune_step_size']
+
+        brushcolor.s = brushcolor.s + e
+        r, g, b = brushcolor.get_rgb()
+        if ((self.app.preferences['color.splash_before_stroke'] is True
+             and self.in_input_stroke is False)
+            or
+            (self.app.preferences['color.splash_during_stroke'] is True
+             and self.in_input_stroke is True)):
+                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+
+        self.last_purer = t
+        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def grayer_cb(self, action):
         """``Grayer`` GtkAction callback: make the brush color more grey"""
-        # TODO: use HCY?
-        h, s, v = self.app.brush.get_color_hsv()
-        s -= 0.08
-        # stop a little higher than 0.0, to avoid resetting hue to 0
-        if s < 0.005:
-            s = 0.005
-        self.app.brush.set_color_hsv((h, s, v))
+        t, x, y = self.get_last_event_info(self.tdw)
+
+        if t <= self.last_grayer:
+            t = (time.time() * 1000)
+
+        if self.last_grayer:
+            elapsed = t - self.last_grayer
+
+            if elapsed < 100:
+                return
+
+        brushcolor = self._get_app_brush_color()
+        if self.app.preferences['color.dynamic_step_size']:
+            # pressing faster=bigger jump (max 25)
+            if not self.last_grayer:
+                e = 0.1
+            else:
+                e = min(2000 * self.app.preferences['color.tune_step_size'] /
+                        (t - self.last_grayer), 25)
+        else:
+            e = 1 * self.app.preferences['color.tune_step_size']
+        brushcolor.s = brushcolor.s - e
+
+        r, g, b = brushcolor.get_rgb()
+        if ((self.app.preferences['color.splash_before_stroke'] is True
+             and self.in_input_stroke is False)
+            or
+            (self.app.preferences['color.splash_during_stroke'] is True
+             and self.in_input_stroke is True)):
+                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+
+        self.last_grayer = t
+        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     ## Brush settings
 
@@ -1585,6 +1773,21 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         else:
             if reset_action.get_sensitive():
                 reset_action.set_sensitive(False)
+
+    def _get_app_brush_color(self):
+        app = self.app
+        return lib.color.CIECAMColor(
+            vsh=(
+                app.brush.get_setting('cie_v'),
+                app.brush.get_setting('cie_s'),
+                app.brush.get_setting('cie_h')),
+            cieaxes=app.brush.get_setting('cieaxes'),
+            lightsource=(
+                app.brush.get_setting('lightsource_X'),
+                app.brush.get_setting('lightsource_Y'),
+                app.brush.get_setting('lightsource_Z')
+            )
+        )
 
     ## Brushkey callbacks
 
@@ -1990,6 +2193,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
     ## Model state reflection
 
     def _input_stroke_ended_cb(self, self_again, event):
+        # Store stroke state for color adjust swatch splashing
+        self.in_input_stroke = False
         """Invoked after a pen-down, draw, pen-up 'input stroke'"""
         # Store device-specific brush settings at the end of the stroke,
         # not when the device changes because the user can change brush
@@ -2007,6 +2212,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         # that the pointer (when you're holding the pen) is special,
         # it's the point of a real-world tool that you're dipping into a
         # palette, or modifying using the sliders.
+
+    def _input_stroke_started_cb(self, self_again, event):
+        self.in_input_stroke = True
 
     ## Mode flipping
 

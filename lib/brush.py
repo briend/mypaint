@@ -28,7 +28,6 @@ else:
 
 logger = logging.getLogger(__name__)
 
-
 # Module constants:
 
 STRING_VALUE_SETTINGS = set((
@@ -37,6 +36,13 @@ STRING_VALUE_SETTINGS = set((
     "comment",  # MyPaint uses this to explanation what the file is
     "notes",  # Brush developer's notes field, multiline
     "description",  # Short, user-facing description field, single line
+    "cieaxes",  # CIECAM axes such as JCH
+    "lightsource_X",  # CIECAM illuminant XYZ100
+    "lightsource_Y",  # CIECAM illuminant XYZ100
+    "lightsource_Z",  # CIECAM illuminant XYZ100
+    "cie_v",  # CIECAM value axis
+    "cie_s",  # CIECAM saturation axis
+    "cie_h",  # CIECAM hue axis
 ))
 OLDFORMAT_BRUSHFILE_VERSION = 2
 
@@ -203,6 +209,8 @@ class BrushInfo (object):
         self.pending_updates = set()
         if string:
             self.load_from_string(string)
+        self.displayexceeded = None
+        self.gamutexceeded = None
 
     def settings_changed_cb(self, settings):
         self.cache_str = None
@@ -247,6 +255,13 @@ class BrushInfo (object):
         brush_group = settings.pop('group', '')
         description = settings.pop('description', '')
         notes = settings.pop('notes', '')
+        cieaxes = settings.pop('cieaxes', '')
+        lightsource_X = settings.pop('lightsource_X', '')
+        lightsource_Y = settings.pop('lightsource_Y', '')
+        lightsource_Z = settings.pop('lightsource_Z', '')
+        cie_v = settings.pop('cie_v', '')
+        cie_s = settings.pop('cie_s', '')
+        cie_h = settings.pop('cie_h', '')
 
         # The comment we save is always the same
         settings.pop('comment', '')
@@ -264,6 +279,13 @@ class BrushInfo (object):
             'group': brush_group,
             'notes': notes,
             'description': description,
+            'cieaxes': cieaxes,
+            'lightsource_X': lightsource_X,
+            'lightsource_Y': lightsource_Y,
+            'lightsource_Z': lightsource_Z,
+            'cie_v': cie_v,
+            'cie_s': cie_s,
+            'cie_h': cie_h,
         }
         return json.dumps(document, sort_keys=True, indent=4)
 
@@ -535,6 +557,7 @@ class BrushInfo (object):
     def set_color_hsv(self, hsv):
         if not hsv:
             return
+
         self.begin_atomic()
         try:
             h, s, v = hsv
@@ -546,6 +569,17 @@ class BrushInfo (object):
 
     def set_color_rgb(self, rgb):
         self.set_color_hsv(helpers.rgb_to_hsv(*rgb))
+
+    def set_ciecam_color(self, color):
+        self.set_setting('cieaxes', color.cieaxes)
+        self.set_setting('lightsource_X', color.lightsource[0])
+        self.set_setting('lightsource_Y', color.lightsource[1])
+        self.set_setting('lightsource_Z', color.lightsource[2])
+        self.set_setting('cie_h', color.h)
+        self.set_setting('cie_s', color.s)
+        self.set_setting('cie_v', color.v)
+        self.displayexceeded = color.displayexceeded
+        self.gamutexceeded = color.gamutexceeded
 
     def get_color_rgb(self):
         hsv = self.get_color_hsv()

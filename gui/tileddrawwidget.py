@@ -146,6 +146,8 @@ class TiledDrawWidget (Gtk.EventBox):
 
         self.last_painting_pos = None
 
+        self.last_colorpick_time = None
+
         self.renderer = CanvasRenderer(
             self,
             idle_redraw_priority = idle_redraw_priority,
