@@ -186,6 +186,71 @@ class PreferencesWindow (windowing.Dialog):
         if wheel_radiobutton:
             wheel_radiobutton.set_active(True)
 
+        # Color Swatch Splash
+        splash_during_stroke = bool(p.get("color.splash_during_stroke", False))
+        splash_during_stroke_checkbutton = getobj(
+            "color_adjuster_swatch_during_stroke_checkbutton"
+        )
+        splash_during_stroke_checkbutton.set_active(splash_during_stroke)
+
+        splash_before_stroke = bool(p.get("color.splash_before_stroke", True))
+        splash_before_stroke_checkbutton = getobj(
+            "color_adjuster_swatch_before_stroke_checkbutton"
+        )
+        splash_before_stroke_checkbutton.set_active(splash_before_stroke)
+
+        # Color Adjuster Tune Step Size
+        color_adjuster_step_size = p["color.tune_step_size"]
+        color_adjuster_step_size_adj = getobj(
+            "color_adjuster_tune_step_size_adjustment"
+        )
+        color_adjuster_step_size_adj.set_value(color_adjuster_step_size)
+
+        # Color Adjuster Dynamic Step Size
+        color_adjuster_dynamic_step_size = bool(
+            p.get("color.dynamic_step_size", True)
+        )
+        color_adjuster_dynamic_step_size_checkbutton = getobj(
+            "color_adjuster_dynamic_step_size_checkbutton"
+        )
+        color_adjuster_dynamic_step_size_checkbutton.set_active(
+            color_adjuster_dynamic_step_size
+        )
+
+        # Color Dimensions
+        # Purity Dimension
+        color_dimension_purity = p["color.dimension_purity"]
+        color_dimension_purity_radiobtn = getobj(
+            "color_dimensions_%s_radiobutton" % (color_dimension_purity,)
+        )
+        if color_dimension_purity_radiobtn:
+            color_dimension_purity_radiobtn.set_active(True)
+
+        # Value Dimension
+        color_dimension_value = p["color.dimension_value"]
+        color_dimension_value_radiobtn = getobj(
+            "color_dimensions_%s_radiobutton" % (color_dimension_value,)
+        )
+        if color_dimension_value_radiobtn:
+            color_dimension_value_radiobtn.set_active(True)
+
+        # Light Source
+        color_dimension_lightsource = p["color.dimension_lightsource"]
+        color_dimension_lightsource_radiobtn = getobj(
+            "color_dimensions_lightsource_%s_radiobutton" % (
+                color_dimension_lightsource
+            )
+        )
+        if color_dimension_lightsource_radiobtn:
+            color_dimension_lightsource_radiobtn.set_active(True)
+
+        # Color Purity Limt
+        color_limit_purity = p["color.limit_purity"]
+        color_limit_purity_adj = getobj(
+            "color_dimensions_limit_purity_adjustment"
+        )
+        color_limit_purity_adj.set_value(color_limit_purity)
+
         # Autosave
         autosave = bool(p["document.autosave_backups"])
         autosave_switch = getobj("autosave_backups_switch")
@@ -274,6 +339,107 @@ class PreferencesWindow (windowing.Dialog):
             return
         cm = self.app.brush_color_manager
         cm.set_wheel_type("rygb")
+
+    def color_adjuster_swatch_during_stroke_checkbutton_cb(self, button):
+        splash_during = bool(button.get_active())
+        self.app.preferences['color.splash_during_stroke'] = splash_during
+
+    def color_adjuster_swatch_before_stroke_checkbutton_cb(self, button):
+        splash_before = bool(button.get_active())
+        self.app.preferences['color.splash_before_stroke'] = splash_before
+
+    def color_adjuster_dynamic_step_size_checkbutton_cb(self, button):
+        dynamic_step_size = bool(button.get_active())
+        self.app.preferences['color.dynamic_step_size'] = dynamic_step_size
+
+    def color_adjuster_tune_step_size_adjustment_value_changed_cb(self, adj):
+        tune_step_size = adj.get_value()
+        self.app.preferences['color.tune_step_size'] = tune_step_size
+
+    def color_dimensions_lightness_radiobutton_toggled_cb(self, radiobtn):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_value'] = "J"
+
+    def color_dimensions_brightness_radiobutton_toggled_cb(self, radiobtn):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_value'] = "Q"
+
+    def color_dimensions_colorfulness_radiobutton_toggled_cb(self, radiobtn):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_purity'] = "M"
+
+    def color_dimensions_chroma_radiobutton_toggled_cb(self, radiobtn):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_purity'] = "C"
+
+    def color_dimensions_saturation_radiobutton_toggled_cb(self, radiobtn):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_purity'] = "s"
+
+    def color_dimensions_lightsource_A_radiobutton_toggled_cb(self, radiobtn):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_lightsource'] = "A"
+
+    def color_dimensions_lightsource_D50_radiobutton_toggled_cb(
+            self,
+            radiobtn
+    ):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_lightsource'] = "D50"
+
+    def color_dimensions_lightsource_D55_radiobutton_toggled_cb(
+            self,
+            radiobtn
+    ):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_lightsource'] = "D55"
+
+    def color_dimensions_lightsource_D65_radiobutton_toggled_cb(
+            self,
+            radiobtn
+    ):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_lightsource'] = "D65"
+
+    def color_dimensions_lightsource_D75_radiobutton_toggled_cb(
+            self,
+            radiobtn
+    ):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_lightsource'] = "D75"
+
+    def color_dimensions_lightsource_custom_XYZ_radiobutton_toggled_cb(
+            self,
+            radiobtn
+    ):
+        if self.in_update_ui or not radiobtn.get_active():
+            return
+        p = self.app.preferences
+        p['color.dimension_lightsource'] = "custom_XYZ"
+
+    def color_dimensions_limit_purity_adjustment_value_changed_cb(self, adj):
+        limit_purity = adj.get_value()
+        self.app.preferences['color.limit_purity'] = limit_purity
 
     def freehand_cursor_combobox_changed_cb(self, combobox):
         cname = combobox.get_active_id()

@@ -24,6 +24,8 @@ with an adjuster does its type change to match the control's color space.
 from __future__ import division, print_function
 import re
 import colorsys
+import colorspacious
+import numpy as np
 
 from gi.repository import GdkPixbuf
 
@@ -441,6 +443,185 @@ class HSVColor (UIColor):
             s = self.s + (other.s - self.s) * p
             v = self.v + (other.v - self.v) * p
             yield HSVColor(h=h, s=s, v=v)
+
+    def __eq__(self, other):
+        """Equality test (override)
+
+        >>> c1 = HSVColor(0.7, 0.45, 0.55)
+        >>> c2 = HSVColor(0.4, 0.55, 0.45)
+        >>> c2rgb = RGBColor(color=c2)
+        >>> c1 == c2
+        False
+        >>> c1 == c1 and c2 == c2
+        True
+        >>> c2 == c2rgb
+        True
+        >>> c1 == c2rgb
+        False
+
+        Colours with zero value but differing hues or saturations must
+        test equal. The same isn't true of the other end of the
+        cylinder.
+
+        >>> HSVColor(0.7, 0.45, 0.0) == HSVColor(0.4, 0.55, 0.0)
+        True
+        >>> HSVColor(0.7, 0.45, 1.0) == HSVColor(0.4, 0.55, 1.0)
+        False
+
+        """
+        try:
+            t1 = self.get_hsv()
+            t2 = other.get_hsv()
+        except AttributeError:
+            return UIColor.__eq__(self, other)
+        else:
+            t1 = [round(c, 3) for c in t1]
+            t2 = [round(c, 3) for c in t2]
+            if t1[-1] == t2[-1] == 0:
+                return True
+            return t1 == t2
+
+
+class CIECAMColor (UIColor):
+    """CIECAM representation of a color.  Use VSH as stand-ins for axes
+
+      >>> col = CIECAMColor(95.67306142, 58.26474923, 106.14599451)
+      >>> col.h = 106.14599451
+      >>> col.s = 58.26474923
+      >>> col.v = 95.67306142
+      >>> result = col.get_rgb()
+      >>> print (round(result[0],4), round(result[1],4), round(result[2],4))
+      1.0 1.0 0.0
+
+    """
+
+    # Base class overrides: make h,s,v attributes read/write
+    v = None
+    s = None
+    h = None
+
+    def __init__(self, v=None, s=None, h=None, vsh=None, color=None,
+                 cieaxes=None, lightsource=None):
+        """Initializes from individual values, or another UIColor
+
+          >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
+          >>> col2 = CIECAMColor(h=106.14599451, s=58.26474923, v=95.67306142)
+          >>> col1 == col2
+          True
+          >>> CIECAMColor(color=RGBColor(0.5, 0.5, 0.5))
+          <CIECAM , v=42.8403, s=1.4981, h=211.0592>
+        """
+        UIColor.__init__(self)
+
+        self.cieconfig = None
+
+        # The entire ciecam config needs to follow around the color
+        if cieaxes is not None:
+            self.cieaxes = cieaxes
+        else:
+            self.cieaxes = "JMh"
+
+        if lightsource is not None:
+            self.lightsource = lightsource
+            ciespace = colorspacious.CIECAM02Space(
+                self.lightsource,
+                20.0, 4.074366543152521,
+                surround=colorspacious.CIECAM02Surround.AVERAGE
+            )
+            self.cieconfig = {
+                "name": "CIECAM02-subset",
+                "axes": self.cieaxes,
+                "ciecam02_space": ciespace
+            }
+        else:
+            self.lightsource = colorspacious.standard_illuminant_XYZ100("D65")
+            ciespace = colorspacious.CIECAM02Space(
+                self.lightsource,
+                20.0, 4.074366543152521,
+                surround=colorspacious.CIECAM02Surround.AVERAGE
+            )
+            self.cieconfig = {
+                "name": "CIECAM02-subset",
+                "axes": self.cieaxes,
+                "ciecam02_space": ciespace
+            }
+
+        # maybe we want to know if the gamut was constrained
+        self.gamutexceeded = None
+        self.displayexceeded = None
+
+        # limit color purity?
+        self.limit_purity = None
+        # try getting from preferences but fallback to avoid breaking doctest
+        try:
+            from gui.application import get_app
+            app = get_app()
+            p = app.preferences
+            if p['color.limit_purity'] >= 0.0:
+                self.limit_purity = p['color.limit_purity']
+        except AttributeError:
+            self.limit_purity = None
+
+        if color is not None:
+            if isinstance(color, CIECAMColor):
+                # convert from one to another (handle whitepoint changes)
+                v, s, h = CIECAM_to_CIECAM(self, color)
+            else:
+                # any other UIColor is assumed to be sRGB
+                rgb = color.get_rgb()
+                v, s, h = RGB_to_CIECAM(self, rgb)
+        if vsh is not None:
+            v, s, h = vsh
+        self.h = h  #: Read/write hue angle, 0-360
+        self.s = s  #: Read/write CIECAM saturation, no scaling
+        self.v = v  #: Read/write CIECAM value, no scaling
+        assert self.h is not None
+        assert self.s is not None
+        assert self.v is not None
+
+    def get_hsv(self):
+        rgb = self.get_rgb()
+        h, s, v = colorsys.rgb_to_hsv(*rgb)
+        return h, s, v
+
+    def get_rgb(self):
+        return CIECAM_to_RGB(self)
+
+    def __repr__(self):
+        return "<CIECAM , v=%0.4f, s=%0.4f, h=%0.4f>" \
+            % (self.v, self.s, self.h)
+
+    def interpolate(self, other, steps):
+        """CIECAM interpolation, sometimes nicer looking than anything else.
+
+        >>> red_hsv = CIECAMColor(h=32.1526953,s=80.46644073,v=46.9250674 )
+        >>> green_hsv = CIECAMColor(h=136.6478602,s=76.64436113,v=79.7493805)
+        >>> [c.to_hex_str() for c in green_hsv.interpolate(red_hsv, 3)]
+        ['#00fe00', '#dca400', '#ff0000']
+        >>> [c.to_hex_str() for c in red_hsv.interpolate(green_hsv, 3)]
+        ['#ff0000', '#dca400', '#00fe00']
+
+        """
+        assert steps >= 3
+        other = CIECAMColor(color=other)
+        # Calculate the shortest angular distance
+        # Normalize first
+        ha = self.h % 360
+        hb = other.h % 360
+        # If the shortest distance doesn't pass through zero, then
+        hdelta = hb - ha
+        # But the shortest distance might pass through zero either antilockwise
+        # or clockwise. Smallest magnitude wins.
+        for hdx0 in -(ha+360-hb), (hb+360-ha):
+            if abs(hdx0) < abs(hdelta):
+                hdelta = hdx0
+        # Interpolate, using shortest angular dist for hue
+        for step in xrange(steps):
+            p = step / (steps - 1)
+            h = (self.h + hdelta * p)
+            s = self.s + (other.s - self.s) * p
+            v = self.v + (other.v - self.v) * p
+            yield CIECAMColor(h=h, s=s, v=v)
 
     def __eq__(self, other):
         """Equality test (override)
@@ -904,7 +1085,127 @@ def HCY_to_RGB(hcy):
         return (p, n, o)
 
 
+def RGB_to_CIECAM(self, rgb):
+    r, g, b = rgb
+    maxcolorfulness = self.limit_purity
+
+    ciecam_vsh = colorspacious.cspace_convert([r, g, b],
+                                              "sRGB1", self.cieconfig)
+
+    if maxcolorfulness:
+        ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
+
+    return ciecam_vsh
+
+
+def CIECAM_to_CIECAM(self, ciecam):
+    maxcolorfulness = self.limit_purity
+    ciecam_vsh = colorspacious.cspace_convert(
+        [ciecam.v, ciecam.s, ciecam.h],
+        ciecam.cieconfig,
+        self.cieconfig
+    )
+
+    if maxcolorfulness:
+        ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
+    return ciecam_vsh
+
+
+def CIECAM_to_RGB(self):
+    v, s, h = self.v, self.s, self.h
+    # don't allow CIECAM values below this to avoid errors
+    ciemin = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
+    maxcolorfulness = self.limit_purity
+    converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
+
+    if maxcolorfulness:
+        s = min(s, maxcolorfulness)
+
+    result = converter([max(v, ciemin[0]), max(s, ciemin[1]), h])
+
+    # if out of sRGB gamut, adjust chroma until within
+    exp = 1
+    counter = 0
+    if any(x < -0.01 for x in result):
+
+        self.gamutexceeded = True
+
+        # attempt 10 adjustments
+        while counter < 10:
+
+            # don't try to make less saturated than the illuminant
+            if s <= ciemin[1]:
+                break
+
+            # reduce chroma
+            new_s = s * .5**exp
+
+            if maxcolorfulness:
+                new_s = min(new_s, maxcolorfulness)
+
+            # get a new color
+            new_result = converter([max(v, ciemin[0]),
+                                   max(new_s, ciemin[1]), h])
+
+            # if the new result is identical, just quit now
+            if np.array_equal(result, new_result):
+                break
+
+            # if new color is still out of gamut, store the new color and apply
+            # another reduction using the same reduction amount
+            if any(x < -0.01 for x in new_result):
+                result = new_result
+                s = new_s
+                counter += 1
+            else:
+                # if we're back within gamut, we went too far
+                # discard new result and try again with a smaller decrement
+                exp = exp * .5
+                counter += 1
+    else:
+        self.gamutexceeded = False
+
+    if any(x > 1.0 for x in result):
+
+        self.displayexceeded = True
+
+        # attempt 10 adjustments
+        while counter < 10:
+
+            # don't try to make too dark
+            if v <= ciemin[0]:
+                break
+
+            # reduce lightness
+            new_v = v * .5**exp
+
+            if maxcolorfulness:
+                s = min(s, maxcolorfulness)
+
+            # get a new color
+            new_result = converter([max(new_v, ciemin[0]),
+                                   max(s, ciemin[1]), h])
+
+            # if new color is still too bright, store the new color and apply
+            # another reduction using the same reduction amount
+            if any(x > 1.0 for x in new_result):
+                result = new_result
+                v = new_v
+                counter += 1
+            else:
+                # if we're back within display, we went too far
+                # discard new result and try again with a smaller decrement
+                exp = exp * .5
+                counter += 1
+    else:
+        self.displayexceeded = False
+
+    # clip final result
+    r, g, b = np.clip(result, 0, 1)
+    return r, g, b
+
 ## Module testing
+
 
 def _test():
     """Run all doctests in this module"""

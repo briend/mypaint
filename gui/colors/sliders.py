@@ -13,14 +13,17 @@
 from __future__ import division, print_function
 
 from gi.repository import Gtk
+import colorspacious
 
 from lib.color import RGBColor
 from lib.color import HSVColor
 from lib.color import HCYColor
+from lib.color import CIECAMColor
 from .bases import IconRenderable
 from .adjbases import ColorAdjuster
 from .adjbases import SliderColorAdjuster
 from .combined import CombinedAdjusterPage
+
 from lib.gettext import C_
 
 
@@ -300,6 +303,151 @@ class HCYLumaSlider (SliderColorAdjuster):
     def get_background_validity(self):
         col = HCYColor(color=self.get_managed_color())
         return int(col.h * 1000), int(col.c * 1000)
+
+
+class CIECAMHueSlider (SliderColorAdjuster):
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue")
+    samples = 8
+    SCROLL_DELTA = 0.1  #: Delta for a scroll event
+    IS_DRAG_SOURCE = True  #: Set to True to make press+move do a select+drag
+
+    def get_color_for_bar_amount(self, amt):
+        # pull in CIECAM config
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+        col = CIECAMColor(
+            color=self.get_managed_color(),
+            cieaxes=cieaxes,
+            lightsource=lightsource
+        )
+        col.h = amt * 360
+        return col
+
+    def get_bar_amount_for_color(self, col):
+        # pull in CIECAM config
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        return col.h / 360
+
+
+class CIECAMChromaSlider (SliderColorAdjuster):
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
+                             "CIECAM Colorfulness/Chroma/Saturation")
+    samples = 2
+    SCROLL_DELTA = 0.1  #: Delta for a scroll event
+    IS_DRAG_SOURCE = True  #: Set to True to make press+move do a select+drag
+
+    def get_color_for_bar_amount(self, amt):
+        # pull in CIECAM config
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+        col = CIECAMColor(
+            color=self.get_managed_color(),
+            cieaxes=cieaxes,
+            lightsource=lightsource
+        )
+        col.s = amt * 112
+        return col
+
+    def get_bar_amount_for_color(self, col):
+        # pull in CIECAM config
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        return col.s / 112
+
+
+class CIECAMLumaSlider (SliderColorAdjuster):
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
+                             "CIECAM Lightness/Brightness")
+    samples = 2
+    SCROLL_DELTA = 0.1  #: Delta for a scroll event
+    IS_DRAG_SOURCE = True  #: Set to True to make press+move do a select+drag
+
+    @property
+    def samples(self):
+        alloc = self.get_allocation()
+        len = self.vertical and alloc.height or alloc.width
+        len -= self.BORDER_WIDTH * 2
+        return min(int(len // 3), 64)
+
+    def get_color_for_bar_amount(self, amt):
+        # pull in CIECAM config
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+        col = CIECAMColor(
+            color=self.get_managed_color(),
+            cieaxes=cieaxes,
+            lightsource=lightsource
+        )
+        col.v = amt * 124
+        return col
+
+    def get_bar_amount_for_color(self, col):
+        # pull in CIECAM config
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        return col.v / 124
+
+    def get_background_validity(self):
+        col = CIECAMColor(color=self.get_managed_color())
+        return int(col.h * 1000), int(col.s * 1000)
 
 
 if __name__ == '__main__':
