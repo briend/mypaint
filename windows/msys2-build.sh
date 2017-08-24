@@ -72,7 +72,10 @@ install_dependencies() {
     pacman --remove --noconfirm ${PKG_PREFIX}-mypaint || true
     pacman --remove --noconfirm ${PKG_PREFIX}-libmypaint-git || true
     pacman --remove --noconfirm ${PKG_PREFIX}-libmypaint || true
-
+    
+    loginfo  "Updating package cache"
+    pacman -Fy
+    
     loginfo "Installing pre-built dependencies for MyPaint"
     pacman -S --noconfirm --needed --noprogressbar \
         ${PKG_PREFIX}-toolchain \
@@ -85,6 +88,7 @@ install_dependencies() {
         ${PKG_PREFIX}-pygobject-devel \
         ${PKG_PREFIX}-python2-gobject \
         ${PKG_PREFIX}-python2-numpy \
+		    ${PKG_PREFIX}-python2-colorspacious \
         ${PKG_PREFIX}-hicolor-icon-theme \
         ${PKG_PREFIX}-librsvg \
         ${PKG_PREFIX}-gobject-introspection \
@@ -103,6 +107,7 @@ install_dependencies() {
         ${PKG_PREFIX}-python3 \
         ${PKG_PREFIX}-python3-pip \
         zip
+        
 
     logok "Dependencies installed."
 }

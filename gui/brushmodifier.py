@@ -10,6 +10,9 @@ from __future__ import division, print_function
 
 from gettext import gettext as _
 from lib.helpers import rgb_to_hsv, hsv_to_rgb
+import lib.color
+
+import colorspacious
 
 
 class BrushModifier (object):
@@ -35,7 +38,7 @@ class BrushModifier (object):
         app.brush.observers.append(self.brush_modified_cb)
         self.unmodified_brushinfo = app.brush.clone()
         self._in_brush_selected_cb = False
-        self._last_selected_color = app.brush.get_color_hsv()
+        self._last_selected_color = self.app.brush.get_color_hsv()
         self._init_actions()
 
     def _init_actions(self):
@@ -179,6 +182,34 @@ class BrushModifier (object):
         """
         c = self.unmodified_brushinfo.get_color_hsv()
         self.app.brush.set_color_hsv(c)
+        self.app.brush.set_setting(
+            'cieaxes',
+            self.unmodified_brushinfo.get_setting('cieaxes')
+        )
+        self.app.brush.set_setting(
+            'lightsource_X',
+            self.unmodified_brushinfo.get_setting('lightsource_X')
+        )
+        self.app.brush.set_setting(
+            'lightsource_Y',
+            self.unmodified_brushinfo.get_setting('lightsource_Y')
+        )
+        self.app.brush.set_setting(
+            'lightsource_Z',
+            self.unmodified_brushinfo.get_setting('lightsource_Z')
+        )
+        self.app.brush.set_setting(
+            'cie_v',
+            self.unmodified_brushinfo.get_setting('cie_v')
+        )
+        self.app.brush.set_setting(
+            'cie_s',
+            self.unmodified_brushinfo.get_setting('cie_s')
+        )
+        self.app.brush.set_setting(
+            'cie_h',
+            self.unmodified_brushinfo.get_setting('cie_h')
+        )
 
     def brush_selected_cb(self, bm, managed_brush, brushinfo):
         """Responds to the user changing their brush.
@@ -192,9 +223,25 @@ class BrushModifier (object):
         b = self.app.brush
         prev_lock_alpha = b.is_alpha_locked()
 
+        cm = self.app.brush_color_manager
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+
         # Changing the effective brush
         b.begin_atomic()
-        color = b.get_color_hsv()
+        color = lib.color.CIECAMColor(
+            color=lib.color.HSVColor(*b.get_color_hsv()),
+            cieaxes=cieaxes,
+            lightsource=lightsource
+        )
 
         mix_old = b.get_base_value('restore_color')
         b.load_from_brushinfo(brushinfo)
@@ -203,14 +250,19 @@ class BrushModifier (object):
         # Preserve color
         mix = b.get_base_value('restore_color')
         if mix:
-            c1 = hsv_to_rgb(*color)
+            c1 = color.get_rgb()
             c2 = hsv_to_rgb(*b.get_color_hsv())
             c3 = [(1.0-mix)*v1 + mix*v2 for v1, v2 in zip(c1, c2)]
-            color = rgb_to_hsv(*c3)
+            color = lib.color.CIECAMColor(
+                lib.color.RGBColor(*c3),
+                cieaxes=color.cieaxes,
+                lightsource=color.lightsource
+            )
         elif mix_old and self._last_selected_color:
             # switching from a brush with fixed color back to a normal one
             color = self._last_selected_color
-        b.set_color_hsv(color)
+        b.set_color_hsv(color.get_hsv())
+        b.set_ciecam_color(color)
 
         b.set_string_property("parent_brush_name", managed_brush.name)
 
@@ -260,7 +312,8 @@ class BrushModifier (object):
 
         if changed_settings.intersection(('color_h', 'color_s', 'color_v')):
             # Cancel eraser mode on ordinary brushes
-            if self.eraser_mode.get_active() and 'eraser_mode' not in changed_settings:
+            if (self.eraser_mode.get_active() and
+               'eraser_mode' not in changed_settings):
                 self.eraser_mode.set_active(False)
 
             if not self._in_brush_selected_cb:
