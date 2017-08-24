@@ -28,12 +28,14 @@ from gi.repository import Gtk
 from gi.repository import GLib
 import cairo
 from lib.gettext import C_
+import colorspacious
 
 from .util import clamp
 from lib.palette import Palette
 from lib.color import RGBColor
 from lib.color import HCYColor
 from lib.color import HSVColor
+from lib.color import CIECAMColor
 import gui.uicolor
 from .adjbases import ColorAdjuster
 from .adjbases import ColorAdjusterWidget
@@ -819,6 +821,12 @@ class _PaletteGridLayout (ColorAdjusterWidget):
                 bool(empty_range),
                 [HSVColor, empty_range],
             ),
+            (
+                C_("palette view: context menu", "Fill Gap (CIECAM)"),
+                self._interpolate_empty_range_cb,
+                bool(empty_range),
+                [CIECAMColor, empty_range],
+            ),
         ]
         for item_def in item_defs:
             if not item_def:
@@ -870,10 +878,39 @@ class _PaletteGridLayout (ColorAdjusterWidget):
         palette.set_columns(columns_new)
 
     def _interpolate_empty_range_cb(self, menuitem, color_class, range):
+
+        # pull in CIECAM config
+        app = gui.application.get_app()
+        cm = app.brush_color_manager
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+
         i0, ix = range
         palette = self.get_color_manager().palette
-        c0 = color_class(color=palette[i0])
-        cx = color_class(color=palette[ix])
+        if color_class == 'CIECAMColor':
+            c0 = color_class(
+                color=palette[i0],
+                cieaxes=cieaxes,
+                lightsource=lightsource
+            )
+        else:
+            c0 = color_class(color=palette[i0])
+        if color_class == 'CIECAMColor':
+            cx = color_class(
+                color=palette[ix],
+                cieaxes=cieaxes,
+                lightsource=lightsource
+            )
+        else:
+            cx = color_class(color=palette[ix])
         nsteps = ix - i0 + 1
         if nsteps < 3:
             return

@@ -29,7 +29,7 @@ import cairo
 from .util import clamp
 from .util import add_distance_fade_stops
 from .util import draw_marker_circle
-from lib.color import RGBColor, HCYColor
+from lib.color import RGBColor, HCYColor, CIECAMColor
 from .bases import CachedBgDrawingArea
 from .bases import IconRenderable
 from . import uimisc
@@ -994,7 +994,10 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         for s in xrange(samples + 1):
             p = s / samples
             col = self.get_color_for_bar_amount(p)
-            r, g, b = col.get_rgb()
+            if isinstance(col, CIECAMColor):
+                r, g, b = col.get_rgb()
+            else:
+                r, g, b = col.get_rgb()
             if self.vertical:
                 p = 1 - p
             bar_gradient.add_color_stop_rgb(p, r, g, b)
@@ -1060,7 +1063,6 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         cr.set_source_rgb(1, 1, 1)
         cr.set_line_width(3.5)
         cr.stroke_preserve()
-
         cr.set_source_rgb(*col.get_rgb())
         cr.set_line_width(0.25)
         cr.stroke()

@@ -8,8 +8,11 @@
 # (at your option) any later version.
 
 ## Imports
-
 from __future__ import division, print_function
+
+import time
+import colorspacious
+
 from gettext import gettext as _
 import colorsys
 
@@ -20,6 +23,7 @@ import lib.color
 
 
 ## Color picking mode, with a preview rectangle overlay
+
 
 class ColorPickMode (gui.mode.OneshotDragMode):
     """Mode for picking colors from the screen, with a preview
@@ -73,6 +77,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         self._started_from_key_press = ignore_modifiers
         self._start_drag_on_next_motion_event = False
         self._pickmode = pickmode
+        self.app = gui.application.get_app()
 
     def enter(self, doc, **kwds):
         """Enters the mode, arranging for necessary grabs ASAP"""
@@ -82,6 +87,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
             doc = self.doc
             tdw = self.doc.tdw
             t, x, y = doc.get_last_event_info(tdw)
+
             if None not in (x, y):
                 self._pick_color_mode(tdw, x, y, self._pickmode)
             # Start the drag when possible
@@ -115,7 +121,8 @@ class ColorPickMode (gui.mode.OneshotDragMode):
 
     def _place_overlay(self, tdw, x, y):
         if self._overlay is None:
-            self._overlay = ColorPickPreviewOverlay(self.doc, tdw, x, y)
+            self._overlay = ColorPickPreviewOverlay(self.doc, tdw, x, y,
+                                                    self._pickmode)
         else:
             self._overlay.move(x, y)
 
@@ -129,134 +136,112 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         return None
 
     def _pick_color_mode(self, tdw, x, y, mode):
-        # Init shared variables between normal and HCY modes.
+        # init shared variables between normal and CIECAM modes
+        doc = self.doc
+        tdw = self.doc.tdw
+        app = self.doc.app
+        elapsed = None
+        t, x, y = doc.get_last_event_info(tdw)
+        if t <= doc.last_colorpick_time:
+            t = (time.time() * 1000)
+
+        if doc.last_colorpick_time:
+            elapsed = t - doc.last_colorpick_time
+
+            if elapsed < 300:
+                return
+
+        cm = app.brush_color_manager
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+
+        doc.last_colorpick_time = t
+
         pickcolor = tdw.pick_color(x, y)
         brushcolor = self._get_app_brush_color()
         brushcolor_rgb = brushcolor.get_rgb()
         pickcolor_rgb = pickcolor.get_rgb()
 
-        # If brush and pick colors are the same, nothing to do.
+        # grab the color with sRGB context
+        pickcolor_cie = lib.color.CIECAMColor(
+            color=pickcolor,
+            cieaxes=brushcolor.cieaxes
+        )
+        # if brush and pick colors are the same, nothing to do
         if brushcolor_rgb != pickcolor_rgb:
             pickcolor_hsv = pickcolor.get_hsv()
             brushcolor_hsv = brushcolor.get_hsv()
             cm = self.doc.app.brush_color_manager
-            c_min = 0.0001
-            y_min = 0.0001
-            y_max = 0.9999
 
-            # Normal pick mode, but preserve hue for achromatic colors.
-            # Easy because we are staying in HSV
-            # and not converting to another color space.
-
+            # normal pick mode
             if mode == "PickAll":
-                if (pickcolor_hsv[1] == 0) or (pickcolor_hsv[2] == 0):
-                    brushcolornew_hsv = lib.color.HSVColor(
-                        brushcolor_hsv[0],
-                        pickcolor_hsv[1],
-                        pickcolor_hsv[2],
-                    )
-                    pickcolor = brushcolornew_hsv
                 cm.set_color(pickcolor)
+            elif mode == "PickIlluminant":
+                    p = self.app.preferences
+                    ill = (colorspacious.cspace_convert(
+                        pickcolor_rgb,
+                        "sRGB1",
+                        "XYZ100"
+                    )
+                    )
+                    if ill[1] <= 0:
+                        return
+                    fac = 100/ill[1]
+                    p['color.dimension_lightsource'] = "custom_XYZ"
+                    p['color.dimension_lightsource_XYZ'] = (
+                        ill[0]*fac,
+                        ill[1]*fac,
+                        ill[2]*fac
+                    )
+
+                    # reset the brush color with the same color
+                    # under the new illuminant
+                    brushcolornew = lib.color.CIECAMColor(
+                        color=brushcolor,
+                        cieaxes=brushcolor.cieaxes,
+                        lightsource=ill
+                    )
+                    app.brush.set_color_hsv(brushcolornew.get_hsv())
+                    app.brush.set_ciecam_color(brushcolornew)
             else:
-                # Pick H, C, or Y independently.
-                # Deal with scenarios to avoid achromatic conversions
-                # from HCY to RGB to HSV losing hue information.
-                # Basically prevent C from reaching 0
-                # and Y from reaching 0.0 or 1.0.
-                brushcolor_hcy = lib.color.RGB_to_HCY(brushcolor_rgb)
-                pickcolor_hcy = lib.color.RGB_to_HCY(pickcolor_rgb)
+                # pick V, S, H independently
+                # using CIECAM
+                brushcolornew = brushcolor
 
                 if mode == "PickHue":
-                    brushcolornew_hcy = (
-                        pickcolor_hcy[0],
-                        brushcolor_hcy[1],
-                        brushcolor_hcy[2],
-                    )
-                    if brushcolor_hcy[1] < c_min:
-                        brushcolornew_hcy = (
-                            brushcolornew_hcy[0],
-                            c_min,
-                            brushcolornew_hcy[2],
-                        )
-                    if pickcolor_hcy[2] < y_min:
-                        brushcolornew_hcy = (
-                            brushcolornew_hcy[0],
-                            brushcolornew_hcy[1],
-                            y_min,
-                        )
-                    if pickcolor_hcy[2] > y_max:
-                        brushcolornew_hcy = (
-                            brushcolornew_hcy[0],
-                            brushcolornew_hcy[1],
-                            y_max,
-                        )
-                    if (pickcolor_hsv[1] == 0) or (pickcolor_hsv[2] == 0):
-                        brushcolornew_hcy = (
-                            brushcolor_hsv[0],
-                            brushcolor_hcy[1],
-                            brushcolor_hcy[2],
-                        )
+                    brushcolornew.h = pickcolor_cie.h
                 elif mode == "PickLuma":
-                    brushcolornew_hcy = (
-                        brushcolor_hsv[0],
-                        brushcolor_hcy[1],
-                        pickcolor_hcy[2],
-                    )
-                    if brushcolor_hcy[1] < c_min:
-                        brushcolornew_hcy = (
-                            brushcolornew_hcy[0],
-                            c_min,
-                            pickcolor_hcy[2],
-                        )
-                    if pickcolor_hcy[2] < y_min:
-                        brushcolornew_hcy = (
-                            brushcolornew_hcy[0],
-                            brushcolornew_hcy[1],
-                            y_min,
-                        )
-                    if pickcolor_hcy[2] > y_max:
-                        brushcolornew_hcy = (
-                            brushcolornew_hcy[0],
-                            brushcolornew_hcy[1],
-                            y_max,
-                        )
+                    brushcolornew.v = pickcolor_cie.v
                 elif mode == "PickChroma":
-                    brushcolornew_hcy = (
-                        brushcolor_hsv[0],
-                        pickcolor_hcy[1],
-                        brushcolor_hcy[2],
-                    )
-                    if pickcolor_hcy[1] < c_min:
-                        brushcolornew_hcy = (
-                            brushcolornew_hcy[0],
-                            c_min,
-                            brushcolornew_hcy[2],
-                        )
-                    if brushcolor_hcy[2] < y_min:
-                        brushcolornew_hcy = (
-                            brushcolornew_hcy[0],
-                            brushcolornew_hcy[1],
-                            y_min,
-                        )
-                    if brushcolor_hcy[2] > y_max:
-                        brushcolornew_hcy = (
-                            brushcolornew_hcy[0],
-                            brushcolornew_hcy[1],
-                            y_max,
-                        )
+                    brushcolornew.s = pickcolor_cie.s
 
-                brushcolornew = lib.color.HCY_to_RGB(brushcolornew_hcy)
-                brushcolornew = colorsys.rgb_to_hsv(*brushcolornew)
-                brushcolornew = lib.color.HSVColor(*brushcolornew)
-                cm.set_color(brushcolornew)
+                app.brush.set_color_hsv(brushcolornew.get_hsv())
+                app.brush.set_ciecam_color(brushcolornew)
+
         return None
 
     def _get_app_brush_color(self):
-        app = self.doc.app
-        return lib.color.HSVColor(*app.brush.get_color_hsv())
+        app = self.app
+        return lib.color.CIECAMColor(
+            vsh=(
+                app.brush.get_setting('cie_v'),
+                app.brush.get_setting('cie_s'),
+                app.brush.get_setting('cie_h')),
+            cieaxes=app.brush.get_setting('cieaxes'),
+            lightsource=(
+                app.brush.get_setting('lightsource_X'),
+                app.brush.get_setting('lightsource_Y'),
+                app.brush.get_setting('lightsource_Z')
+            )
+        )
 
 
-class ColorPickModeH (ColorPickMode):
+class ColorPickModeH(ColorPickMode):
 
     # Class configuration
     ACTION_NAME = 'ColorPickModeH'
@@ -326,6 +311,30 @@ class ColorPickModeY (ColorPickMode):
         self._pickmode = pickmode
 
 
+class ColorPickModeIlluminant(ColorPickMode):
+    # Class configuration
+    ACTION_NAME = 'ColorPickModeIlluminant'
+
+    @property
+    def inactive_cursor(self):
+        return self.doc.app.cursor_color_picker_illuminant
+
+    @classmethod
+    def get_name(cls):
+        return _(u"Pick Illuminant")
+
+    def get_usage(self):
+        return _(u"Set the illuminant used for color adjusters")
+
+    def __init__(self, ignore_modifiers=False, pickmode="PickIlluminant",
+                 **kwds):
+        super(ColorPickModeIlluminant, self).__init__(**kwds)
+        self._overlay = None
+        self._started_from_key_press = ignore_modifiers
+        self._start_drag_on_next_motion_event = False
+        self._pickmode = pickmode
+
+
 class ColorPickPreviewOverlay (Overlay):
     """Preview overlay during color picker mode.
 
@@ -338,7 +347,7 @@ class ColorPickPreviewOverlay (Overlay):
     OUTLINE_WIDTH = 3
     CORNER_RADIUS = 10
 
-    def __init__(self, doc, tdw, x, y):
+    def __init__(self, doc, tdw, x, y, pickmode):
         """Initialize, attaching to the brush and to the tdw.
 
         Observer callbacks and canvas overlays are registered by this
@@ -359,6 +368,8 @@ class ColorPickPreviewOverlay (Overlay):
         tdw.display_overlays.append(self)
         self._previous_area = None
         self._queue_tdw_redraw()
+        self._pickmode = pickmode
+        self.app = gui.application.get_app()
 
     def cleanup(self):
         """Cleans up temporary observer stuff, allowing garbage collection.
@@ -442,14 +453,25 @@ class ColorPickPreviewOverlay (Overlay):
         if area is not None:
             x, y, w, h = area
 
-            cr.set_source_rgb(*self._color.get_rgb())
+            # if we're picking an illuminant splash that instead of brush color
+            if self._pickmode == "PickIlluminant":
+                    p = self.app.preferences
+                    xyz = p['color.dimension_lightsource_XYZ']
+                    ill = (colorspacious.cspace_convert(
+                        xyz,
+                        "XYZ100",
+                        "sRGB1"
+                    )
+                    )
+                    cr.set_source_rgb(*ill)
+            else:
+                cr.set_source_rgb(*self._color.get_rgb())
             x += (self.OUTLINE_WIDTH // 2) + 1.5
             y += (self.OUTLINE_WIDTH // 2) + 1.5
             w -= self.OUTLINE_WIDTH + 3
             h -= self.OUTLINE_WIDTH + 3
             rounded_box(cr, x, y, w, h, self.CORNER_RADIUS)
             cr.fill_preserve()
-
             cr.set_source_rgb(0, 0, 0)
             cr.set_line_width(self.OUTLINE_WIDTH)
             cr.stroke()

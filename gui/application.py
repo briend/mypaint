@@ -266,6 +266,11 @@ class Application (object):
             self.pixmaps.cursor_color_picker_y,
             3, 15,
         )
+        self.cursor_color_picker_illuminant = Gdk.Cursor.new_from_pixbuf(
+            Gdk.Display.get_default(),
+            self.pixmaps.cursor_color_picker_illuminant,
+            3, 15,
+        )
         self.cursors = gui.cursor.CustomCursorMaker(self)
 
         # Unmanaged main brush.
@@ -538,6 +543,17 @@ class Application (object):
             # sRGB is a good default even for OS X since v10.6 / Snow
             # Leopard: http://support.apple.com/en-us/HT3712.
             # Version 10.6 was released in September 2009.
+
+            'color.splash_during_stroke': False,
+            'color.splash_before_stroke': True,
+            'color.tune_step_size': 1.0,
+            'color.dynamic_step_size': True,
+
+            'color.dimension_purity': u'M',
+            'color.dimension_value': u'J',
+            'color.dimension_lightsource': 'D65',
+            'color.dimension_lightsource_XYZ': '',
+            'color.limit_purity': -1.0,
 
             "scratchpad.last_opened_scratchpad": "",
 
