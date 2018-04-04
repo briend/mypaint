@@ -523,11 +523,22 @@ class CIECAMColor (UIColor):
 
         if lightsource is not None:
             self.lightsource = lightsource
-            ciespace = colorspacious.CIECAM02Space(
-                self.lightsource,
-                20.0, 4.074366543152521,
-                surround=colorspacious.CIECAM02Surround.AVERAGE
-            )
+
+            try:
+                ciespace = colorspacious.CIECAM02Space(
+                    self.lightsource,
+                    20.0, 4.074366543152521,
+                    surround=colorspacious.CIECAM02Surround.AVERAGE
+                )
+            except ValueError:
+                self.lightsource = colorspacious.standard_illuminant_XYZ100(
+                    "D65"
+                )
+                ciespace = colorspacious.CIECAM02Space(
+                    self.lightsource,
+                    20.0, 4.074366543152521,
+                    surround=colorspacious.CIECAM02Surround.AVERAGE
+                )
             self.cieconfig = {
                 "name": "CIECAM02-subset",
                 "axes": self.cieaxes,
@@ -597,9 +608,9 @@ class CIECAMColor (UIColor):
         >>> red_hsv = CIECAMColor(h=32.1526953,s=80.46644073,v=46.9250674 )
         >>> green_hsv = CIECAMColor(h=136.6478602,s=76.64436113,v=79.7493805)
         >>> [c.to_hex_str() for c in green_hsv.interpolate(red_hsv, 3)]
-        ['#00fe00', '#dca400', '#ff0000']
+        ['#00fe00', '#dca500', '#ff0000']
         >>> [c.to_hex_str() for c in red_hsv.interpolate(green_hsv, 3)]
-        ['#ff0000', '#dca400', '#00fe00']
+        ['#ff0000', '#dca500', '#00fe00']
 
         """
         assert steps >= 3
@@ -1112,16 +1123,50 @@ def CIECAM_to_CIECAM(self, ciecam):
 
 
 def CIECAM_to_RGB(self):
-    v, s, h = self.v, self.s, self.h
-    # don't allow CIECAM values below this to avoid errors
-    ciemin = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
     maxcolorfulness = self.limit_purity
     converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
+    # calculate minimum valid ciecam values
+    mincie = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
+    v, s, h = max(self.v, mincie[0]), self.s, self.h
 
     if maxcolorfulness:
         s = min(s, maxcolorfulness)
 
-    result = converter([max(v, ciemin[0]), max(s, ciemin[1]), h])
+    # convert CIECAM to sRGB, but it may be out of gamut
+    result = converter([v, s, h])
+
+    exp = 1
+    counter = 0
+    if any(x > 1.1 for x in result):
+
+        self.displayexceeded = True
+
+        # attempt 15 adjustments
+        while counter < 15:
+
+            # reduce brightness
+            new_v = v * .5**exp
+
+            # get a new color
+            new_result = converter([new_v, s, h])
+
+            # if the new result is identical, just quit now
+            if np.array_equal(result, new_result):
+                break
+
+            # if new color is still too bright, store the new color and apply
+            # another reduction using the same reduction amount
+            if any(x > 1.1 for x in new_result):
+                result = new_result
+                v = new_v
+                counter += 1
+            else:
+                # if we're back within display range, we went too far
+                # discard new result and try again with a smaller decrement
+                exp = exp * .5
+                counter += 1
+    else:
+        self.displayexceeded = False
 
     # if out of sRGB gamut, adjust chroma until within
     exp = 1
@@ -1130,22 +1175,14 @@ def CIECAM_to_RGB(self):
 
         self.gamutexceeded = True
 
-        # attempt 10 adjustments
-        while counter < 10:
-
-            # don't try to make less saturated than the illuminant
-            if s <= ciemin[1]:
-                break
+        # attempt 15 adjustments
+        while counter < 15:
 
             # reduce chroma
             new_s = s * .5**exp
 
-            if maxcolorfulness:
-                new_s = min(new_s, maxcolorfulness)
-
             # get a new color
-            new_result = converter([max(v, ciemin[0]),
-                                   max(new_s, ciemin[1]), h])
+            new_result = converter([v, new_s, h])
 
             # if the new result is identical, just quit now
             if np.array_equal(result, new_result):
@@ -1164,41 +1201,6 @@ def CIECAM_to_RGB(self):
                 counter += 1
     else:
         self.gamutexceeded = False
-
-    if any(x > 1.0 for x in result):
-
-        self.displayexceeded = True
-
-        # attempt 10 adjustments
-        while counter < 10:
-
-            # don't try to make too dark
-            if v <= ciemin[0]:
-                break
-
-            # reduce lightness
-            new_v = v * .5**exp
-
-            if maxcolorfulness:
-                s = min(s, maxcolorfulness)
-
-            # get a new color
-            new_result = converter([max(new_v, ciemin[0]),
-                                   max(s, ciemin[1]), h])
-
-            # if new color is still too bright, store the new color and apply
-            # another reduction using the same reduction amount
-            if any(x > 1.0 for x in new_result):
-                result = new_result
-                v = new_v
-                counter += 1
-            else:
-                # if we're back within display, we went too far
-                # discard new result and try again with a smaller decrement
-                exp = exp * .5
-                counter += 1
-    else:
-        self.displayexceeded = False
 
     # clip final result
     r, g, b = np.clip(result, 0, 1)
