@@ -1566,7 +1566,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         else:
             e = 1 * self.app.preferences['color.tune_step_size']
 
-        brushcolor.v = brushcolor.v - e
+        brushcolor.v = max(brushcolor.v - e, 0.0)
         r, g, b = brushcolor.get_rgb()
         if ((self.app.preferences['color.splash_before_stroke'] is True
              and self.in_input_stroke is False)
@@ -1603,7 +1603,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         else:
             e = 1 * self.app.preferences['color.tune_step_size']
 
-        brushcolor.h = (brushcolor.h - e) % 360
+        brushcolor.h = (brushcolor.h + e) % 360
         r, g, b = brushcolor.get_rgb()
         if ((self.app.preferences['color.splash_before_stroke'] is True
              and self.in_input_stroke is False)
@@ -1639,7 +1639,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         else:
             e = 1 * self.app.preferences['color.tune_step_size']
 
-        brushcolor.h = (brushcolor.h + e) % 360
+        brushcolor.h = (brushcolor.h - e) % 360
         r, g, b = brushcolor.get_rgb()
         if ((self.app.preferences['color.splash_before_stroke'] is True
              and self.in_input_stroke is False)
@@ -1715,7 +1715,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                         (t - self.last_grayer), 25)
         else:
             e = 1 * self.app.preferences['color.tune_step_size']
-        brushcolor.s = brushcolor.s - e
+        brushcolor.s = max(brushcolor.s - e, 0.0)
 
         r, g, b = brushcolor.get_rgb()
         if ((self.app.preferences['color.splash_before_stroke'] is True
