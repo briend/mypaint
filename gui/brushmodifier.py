@@ -250,17 +250,22 @@ class BrushModifier (object):
         # Preserve color
         mix = b.get_base_value('restore_color')
         if mix:
-            c1 = color.get_rgb()
-            c2 = hsv_to_rgb(*b.get_color_hsv())
-            c3 = [(1.0-mix)*v1 + mix*v2 for v1, v2 in zip(c1, c2)]
+            c2 = self._get_app_brush_color()
+            steps = [(c.v, c.s, c.h) for c in color.interpolate(c2, 100)]
             color = lib.color.CIECAMColor(
-                lib.color.RGBColor(*c3),
-                cieaxes=color.cieaxes,
-                lightsource=color.lightsource
+                vsh=steps[int(round(mix*100) - 1)],
+                cieaxes=cieaxes,
+                lightsource=lightsource
             )
+
         elif mix_old and self._last_selected_color:
             # switching from a brush with fixed color back to a normal one
-            color = self._last_selected_color
+            color = lib.color.CIECAMColor(
+                color=lib.color.HSVColor(*self._last_selected_color),
+                cieaxes=cieaxes,
+                lightsource=lightsource
+            )
+
         b.set_color_hsv(color.get_hsv())
         b.set_ciecam_color(color)
 
@@ -318,3 +323,18 @@ class BrushModifier (object):
 
             if not self._in_brush_selected_cb:
                 self._last_selected_color = self.app.brush.get_color_hsv()
+
+    def _get_app_brush_color(self):
+        app = self.app
+        return lib.color.CIECAMColor(
+            vsh=(
+                app.brush.get_setting('cie_v'),
+                app.brush.get_setting('cie_s'),
+                app.brush.get_setting('cie_h')),
+            cieaxes=app.brush.get_setting('cieaxes'),
+            lightsource=(
+                app.brush.get_setting('lightsource_X'),
+                app.brush.get_setting('lightsource_Y'),
+                app.brush.get_setting('lightsource_Z')
+            )
+        )
