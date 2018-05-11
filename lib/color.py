@@ -26,6 +26,7 @@ import re
 import colorsys
 import colorspacious
 import numpy as np
+import scipy.optimize as spo
 
 from gi.repository import GdkPixbuf
 
@@ -608,9 +609,9 @@ class CIECAMColor (UIColor):
         >>> red_hsv = CIECAMColor(h=32.1526953,s=80.46644073,v=46.9250674 )
         >>> green_hsv = CIECAMColor(h=136.6478602,s=76.64436113,v=79.7493805)
         >>> [c.to_hex_str() for c in green_hsv.interpolate(red_hsv, 3)]
-        ['#00fe00', '#dca500', '#ff0000']
+        ['#00fe00', '#f39800', '#ff0000']
         >>> [c.to_hex_str() for c in red_hsv.interpolate(green_hsv, 3)]
-        ['#ff0000', '#dca500', '#00fe00']
+        ['#ff0000', '#f39800', '#00fe00']
 
         """
         assert steps >= 3
@@ -1127,7 +1128,9 @@ def CIECAM_to_RGB(self):
     converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
     # calculate minimum valid ciecam values
     mincie = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
-    v, s, h = max(self.v, mincie[0]), self.s, self.h
+    maxcie = colorspacious.cspace_convert([1, 1, 1], "sRGB1", self.cieconfig)
+    v, s, h = max(self.v, mincie[0]), max(self.s, mincie[1]), self.h
+    penalize_chroma = 1.0
 
     if maxcolorfulness:
         s = min(s, maxcolorfulness)
@@ -1135,72 +1138,44 @@ def CIECAM_to_RGB(self):
     # convert CIECAM to sRGB, but it may be out of gamut
     result = converter([v, s, h])
 
-    exp = 1
-    counter = 0
-    if any(x > 1.1 for x in result):
+    x = np.clip(result, 0, 1)
+    if (result == x).all():
+        r, g, b = x
+        return r, g, b
 
+    if any(x > 1.0 for x in result):
         self.displayexceeded = True
 
-        # attempt 15 adjustments
-        while counter < 15:
-
-            # reduce brightness
-            new_v = v * .5**exp
-
-            # get a new color
-            new_result = converter([new_v, s, h])
-
-            # if the new result is identical, just quit now
-            if np.array_equal(result, new_result):
-                break
-
-            # if new color is still too bright, store the new color and apply
-            # another reduction using the same reduction amount
-            if any(x > 1.1 for x in new_result):
-                result = new_result
-                v = new_v
-                counter += 1
-            else:
-                # if we're back within display range, we went too far
-                # discard new result and try again with a smaller decrement
-                exp = exp * .5
-                counter += 1
-    else:
-        self.displayexceeded = False
-
-    # if out of sRGB gamut, adjust chroma until within
-    exp = 1
-    counter = 0
-    if any(x < -0.01 for x in result):
-
+    if any(x < 0.0 for x in result):
         self.gamutexceeded = True
 
-        # attempt 15 adjustments
-        while counter < 15:
+    def apply_constraint(inputs):
+        # rgb must >= 0 and <= 1
+        result = converter([inputs[0], inputs[1], h])
+        return min(min(result), 1.0 - max(result))
 
-            # reduce chroma
-            new_s = s * .5**exp
+    def loss(vs_):
+        # optionally penalize colorfulness loss to avoid achromatic results
+        # although this reduces accuracy, technically
+        loss = abs(v - vs_[0]) + abs(s - vs_[1]) * penalize_chroma
+        return loss
 
-            # get a new color
-            new_result = converter([v, new_s, h])
+    # inital guess take 90%
+    guess = np.array([v * .9, s * .9])
+    # we shouldn't try lightness/colorfulness values that are impossible,
+    # and never increase colorfulness.
+    bounds = ((mincie[0], maxcie[0]), (mincie[1], s))
+    opt = {'disp': False}
+    my_constraints = {'type': 'ineq', "fun": apply_constraint}
 
-            # if the new result is identical, just quit now
-            if np.array_equal(result, new_result):
-                break
-
-            # if new color is still out of gamut, store the new color and apply
-            # another reduction using the same reduction amount
-            if any(x < -0.01 for x in new_result):
-                result = new_result
-                s = new_s
-                counter += 1
-            else:
-                # if we're back within gamut, we went too far
-                # discard new result and try again with a smaller decrement
-                exp = exp * .5
-                counter += 1
-    else:
-        self.gamutexceeded = False
+    x_opt = spo.minimize(loss,
+                         guess,
+                         method='SLSQP',
+                         constraints=my_constraints,
+                         bounds=bounds,
+                         tol=0.1,
+                         options=opt
+                         )
 
     # clip final result
     r, g, b = np.clip(result, 0, 1)
