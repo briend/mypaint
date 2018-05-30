@@ -27,8 +27,10 @@ import colorsys
 import colorspacious
 import numpy as np
 import scipy.optimize as spo
+from scipy.cluster.vq import kmeans2
 
 from gi.repository import GdkPixbuf
+from lib import helpers
 
 from lib.pycompat import xrange
 from lib.pycompat import PY3
@@ -228,8 +230,8 @@ class UIColor (object):
         return pixel
 
     @classmethod
-    def new_from_pixbuf_average(class_, pixbuf):
-        """Returns the the average of all colors in a pixbuf.
+    def new_from_pixbuf_average(class_, pixbuf, size=3):
+        """Returns the the kmeans dominant color in a pixbuf.
 
         >>> p = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, True, 8, 5, 5)
         >>> p.fill(0x880088ff)
@@ -246,28 +248,39 @@ class UIColor (object):
         else:
             assert pixbuf.get_has_alpha()
         data = pixbuf.get_pixels()
-        assert isinstance(data, bytes)
-        w, h = pixbuf.get_width(), pixbuf.get_height()
-        rowstride = pixbuf.get_rowstride()
-        n_pixels = w*h
-        r = g = b = 0
-        for y in xrange(h):
-            for x in xrange(w):
-                offs = y*rowstride + x*n_channels
-                if PY3:
-                    # bytes=bytes. Indexing produces ints.
-                    r += data[offs]
-                    g += data[offs+1]
-                    b += data[offs+2]
-                else:
-                    # bytes=str. Indexing of produces a str of len 1.
-                    r += ord(data[offs])
-                    g += ord(data[offs+1])
-                    b += ord(data[offs+2])
-        r = r / n_pixels
-        g = g / n_pixels
-        b = b / n_pixels
-        return RGBColor(r/255, g/255, b/255)
+        arr = helpers.gdkpixbuf2numpy(pixbuf)
+
+        # Use kmeans2 for dominant color
+        # adapted from https://github.com/despawnerer/palletize
+        # MIT License
+
+        # flatten and discard alpha
+        arr = arr.reshape(-1, 4)
+        arr = np.delete(arr, 3, axis=1)
+
+        count = size
+        clusters = size
+        iterations = 30
+        assert count > 0
+        assert clusters is None or clusters >= count
+        assert iterations > 0
+
+        if clusters is None:
+            clusters = count if count > 1 else 3
+
+        # find centroids of color clusters
+        centroids, labels = kmeans2(
+            arr.astype(float), clusters, iterations, minit='points',
+            check_finite=False,
+        )
+
+        # reorder them by prominence
+        _, counts = np.unique(labels, return_counts=True)
+        best_centroid_indices = np.argsort(counts)[::-1]
+        dominant_colors = centroids[best_centroid_indices].astype(int)
+        result = [tuple(color) for color in dominant_colors[:count]]
+
+        return RGBColor(result[0][0]/255, result[0][1]/255, result[0][2]/255)
 
     def interpolate(self, other, steps):
         """Generator: interpolate between this color and another."""
