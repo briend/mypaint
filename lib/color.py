@@ -1181,14 +1181,14 @@ def CIECAM_to_RGB(self):
     opt = {'disp': False}
     my_constraints = {'type': 'ineq', "fun": apply_constraint}
 
-    x_opt = spo.minimize(loss,
-                         guess,
-                         method='SLSQP',
-                         constraints=my_constraints,
-                         bounds=bounds,
-                         tol=0.1,
-                         options=opt
-                         )
+    spo.minimize(loss,
+                 guess,
+                 method='SLSQP',
+                 constraints=my_constraints,
+                 bounds=bounds,
+                 tol=0.1,
+                 options=opt
+                 )
 
     # clip final result
     r, g, b = np.clip(result, 0, 1)
