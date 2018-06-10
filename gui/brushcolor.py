@@ -13,6 +13,7 @@ from __future__ import division, print_function
 
 from . import colors
 import lib.color
+import colorspacious
 
 
 class BrushColorManager (colors.ColorManager):
@@ -35,9 +36,23 @@ class BrushColorManager (colors.ColorManager):
     def set_color(self, color):
         """Propagate user-set colors to the brush too (extension).
         """
+        prefs = self.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+
         colors.ColorManager.set_color(self, color)
         if not self.__in_callback:
-            self.__brush.set_color_hsv(color.get_hsv())
+            ciecam = lib.color.CIECAMColor(color=color, cieaxes=cieaxes,
+                                           lightsource=lightsource)
+            self.__brush.set_ciecam_color(ciecam)
+            self.__brush.set_color_hsv(ciecam.get_hsv())
 
     def __settings_changed_cb(self, settings):
         # When the color changes by external means, update the adjusters.

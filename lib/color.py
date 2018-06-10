@@ -24,8 +24,13 @@ with an adjuster does its type change to match the control's color space.
 from __future__ import division, print_function
 import re
 import colorsys
+import colorspacious
+import numpy as np
+import scipy.optimize as spo
+from scipy.cluster.vq import kmeans2
 
 from gi.repository import GdkPixbuf
+from lib import helpers
 
 from lib.pycompat import xrange
 from lib.pycompat import PY3
@@ -225,8 +230,8 @@ class UIColor (object):
         return pixel
 
     @classmethod
-    def new_from_pixbuf_average(class_, pixbuf):
-        """Returns the the average of all colors in a pixbuf.
+    def new_from_pixbuf_average(class_, pixbuf, size=3):
+        """Returns the the kmeans dominant color in a pixbuf.
 
         >>> p = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, True, 8, 5, 5)
         >>> p.fill(0x880088ff)
@@ -243,28 +248,39 @@ class UIColor (object):
         else:
             assert pixbuf.get_has_alpha()
         data = pixbuf.get_pixels()
-        assert isinstance(data, bytes)
-        w, h = pixbuf.get_width(), pixbuf.get_height()
-        rowstride = pixbuf.get_rowstride()
-        n_pixels = w*h
-        r = g = b = 0
-        for y in xrange(h):
-            for x in xrange(w):
-                offs = y*rowstride + x*n_channels
-                if PY3:
-                    # bytes=bytes. Indexing produces ints.
-                    r += data[offs]
-                    g += data[offs+1]
-                    b += data[offs+2]
-                else:
-                    # bytes=str. Indexing of produces a str of len 1.
-                    r += ord(data[offs])
-                    g += ord(data[offs+1])
-                    b += ord(data[offs+2])
-        r = r / n_pixels
-        g = g / n_pixels
-        b = b / n_pixels
-        return RGBColor(r/255, g/255, b/255)
+        arr = helpers.gdkpixbuf2numpy(pixbuf)
+
+        # Use kmeans2 for dominant color
+        # adapted from https://github.com/despawnerer/palletize
+        # MIT License
+
+        # flatten and discard alpha
+        arr = arr.reshape(-1, 4)
+        arr = np.delete(arr, 3, axis=1)
+
+        count = size
+        clusters = size
+        iterations = 30
+        assert count > 0
+        assert clusters is None or clusters >= count
+        assert iterations > 0
+
+        if clusters is None:
+            clusters = count if count > 1 else 3
+
+        # find centroids of color clusters
+        centroids, labels = kmeans2(
+            arr.astype(float), clusters, iterations, minit='points',
+            check_finite=False,
+        )
+
+        # reorder them by prominence
+        _, counts = np.unique(labels, return_counts=True)
+        best_centroid_indices = np.argsort(counts)[::-1]
+        dominant_colors = centroids[best_centroid_indices].astype(int)
+        result = [tuple(color) for color in dominant_colors[:count]]
+
+        return RGBColor(result[0][0]/255, result[0][1]/255, result[0][2]/255)
 
     def interpolate(self, other, steps):
         """Generator: interpolate between this color and another."""
@@ -441,6 +457,196 @@ class HSVColor (UIColor):
             s = self.s + (other.s - self.s) * p
             v = self.v + (other.v - self.v) * p
             yield HSVColor(h=h, s=s, v=v)
+
+    def __eq__(self, other):
+        """Equality test (override)
+
+        >>> c1 = HSVColor(0.7, 0.45, 0.55)
+        >>> c2 = HSVColor(0.4, 0.55, 0.45)
+        >>> c2rgb = RGBColor(color=c2)
+        >>> c1 == c2
+        False
+        >>> c1 == c1 and c2 == c2
+        True
+        >>> c2 == c2rgb
+        True
+        >>> c1 == c2rgb
+        False
+
+        Colours with zero value but differing hues or saturations must
+        test equal. The same isn't true of the other end of the
+        cylinder.
+
+        >>> HSVColor(0.7, 0.45, 0.0) == HSVColor(0.4, 0.55, 0.0)
+        True
+        >>> HSVColor(0.7, 0.45, 1.0) == HSVColor(0.4, 0.55, 1.0)
+        False
+
+        """
+        try:
+            t1 = self.get_hsv()
+            t2 = other.get_hsv()
+        except AttributeError:
+            return UIColor.__eq__(self, other)
+        else:
+            t1 = [round(c, 3) for c in t1]
+            t2 = [round(c, 3) for c in t2]
+            if t1[-1] == t2[-1] == 0:
+                return True
+            return t1 == t2
+
+
+class CIECAMColor (UIColor):
+    """CIECAM representation of a color.  Use VSH as stand-ins for axes
+
+      >>> col = CIECAMColor(95.67306142, 58.26474923, 106.14599451)
+      >>> col.h = 106.14599451
+      >>> col.s = 58.26474923
+      >>> col.v = 95.67306142
+      >>> result = col.get_rgb()
+      >>> print (round(result[0],4), round(result[1],4), round(result[2],4))
+      1.0 1.0 0.0
+
+    """
+
+    # Base class overrides: make h,s,v attributes read/write
+    v = None
+    s = None
+    h = None
+
+    def __init__(self, v=None, s=None, h=None, vsh=None, color=None,
+                 cieaxes=None, lightsource=None):
+        """Initializes from individual values, or another UIColor
+
+          >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
+          >>> col2 = CIECAMColor(h=106.14599451, s=58.26474923, v=95.67306142)
+          >>> col1 == col2
+          True
+          >>> CIECAMColor(color=RGBColor(0.5, 0.5, 0.5))
+          <CIECAM , v=42.8403, s=1.4981, h=211.0592>
+        """
+        UIColor.__init__(self)
+
+        self.cieconfig = None
+
+        # The entire ciecam config needs to follow around the color
+        if cieaxes is not None:
+            self.cieaxes = cieaxes
+        else:
+            self.cieaxes = "JMh"
+
+        if lightsource is not None:
+            self.lightsource = lightsource
+
+            try:
+                ciespace = colorspacious.CIECAM02Space(
+                    self.lightsource,
+                    20.0, 4.074366543152521,
+                    surround=colorspacious.CIECAM02Surround.AVERAGE
+                )
+            except ValueError:
+                self.lightsource = colorspacious.standard_illuminant_XYZ100(
+                    "D65"
+                )
+                ciespace = colorspacious.CIECAM02Space(
+                    self.lightsource,
+                    20.0, 4.074366543152521,
+                    surround=colorspacious.CIECAM02Surround.AVERAGE
+                )
+            self.cieconfig = {
+                "name": "CIECAM02-subset",
+                "axes": self.cieaxes,
+                "ciecam02_space": ciespace
+            }
+        else:
+            self.lightsource = colorspacious.standard_illuminant_XYZ100("D65")
+            ciespace = colorspacious.CIECAM02Space(
+                self.lightsource,
+                20.0, 4.074366543152521,
+                surround=colorspacious.CIECAM02Surround.AVERAGE
+            )
+            self.cieconfig = {
+                "name": "CIECAM02-subset",
+                "axes": self.cieaxes,
+                "ciecam02_space": ciespace
+            }
+
+        # maybe we want to know if the gamut was constrained
+        self.gamutexceeded = None
+        self.displayexceeded = None
+
+        # limit color purity?
+        self.limit_purity = None
+        # try getting from preferences but fallback to avoid breaking doctest
+        try:
+            from gui.application import get_app
+            app = get_app()
+            p = app.preferences
+            if p['color.limit_purity'] >= 0.0:
+                self.limit_purity = p['color.limit_purity']
+        except AttributeError:
+            self.limit_purity = None
+
+        if color is not None:
+            if isinstance(color, CIECAMColor):
+                # convert from one to another (handle whitepoint changes)
+                v, s, h = CIECAM_to_CIECAM(self, color)
+            else:
+                # any other UIColor is assumed to be sRGB
+                rgb = color.get_rgb()
+                v, s, h = RGB_to_CIECAM(self, rgb)
+        if vsh is not None:
+            v, s, h = vsh
+        self.h = h  #: Read/write hue angle, 0-360
+        self.s = s  #: Read/write CIECAM saturation, no scaling
+        self.v = v  #: Read/write CIECAM value, no scaling
+        assert self.h is not None
+        assert self.s is not None
+        assert self.v is not None
+
+    def get_hsv(self):
+        rgb = self.get_rgb()
+        h, s, v = colorsys.rgb_to_hsv(*rgb)
+        return h, s, v
+
+    def get_rgb(self):
+        return CIECAM_to_RGB(self)
+
+    def __repr__(self):
+        return "<CIECAM , v=%0.4f, s=%0.4f, h=%0.4f>" \
+            % (self.v, self.s, self.h)
+
+    def interpolate(self, other, steps):
+        """CIECAM interpolation, sometimes nicer looking than anything else.
+
+        >>> red_hsv = CIECAMColor(h=32.1526953,s=80.46644073,v=46.9250674 )
+        >>> green_hsv = CIECAMColor(h=136.6478602,s=76.64436113,v=79.7493805)
+        >>> [c.to_hex_str() for c in green_hsv.interpolate(red_hsv, 3)]
+        ['#00fe00', '#f39800', '#ff0000']
+        >>> [c.to_hex_str() for c in red_hsv.interpolate(green_hsv, 3)]
+        ['#ff0000', '#f39800', '#00fe00']
+
+        """
+        assert steps >= 3
+        other = CIECAMColor(color=other)
+        # Calculate the shortest angular distance
+        # Normalize first
+        ha = self.h % 360
+        hb = other.h % 360
+        # If the shortest distance doesn't pass through zero, then
+        hdelta = hb - ha
+        # But the shortest distance might pass through zero either antilockwise
+        # or clockwise. Smallest magnitude wins.
+        for hdx0 in -(ha+360-hb), (hb+360-ha):
+            if abs(hdx0) < abs(hdelta):
+                hdelta = hdx0
+        # Interpolate, using shortest angular dist for hue
+        for step in xrange(steps):
+            p = step / (steps - 1)
+            h = (self.h + hdelta * p)
+            s = self.s + (other.s - self.s) * p
+            v = self.v + (other.v - self.v) * p
+            yield CIECAMColor(h=h, s=s, v=v)
 
     def __eq__(self, other):
         """Equality test (override)
@@ -904,7 +1110,92 @@ def HCY_to_RGB(hcy):
         return (p, n, o)
 
 
+def RGB_to_CIECAM(self, rgb):
+    r, g, b = rgb
+    maxcolorfulness = self.limit_purity
+
+    ciecam_vsh = colorspacious.cspace_convert([r, g, b],
+                                              "sRGB1", self.cieconfig)
+
+    if maxcolorfulness:
+        ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
+
+    return ciecam_vsh
+
+
+def CIECAM_to_CIECAM(self, ciecam):
+    maxcolorfulness = self.limit_purity
+    ciecam_vsh = colorspacious.cspace_convert(
+        [ciecam.v, ciecam.s, ciecam.h],
+        ciecam.cieconfig,
+        self.cieconfig
+    )
+
+    if maxcolorfulness:
+        ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
+    return ciecam_vsh
+
+
+def CIECAM_to_RGB(self):
+    maxcolorfulness = self.limit_purity
+    converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
+    # calculate minimum valid ciecam values
+    mincie = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
+    maxcie = colorspacious.cspace_convert([1, 1, 1], "sRGB1", self.cieconfig)
+    v, s, h = max(self.v, mincie[0]), max(self.s, mincie[1]), self.h
+    penalize_chroma = 1.0
+
+    if maxcolorfulness:
+        s = min(s, maxcolorfulness)
+
+    # convert CIECAM to sRGB, but it may be out of gamut
+    result = converter([v, s, h])
+
+    x = np.clip(result, 0, 1)
+    if (result == x).all():
+        r, g, b = x
+        return r, g, b
+
+    if any(x > 1.0 for x in result):
+        self.displayexceeded = True
+
+    if any(x < 0.0 for x in result):
+        self.gamutexceeded = True
+
+    def apply_constraint(inputs):
+        # rgb must >= 0 and <= 1
+        result = converter([inputs[0], inputs[1], h])
+        return min(min(result), 1.0 - max(result))
+
+    def loss(vs_):
+        # optionally penalize colorfulness loss to avoid achromatic results
+        # although this reduces accuracy, technically
+        loss = abs(v - vs_[0]) + abs(s - vs_[1]) * penalize_chroma
+        return loss
+
+    # inital guess take 90%
+    guess = np.array([v * .9, s * .9])
+    # we shouldn't try lightness/colorfulness values that are impossible,
+    # and never increase colorfulness.
+    bounds = ((mincie[0], maxcie[0]), (mincie[1], s))
+    opt = {'disp': False}
+    my_constraints = {'type': 'ineq', "fun": apply_constraint}
+
+    spo.minimize(loss,
+                 guess,
+                 method='SLSQP',
+                 constraints=my_constraints,
+                 bounds=bounds,
+                 tol=0.1,
+                 options=opt
+                 )
+
+    # clip final result
+    r, g, b = np.clip(result, 0, 1)
+    return r, g, b
+
 ## Module testing
+
 
 def _test():
     """Run all doctests in this module"""

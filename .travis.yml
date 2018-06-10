@@ -32,6 +32,8 @@ addons:
       - swig
       - swig3.0
       - git
+      - python-pip
+      - python3-pip
 
 before_script:
     - git clone https://github.com/mypaint/libmypaint
@@ -42,6 +44,8 @@ before_script:
     - sudo make install
     - cd ..
     - sudo rm -fr libmypaint
+    - sudo pip install colorspacious
+    - sudo pip3 install colorspacious
 
 script:
     - which python
