@@ -60,7 +60,7 @@ export MINGW_INSTALLS
 SRC_ROOT="${SRC_ROOT:-/tmp/src}"
 SRC_PROJECT="mingw"
 SRC_DIR="${SRC_ROOT}/${SRC_PROJECT}"
-SRC_CLONEURI="https://github.com/Alexpux/MINGW-packages.git"
+SRC_CLONEURI="https://github.com/briend/MINGW-packages.git"
 
 # Output location for build artefacts.
 OUTPUT_ROOT="${OUTPUT_ROOT:-$TOPDIR/out}"
