@@ -444,6 +444,7 @@ class FreehandMode (gui.mode.BrushworkModeMixin,
         # https://gna.org/bugs/?19988
         if tdw.mirrored:
             xtilt *= -1.0
+            barrel_rotation *= -1.0
         if tdw.rotation != 0:
             tilt_angle = math.atan2(ytilt, xtilt) - tdw.rotation
             tilt_magnitude = math.sqrt((xtilt**2) + (ytilt**2))
