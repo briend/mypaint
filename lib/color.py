@@ -26,6 +26,7 @@ import re
 import colorsys
 import colorspacious
 import numpy as np
+import math
 import scipy.optimize as spo
 from scipy.cluster.vq import kmeans2
 
@@ -1143,56 +1144,57 @@ def CIECAM_to_RGB(self):
     mincie = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
     maxcie = colorspacious.cspace_convert([1, 1, 1], "sRGB1", self.cieconfig)
     v, s, h = max(self.v, mincie[0]), max(self.s, mincie[1]), self.h
-    penalize_chroma = 1.0
+    self.gamutexceeded = False
+    self.displayexceeded = False
 
     if maxcolorfulness:
         s = min(s, maxcolorfulness)
-
+        
     # convert CIECAM to sRGB, but it may be out of gamut
     result = converter([v, s, h])
-
     x = np.clip(result, 0, 1)
     if (result == x).all():
         r, g, b = x
         return r, g, b
 
-    if any(x > 1.0 for x in result):
+    if any(x > 2.0 for x in result):
         self.displayexceeded = True
 
-    if any(x < 0.0 for x in result):
+    if any(x < -1.0 for x in result):
         self.gamutexceeded = True
 
     def apply_constraint(inputs):
         # rgb must >= 0 and <= 1
-        result = converter([inputs[0], inputs[1], h])
-        return min(min(result), 1.0 - max(result))
+        result = converter([inputs[0], inputs[1], inputs[2]])
+        return min(min(result), (1.0 - max(result)))
 
     def loss(vs_):
-        # optionally penalize colorfulness loss to avoid achromatic results
-        # although this reduces accuracy, technically
-        loss = abs(v - vs_[0]) + abs(s - vs_[1]) * penalize_chroma
+        loss = abs(s - vs_[1])
+        if math.isnan(loss):
+            loss = float('Inf')
         return loss
+    cons = ({'type': 'ineq', 'fun': apply_constraint})
+    # inital guess take 80%
+    guess = np.array([v, s * .8, h])
 
-    # inital guess take 90%
-    guess = np.array([v * .9, s * .9])
-    # we shouldn't try lightness/colorfulness values that are impossible,
-    # and never increase colorfulness.
-    bounds = ((mincie[0], maxcie[0]), (mincie[1], s))
-    opt = {'disp': False}
+    bounds = ((v, v), (mincie[1], s), (h, h))
+    opt = {'disp': False, 'maxiter': 20, 'ftol': .001, 'eps' : .001 }
     my_constraints = {'type': 'ineq', "fun": apply_constraint}
 
-    spo.minimize(loss,
-                 guess,
-                 method='SLSQP',
-                 constraints=my_constraints,
-                 bounds=bounds,
-                 tol=0.1,
-                 options=opt
-                 )
-
+    x_opt = spo.minimize(loss,
+                         guess,
+                         method='SLSQP',
+                         constraints=cons,
+                         bounds=bounds,
+                         options=opt
+                         ) 
     # clip final result
-    r, g, b = np.clip(result, 0, 1)
-    return r, g, b
+    if (x_opt["success"]):
+        result = x_opt["x"]
+        r, g, b = np.clip(converter([result[0], result[1], h]), 0, 1)
+        return r, g, b
+    else:
+        return 0, 0, 0
 
 ## Module testing
 
