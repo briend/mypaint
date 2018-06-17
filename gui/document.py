@@ -1539,7 +1539,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_brighter = t
-        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
 
     def darker_cb(self, action):
@@ -1576,7 +1577,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_darker = t
-        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
 
     def increase_hue_cb(self, action):
@@ -1613,7 +1615,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_increase_hue = t
-        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
 
     def decrease_hue_cb(self, action):
@@ -1649,7 +1652,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_decrease_hue = t
-        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
 
     def purer_cb(self, action):
@@ -1689,7 +1693,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_purer = t
-        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
 
     def grayer_cb(self, action):
@@ -1726,7 +1731,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_grayer = t
-        self.app.brush.set_color_hsv(brushcolor.get_hsv())
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
 
     ## Brush settings

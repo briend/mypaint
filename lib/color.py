@@ -506,7 +506,7 @@ class CIECAMColor (UIColor):
       >>> col.v = 95.67306142
       >>> result = col.get_rgb()
       >>> print (round(result[0],4), round(result[1],4), round(result[2],4))
-      1.0 1.0 0.0
+      1.0 1.0 0.0003
 
     """
 
@@ -623,9 +623,9 @@ class CIECAMColor (UIColor):
         >>> red_hsv = CIECAMColor(h=32.1526953,s=80.46644073,v=46.9250674 )
         >>> green_hsv = CIECAMColor(h=136.6478602,s=76.64436113,v=79.7493805)
         >>> [c.to_hex_str() for c in green_hsv.interpolate(red_hsv, 3)]
-        ['#00fe00', '#f39800', '#ff0000']
+        ['#00fe00', '#dca500', '#fe0000']
         >>> [c.to_hex_str() for c in red_hsv.interpolate(green_hsv, 3)]
-        ['#ff0000', '#f39800', '#00fe00']
+        ['#fe0000', '#dca500', '#00fe00']
 
         """
         assert steps >= 3
@@ -1137,9 +1137,10 @@ def CIECAM_to_CIECAM(self, ciecam):
     return ciecam_vsh
 
 
-def CIECAM_to_RGB(self):
+def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     maxcolorfulness = self.limit_purity
     converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
+    convertback = colorspacious.cspace_converter("sRGB1", self.cieconfig)
     # calculate minimum valid ciecam values
     mincie = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
     maxcie = colorspacious.cspace_convert([1, 1, 1], "sRGB1", self.cieconfig)
@@ -1149,52 +1150,75 @@ def CIECAM_to_RGB(self):
 
     if maxcolorfulness:
         s = min(s, maxcolorfulness)
-        
+
     # convert CIECAM to sRGB, but it may be out of gamut
     result = converter([v, s, h])
-    x = np.clip(result, 0, 1)
+    x = np.clip(result, 0.0, 1.0)
     if (result == x).all():
         r, g, b = x
         return r, g, b
 
-    if any(x > 2.0 for x in result):
-        self.displayexceeded = True
-
-    if any(x < -1.0 for x in result):
-        self.gamutexceeded = True
-
     def apply_constraint(inputs):
         # rgb must >= 0 and <= 1
         result = converter([inputs[0], inputs[1], inputs[2]])
-        return min(min(result), (1.0 - max(result)))
+        if np.isnan(result).any():
+            return -1.0
+        return min(min(result) + .001, (1.001 - max(result)))
 
-    def loss(vs_):
-        loss = abs(s - vs_[1])
-        if math.isnan(loss):
+    def loss(vsh_):
+        # set up loss function to penalize both out of gamut
+        # RGB as well as CIE values far off target
+        result = converter([vsh_[0], vsh_[1], vsh_[2]])
+        cieresult = convertback(np.clip(result, 0, 1))
+
+        hdiff = cieresult[2] - h
+        hdiff = (hdiff + 180) % 360 - 180
+        lossunweighted = np.array([(v - cieresult[0])**2,
+                                   (s - cieresult[1])**2, hdiff**2])
+        rgbloss = (np.sum(result[np.where(result - 1 >= 1)])
+                   + np.sum(abs((result[np.where(result < 0.0)]))))
+        loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
+        if math.isnan(loss) or np.isnan(result).any():
             loss = float('Inf')
         return loss
     cons = ({'type': 'ineq', 'fun': apply_constraint})
-    # inital guess take 80%
-    guess = np.array([v, s * .8, h])
+    guess = np.array([v, s, h])
 
-    bounds = ((v, v), (mincie[1], s), (h, h))
-    opt = {'disp': False, 'maxiter': 20, 'ftol': .001, 'eps' : .001 }
+    bounds = ((v, v), (0.0, s), (h, h))
+    opt = {'disp': False, 'maxiter': 1000, 'ftol': 0.1, 'eps': 0.1}
     my_constraints = {'type': 'ineq', "fun": apply_constraint}
-
-    x_opt = spo.minimize(loss,
-                         guess,
-                         method='SLSQP',
-                         constraints=cons,
-                         bounds=bounds,
-                         options=opt
-                         ) 
+    try:
+        x_opt = spo.minimize(loss,
+                             guess,
+                             method='SLSQP',
+                             constraints=cons,
+                             bounds=bounds,
+                             options=opt
+                             )
+    except IndexError:
+        print("gamut mapping exception")
+        r, g, b = x
+        return x
     # clip final result
     if (x_opt["success"]):
         result = x_opt["x"]
-        r, g, b = np.clip(converter([result[0], result[1], h]), 0, 1)
+        final = converter(result)
+        r, g, b = np.clip(final, 0, 1)
+        # reset color to the new mapped color
+        # This helps avoid impossible gamut situations
+        self.v, self.s, self.h = result
+
+        if result[0] > maxcie[0]:
+            self.displayexceeded = True
+
+        if any(x < -0.1 for x in final):
+            self.gamutexceeded = True
+
         return r, g, b
     else:
-        return 0, 0, 0
+        print("failing back to clipping result")
+        r, g, b = x
+        return r, g, b
 
 ## Module testing
 
