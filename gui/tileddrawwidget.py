@@ -146,6 +146,8 @@ class TiledDrawWidget (Gtk.EventBox):
 
         self.last_painting_pos = None
 
+        self.last_colorpick_time = None
+
         self.renderer = CanvasRenderer(
             self,
             idle_redraw_priority = idle_redraw_priority,
@@ -1012,7 +1014,7 @@ class CanvasRenderer (Gtk.DrawingArea, DrawCursorMixin):
         # Extract a pixbuf, then an average color.
         # surf.write_to_png("/tmp/grab.png")
         pixbuf = Gdk.pixbuf_get_from_surface(surf, 0, 0, size, size)
-        color = lib.color.UIColor.new_from_pixbuf_average(pixbuf)
+        color = lib.color.UIColor.new_from_pixbuf_average(pixbuf, size)
         return color
 
     def _new_image_surface_from_visible_area(self, x, y, w, h,

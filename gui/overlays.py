@@ -274,3 +274,107 @@ class LastPaintPosOverlay (FadingOverlay):
         cr.set_line_width(self.inner_line_width)
         cr.stroke()
         return area
+
+
+class ColorAdjustOverlay (FadingOverlay):
+    """Preview overlay during color Adjustments.
+
+    Important- no border.  Like a paint swatch sample
+    For comparing to area on canvas
+    Mostly a copy of ColorPickerOverlay
+    """
+    fade_fps = 1  #: Nominal frames per second
+    fade_duration = 3  #: Time for fading entirely to zero, in seconds
+    PREVIEW_SIZE = 70
+    CORNER_RADIUS = 10
+
+    def __init__(self, doc, tdw, x, y, r, g, b):
+        FadingOverlay.__init__(self, doc)
+        doc.input_stroke_started += self.input_stroke_started
+        doc.input_stroke_ended += self.input_stroke_ended
+        self.in_input_stroke = False
+        self._doc = doc
+        self._tdw = tdw
+        self._r = r
+        self._g = g
+        self._b = b
+        self._x = int(x)+0.5
+        self._y = int(y)+0.5
+        alloc = tdw.get_allocation()
+        self._tdw_w = alloc.width
+        self._tdw_h = alloc.height
+        tdw.display_overlays.append(self)
+        self._previous_area = None
+        self._queue_tdw_redraw()
+
+    def input_stroke_started(self, doc, event):
+        self.in_input_stroke = True
+
+    def input_stroke_ended(self, doc, event):
+        self.in_input_stroke = False
+
+    def overlay_changed(self):
+        return False
+
+    def cleanup(self):
+        """Cleans up temporary observer stuff, allowing garbage collection.
+        """
+        self._tdw.display_overlays.remove(self)
+        assert self not in self._tdw.display_overlays
+        self._queue_tdw_redraw()
+
+    def _queue_tdw_redraw(self):
+        if self._previous_area is not None:
+            self._tdw.queue_draw_area(*self._previous_area)
+            self._previous_area = None
+        area = self._get_area()
+        if area is not None:
+            self._tdw.queue_draw_area(*area)
+
+    def _get_area(self):
+        # Returns the drawing area for the square
+        size = self.PREVIEW_SIZE
+        # Start with the pointer location
+        x = self._x
+        y = self._y
+        offset = size // 2
+        # Only show if the pointer is inside the tdw
+        alloc = self._tdw.get_allocation()
+        if x < 0 or y < 0 or y > alloc.height or x > alloc.width:
+            return None
+        # Convert to preview location
+        # Pick a direction - N,W,E,S - in which to offset the preview
+        if y + size > alloc.height - offset:
+            x -= offset
+            y -= size + offset
+        elif x < offset:
+            x += offset
+            y -= offset
+        elif x > alloc.width - offset:
+            x -= size + offset
+            y -= offset
+        else:
+            x -= offset
+            y += offset
+        return (int(x), int(y), size, size)
+
+    def paint_frame(self, cr):
+        # Cleanup if starting stroke regardless of prefs
+        if self.in_input_stroke is True:
+            self.cleanup()
+            return
+
+        area = self._get_area()
+        if area is not None:
+            x, y, w, h = area
+            # keep opacity at 100% for a while
+            actual_alpha = self.alpha
+            if self.alpha > .25:
+                actual_alpha = 1.0
+            cr.set_source_rgba(self._r, self._g, self._b, actual_alpha)
+            rounded_box(cr, x, y, w, h, self.CORNER_RADIUS)
+            cr.fill()
+            # remove overlay once it is almost transparent
+            if self.alpha <= .1:
+                self.cleanup()
+            return area

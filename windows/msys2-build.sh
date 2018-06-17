@@ -88,6 +88,8 @@ install_dependencies() {
         ${PKG_PREFIX}-pygobject-devel \
         ${PKG_PREFIX}-python2-gobject \
         ${PKG_PREFIX}-python2-numpy \
+        ${PKG_PREFIX}-python2-colorspacious \
+        ${PKG_PREFIX}-python2-scipy \
         ${PKG_PREFIX}-hicolor-icon-theme \
         ${PKG_PREFIX}-librsvg \
         ${PKG_PREFIX}-gobject-introspection \
@@ -106,6 +108,7 @@ install_dependencies() {
         ${PKG_PREFIX}-python3 \
         ${PKG_PREFIX}-python3-pip \
         zip
+        
 
     logok "Dependencies installed."
 }
