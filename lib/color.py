@@ -540,8 +540,8 @@ class CIECAMColor (UIColor):
       >>> col.s = 58.26474923
       >>> col.v = 95.67306142
       >>> result = col.get_rgb()
-      >>> print (round(result[0],4), round(result[1],4), round(result[2],4))
-      1.0 1.0 0.0001
+      >>> print (round(result[0],3), round(result[1],3), round(result[2],3))
+      1.0 1.0 0.0
 
     """
 
