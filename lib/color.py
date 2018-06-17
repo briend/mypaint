@@ -249,39 +249,74 @@ class UIColor (object):
         else:
             assert pixbuf.get_has_alpha()
         data = pixbuf.get_pixels()
-        arr = helpers.gdkpixbuf2numpy(pixbuf)
 
-        # Use kmeans2 for dominant color
-        # adapted from https://github.com/despawnerer/palletize
-        # MIT License
+        use_kmeans = False
+        try:
+            from gui.application import get_app
+            app = get_app()
+            p = app.preferences
+            use_kmeans = p['color.average_use_dominant']
+        except AttributeError:
+            use_kmeans = False
 
-        # flatten and discard alpha
-        arr = arr.reshape(-1, 4)
-        arr = np.delete(arr, 3, axis=1)
+        if use_kmeans is True:
+            arr = helpers.gdkpixbuf2numpy(pixbuf)
 
-        count = size
-        clusters = size
-        iterations = 30
-        assert count > 0
-        assert clusters is None or clusters >= count
-        assert iterations > 0
+            # Use kmeans2 for dominant color
+            # adapted from https://github.com/despawnerer/palletize
+            # MIT License
 
-        if clusters is None:
-            clusters = count if count > 1 else 3
+            # flatten and discard alpha
+            arr = arr.reshape(-1, 4)
+            arr = np.delete(arr, 3, axis=1)
 
-        # find centroids of color clusters
-        centroids, labels = kmeans2(
-            arr.astype(float), clusters, iterations, minit='points',
-            check_finite=False,
-        )
+            count = size
+            clusters = size
+            iterations = 30
+            assert count > 0
+            assert clusters is None or clusters >= count
+            assert iterations > 0
 
-        # reorder them by prominence
-        _, counts = np.unique(labels, return_counts=True)
-        best_centroid_indices = np.argsort(counts)[::-1]
-        dominant_colors = centroids[best_centroid_indices].astype(int)
-        result = [tuple(color) for color in dominant_colors[:count]]
+            if clusters is None:
+                clusters = count if count > 1 else 3
 
-        return RGBColor(result[0][0]/255, result[0][1]/255, result[0][2]/255)
+            # find centroids of color clusters
+            centroids, labels = kmeans2(
+                arr.astype(float), clusters, iterations, minit='points',
+                check_finite=False,
+            )
+
+            # reorder them by prominence
+            _, counts = np.unique(labels, return_counts=True)
+            best_centroid_indices = np.argsort(counts)[::-1]
+            dominant_colors = centroids[best_centroid_indices].astype(int)
+            result = [tuple(color) for color in dominant_colors[:count]]
+
+            return RGBColor(result[0][0]/255,
+                            result[0][1]/255, result[0][2]/255)
+        else:
+            assert isinstance(data, bytes)
+            w, h = pixbuf.get_width(), pixbuf.get_height()
+            rowstride = pixbuf.get_rowstride()
+            n_pixels = w*h
+            r = g = b = 0
+            for y in xrange(h):
+                for x in xrange(w):
+                    offs = y*rowstride + x*n_channels
+                    if PY3:
+                        # bytes=bytes. Indexing produces ints.
+                        r += data[offs]
+                        g += data[offs+1]
+                        b += data[offs+2]
+                    else:
+                        # bytes=str. Indexing of produces a str of len 1.
+                        r += ord(data[offs])
+                        g += ord(data[offs+1])
+                        b += ord(data[offs+2])
+            r = r / n_pixels
+            g = g / n_pixels
+            b = b / n_pixels
+            return RGBColor(r/255, g/255, b/255)
 
     def interpolate(self, other, steps):
         """Generator: interpolate between this color and another."""
@@ -506,7 +541,7 @@ class CIECAMColor (UIColor):
       >>> col.v = 95.67306142
       >>> result = col.get_rgb()
       >>> print (round(result[0],4), round(result[1],4), round(result[2],4))
-      1.0 1.0 0.0003
+      1.0 1.0 0.0001
 
     """
 
@@ -578,6 +613,7 @@ class CIECAMColor (UIColor):
 
         # limit color purity?
         self.limit_purity = None
+        self.reset_intent = True
         # try getting from preferences but fallback to avoid breaking doctest
         try:
             from gui.application import get_app
@@ -585,8 +621,10 @@ class CIECAMColor (UIColor):
             p = app.preferences
             if p['color.limit_purity'] >= 0.0:
                 self.limit_purity = p['color.limit_purity']
+            self.reset_intent = p['color.reset_intent_after_gamut_map']
         except AttributeError:
             self.limit_purity = None
+            self.reset_intent = True
 
         if color is not None:
             if isinstance(color, CIECAMColor):
@@ -1158,13 +1196,6 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         r, g, b = x
         return r, g, b
 
-    def apply_constraint(inputs):
-        # rgb must >= 0 and <= 1
-        result = converter([inputs[0], inputs[1], inputs[2]])
-        if np.isnan(result).any():
-            return -1.0
-        return min(min(result) + .001, (1.001 - max(result)))
-
     def loss(vsh_):
         # set up loss function to penalize both out of gamut
         # RGB as well as CIE values far off target
@@ -1181,39 +1212,39 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         if math.isnan(loss) or np.isnan(result).any():
             loss = float('Inf')
         return loss
-    cons = ({'type': 'ineq', 'fun': apply_constraint})
-    guess = np.array([v, s, h])
+    guess = np.array([v * 1.1, s * .9, h])
 
     bounds = ((v, v), (0.0, s), (h, h))
-    opt = {'disp': False, 'maxiter': 1000, 'ftol': 0.1, 'eps': 0.1}
-    my_constraints = {'type': 'ineq', "fun": apply_constraint}
+    opt = {'disp': False, 'maxiter': 100, 'ftol': 0.1, 'eps': 0.1}
+
     try:
         x_opt = spo.minimize(loss,
                              guess,
                              method='SLSQP',
-                             constraints=cons,
                              bounds=bounds,
                              options=opt
                              )
     except IndexError:
-        print("gamut mapping exception")
+        print("gamut exception")
         r, g, b = x
-        return x
+        return r, g, b
+
     # clip final result
     if (x_opt["success"]):
         result = x_opt["x"]
         final = converter(result)
         r, g, b = np.clip(final, 0, 1)
-        # reset color to the new mapped color
-        # This helps avoid impossible gamut situations
-        self.v, self.s, self.h = result
 
-        if result[0] > maxcie[0]:
+        if np.sum(final) >= 3.3:
             self.displayexceeded = True
 
-        if any(x < -0.1 for x in final):
+        if result[1] < self.s:
             self.gamutexceeded = True
 
+        # reset color to the new mapped color
+        # This helps avoid impossible gamut situations
+        if self.reset_intent:
+            self.v, self.s, self.h = result
         return r, g, b
     else:
         print("failing back to clipping result")
