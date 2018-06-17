@@ -161,7 +161,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
             lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
 
         doc.last_colorpick_time = t
-        pickcolor = tdw.pick_color(x, y, size=int(10/tdw.renderer.scale))
+        pickcolor = tdw.pick_color(x, y, size=int(3/tdw.renderer.scale))
         brushcolor = self._get_app_brush_color()
         brushcolor_rgb = brushcolor.get_rgb()
         pickcolor_rgb = pickcolor.get_rgb()
