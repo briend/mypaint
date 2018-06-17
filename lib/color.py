@@ -1181,7 +1181,6 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     convertback = colorspacious.cspace_converter("sRGB1", self.cieconfig)
     # calculate minimum valid ciecam values
     mincie = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
-    maxcie = colorspacious.cspace_convert([1, 1, 1], "sRGB1", self.cieconfig)
     v, s, h = max(self.v, mincie[0]), max(self.s, mincie[1]), self.h
     self.gamutexceeded = False
     self.displayexceeded = False
