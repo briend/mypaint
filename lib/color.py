@@ -29,6 +29,7 @@ import numpy as np
 import math
 import scipy.optimize as spo
 from scipy.cluster.vq import kmeans2
+import colour
 
 from gi.repository import GdkPixbuf
 from lib import helpers
@@ -1177,11 +1178,12 @@ def CIECAM_to_CIECAM(self, ciecam):
 
 def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     maxcolorfulness = self.limit_purity
-    converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
-    convertback = colorspacious.cspace_converter("sRGB1", self.cieconfig)
+    #converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
+    #convertback = colorspacious.cspace_converter("sRGB1", self.cieconfig)
     # calculate minimum valid ciecam values
-    mincie = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
-    v, s, h = max(self.v, mincie[0]), max(self.s, mincie[1]), self.h
+    mincie = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ([0, 0, 0]), self.lightsource, 300, 20)
+    axes = list(self.cieaxes)
+    v, s, h = max(self.v, getattr(mincie, axes[0])), max(self.s, getattr(mincie, axes[1])), self.h
     self.gamutexceeded = False
     self.displayexceeded = False
 
@@ -1198,22 +1200,22 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     def loss(vsh_):
         # set up loss function to penalize both out of gamut
         # RGB as well as CIE values far off target
-        result = converter([vsh_[0], vsh_[1], vsh_[2]])
-        cieresult = convertback(np.clip(result, 0, 1))
+        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ([vsh_[0], vsh_[1], vsh_[2]], self.lightsouce, 300, 20))
+        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0, 1)), self.lightsouce, 300, 20)
 
-        hdiff = cieresult[2] - h
+        hdiff = getattr(cieresult, axes[2]) - h
         hdiff = (hdiff + 180) % 360 - 180
-        lossunweighted = np.array([(v - cieresult[0])**2,
-                                   (s - cieresult[1])**2, hdiff**2])
+        lossunweighted = np.array([(v - getattr(cieresult, axes[0]))**2,
+                                   (s - getattr(cieresult, axes[1]))**2, hdiff**2])
         rgbloss = (np.sum(result[np.where(result - 1 >= 1)])
                    + np.sum(abs((result[np.where(result < 0.0)]))))
         loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
         if math.isnan(loss) or np.isnan(result).any():
             loss = float('Inf')
         return loss
-    guess = np.array([v * 1.1, s * .9, h])
+    guess = np.array([v * 1.1, max(s * .9, getattr(mincie, axes[1])), h])
 
-    bounds = ((v, v), (0.0, s), (h, h))
+    bounds = ((v, v), (getattr(mincie, axes[1]), s), (h, h))
     opt = {'disp': False, 'maxiter': 100, 'ftol': 0.1, 'eps': 0.1}
 
     try:
@@ -1231,7 +1233,7 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     # clip final result
     if (x_opt["success"]):
         result = x_opt["x"]
-        final = converter(result)
+        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(result, self.lightsouce, 300, 20)
         r, g, b = np.clip(final, 0, 1)
 
         if np.sum(final) >= 3.3:
@@ -1247,7 +1249,7 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         return r, g, b
     else:
         print("failing back to clipping result")
-        r, g, b = x
+        r, g, b = np.clip(result, 0.0, 1.0)
         return r, g, b
 
 ## Module testing
