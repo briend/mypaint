@@ -30,6 +30,7 @@ import math
 import scipy.optimize as spo
 from scipy.cluster.vq import kmeans2
 import colour
+from collections import namedtuple
 
 from gi.repository import GdkPixbuf
 from lib import helpers
@@ -582,9 +583,7 @@ class CIECAMColor (UIColor):
                     surround=colorspacious.CIECAM02Surround.AVERAGE
                 )
             except ValueError:
-                self.lightsource = colorspacious.standard_illuminant_XYZ100(
-                    "D65"
-                )
+                self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']) * 100
                 ciespace = colorspacious.CIECAM02Space(
                     self.lightsource,
                     20.0, 4.074366543152521,
@@ -596,7 +595,7 @@ class CIECAMColor (UIColor):
                 "ciecam02_space": ciespace
             }
         else:
-            self.lightsource = colorspacious.standard_illuminant_XYZ100("D65")
+            self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']) * 100
             ciespace = colorspacious.CIECAM02Space(
                 self.lightsource,
                 20.0, 4.074366543152521,
@@ -1165,18 +1164,31 @@ def RGB_to_CIECAM(self, rgb):
 
 def CIECAM_to_CIECAM(self, ciecam):
     maxcolorfulness = self.limit_purity
-    ciecam_vsh = colorspacious.cspace_convert(
-        [ciecam.v, ciecam.s, ciecam.h],
-        ciecam.cieconfig,
-        self.cieconfig
-    )
+    axes = list(ciecam.cieaxes)
+    v, s, h = ciecam.v, ciecam.s, ciecam.h
+    zipped = zip(axes, (v, s, h))
 
+    CAM16_Specification = namedtuple('CAM16_Specification', axes)
+    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
+    
+    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, 300, 20)
+    
+    axes = list(self.cieaxes)
+    v, s, h = self.v, self.s, self.h
+    
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, 300, 20)
+    
+    v = getattr(ciecam_vsh, axes[0])
+    s = getattr(ciecam_vsh, axes[1])
+    h = getattr(ciecam_vsh, axes[2])
+    
     if maxcolorfulness:
-        ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
-    return ciecam_vsh
+        s = min(getattr(ciecam_vsh, axes[1]), maxcolorfulness)
+    return v, s, h
 
 
 def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
+    # optional limiter 
     maxcolorfulness = self.limit_purity
     #converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
     #convertback = colorspacious.cspace_converter("sRGB1", self.cieconfig)
@@ -1184,14 +1196,23 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     mincie = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ([0, 0, 0]), self.lightsource, 300, 20)
     axes = list(self.cieaxes)
     v, s, h = max(self.v, getattr(mincie, axes[0])), max(self.s, getattr(mincie, axes[1])), self.h
+    
+    if maxcolorfulness:
+       s = min(s, maxcolorfulness)
+    zipped = zip(axes, (v, s, h))
+    
     self.gamutexceeded = False
     self.displayexceeded = False
+    
+    CAM16_Specification = namedtuple('CAM16_Specification', axes)
+    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
+ 
 
-    if maxcolorfulness:
-        s = min(s, maxcolorfulness)
 
     # convert CIECAM to sRGB, but it may be out of gamut
-    result = converter([v, s, h])
+    result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 300, 20)/100)
+    
+    print("cam, result", cam, result)
     x = np.clip(result, 0.0, 1.0)
     if (result == x).all():
         r, g, b = x
@@ -1200,8 +1221,10 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     def loss(vsh_):
         # set up loss function to penalize both out of gamut
         # RGB as well as CIE values far off target
-        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ([vsh_[0], vsh_[1], vsh_[2]], self.lightsouce, 300, 20))
-        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0, 1)), self.lightsouce, 300, 20)
+        zipped= zip(axes, vsh_)
+        cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
+        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 300, 20)/100)
+        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0, 1)), self.lightsource, 300, 20)
 
         hdiff = getattr(cieresult, axes[2]) - h
         hdiff = (hdiff + 180) % 360 - 180
@@ -1233,7 +1256,9 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     # clip final result
     if (x_opt["success"]):
         result = x_opt["x"]
-        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(result, self.lightsouce, 300, 20)
+        zipped = zip(axes, result)
+        cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
+        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 300, 20)/100)
         r, g, b = np.clip(final, 0, 1)
 
         if np.sum(final) >= 3.3:
@@ -1245,7 +1270,7 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         # reset color to the new mapped color
         # This helps avoid impossible gamut situations
         if self.reset_intent:
-            self.v, self.s, self.h = result
+            self.v, self.s, self.h = result[0], result[1], result[2]
         return r, g, b
     else:
         print("failing back to clipping result")
