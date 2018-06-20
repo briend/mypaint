@@ -186,8 +186,8 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                     ill = colour.sRGB_to_XYZ(pickcolor_rgb)
                     if ill[1] <= 0:
                         return
-                    fac = 100/ill[1]
-                    fac = 1
+                    fac = 1/ill[1]*100
+                    #fac = 1
                     p['color.dimension_lightsource'] = "custom_XYZ"
                     p['color.dimension_lightsource_XYZ'] = (
                         ill[0]*fac,
