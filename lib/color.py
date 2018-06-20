@@ -576,36 +576,8 @@ class CIECAMColor (UIColor):
         if lightsource is not None:
             self.lightsource = lightsource
 
-            try:
-                ciespace = colorspacious.CIECAM02Space(
-                    self.lightsource,
-                    20.0, 4.074366543152521,
-                    surround=colorspacious.CIECAM02Surround.AVERAGE
-                )
-            except ValueError:
-                self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']) * 100
-                ciespace = colorspacious.CIECAM02Space(
-                    self.lightsource,
-                    20.0, 4.074366543152521,
-                    surround=colorspacious.CIECAM02Surround.AVERAGE
-                )
-            self.cieconfig = {
-                "name": "CIECAM02-subset",
-                "axes": self.cieaxes,
-                "ciecam02_space": ciespace
-            }
         else:
-            self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']) * 100
-            ciespace = colorspacious.CIECAM02Space(
-                self.lightsource,
-                20.0, 4.074366543152521,
-                surround=colorspacious.CIECAM02Surround.AVERAGE
-            )
-            self.cieconfig = {
-                "name": "CIECAM02-subset",
-                "axes": self.cieaxes,
-                "ciecam02_space": ciespace
-            }
+            self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100
 
         # maybe we want to know if the gamut was constrained
         self.gamutexceeded = None
@@ -624,7 +596,7 @@ class CIECAMColor (UIColor):
             self.reset_intent = p['color.reset_intent_after_gamut_map']
         except AttributeError:
             self.limit_purity = None
-            self.reset_intent = True
+            self.reset_intent = False
 
         if color is not None:
             if isinstance(color, CIECAMColor):
@@ -1150,11 +1122,12 @@ def HCY_to_RGB(hcy):
 
 
 def RGB_to_CIECAM(self, rgb):
-    r, g, b = rgb
     maxcolorfulness = self.limit_purity
 
-    ciecam_vsh = colorspacious.cspace_convert([r, g, b],
-                                              "sRGB1", self.cieconfig)
+    xyz = colour.sRGB_to_XYZ(rgb)*100
+    cam16 =colour.XYZ_to_CAM16(xyz, self.lightsource, 300, 20)
+    axes = list(self.cieaxes)
+    ciecam_vsh = [getattr(cam16, axes[0]), getattr(cam16, axes[1]), getattr(cam16, axes[2])]
 
     if maxcolorfulness:
         ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
@@ -1193,12 +1166,14 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     #converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
     #convertback = colorspacious.cspace_converter("sRGB1", self.cieconfig)
     # calculate minimum valid ciecam values
-    mincie = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ([0, 0, 0]), self.lightsource, 300, 20)
+    #mincie = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ([0, 0, 0]), self.lightsource, 300, 20)
     axes = list(self.cieaxes)
-    v, s, h = max(self.v, getattr(mincie, axes[0])), max(self.s, getattr(mincie, axes[1])), self.h
+    #v, s, h = max(self.v, getattr(mincie, axes[0])), max(self.s, getattr(mincie, axes[1])), self.h
+    v, s, h = self.v, self.s, self.h
     
     if maxcolorfulness:
        s = min(s, maxcolorfulness)
+
     zipped = zip(axes, (v, s, h))
     
     self.gamutexceeded = False
@@ -1206,14 +1181,12 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     
     CAM16_Specification = namedtuple('CAM16_Specification', axes)
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
- 
-
 
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 300, 20)/100)
     
     print("cam, result", cam, result)
-    x = np.clip(result, 0.0, 1.0)
+    x = np.clip(result, -0.05, 1.05)
     if (result == x).all():
         r, g, b = x
         return r, g, b
@@ -1221,41 +1194,54 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     def loss(vsh_):
         # set up loss function to penalize both out of gamut
         # RGB as well as CIE values far off target
+        vsh_ = (v, vsh_, h)
         zipped= zip(axes, vsh_)
         cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
         result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 300, 20)/100)
-        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0, 1)), self.lightsource, 300, 20)
+        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0, 1))*100, self.lightsource, 300, 20)
 
         hdiff = getattr(cieresult, axes[2]) - h
-        hdiff = (hdiff + 180) % 360 - 180
-        lossunweighted = np.array([(v - getattr(cieresult, axes[0]))**2,
-                                   (s - getattr(cieresult, axes[1]))**2, hdiff**2])
-        rgbloss = (np.sum(result[np.where(result - 1 >= 1)])
+        hdiff = abs((hdiff + 180) % 360 - 180)
+        #lossunweighted = np.array([(v - getattr(cieresult, axes[0]))**2,
+                                   #(s - getattr(cieresult, axes[1]))**2, hdiff**2])
+        #losscie = np.array([(v - vsh_[0])**2,
+        #                           (s - vsh_[1]))**2, hdiff**2])
+        rgbloss = (np.sum(result[np.where(result - 1 >= 1)]-1)
                    + np.sum(abs((result[np.where(result < 0.0)]))))
-        loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
+        satloss = abs(s - getattr(cieresult, axes[1]))/s *.5
+        vloss = abs(v - getattr(cieresult, axes[0]))/v *s *5
+        #loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
+        loss = rgbloss + hdiff + satloss + vloss
+        print("loss- rgb, hdiff, satloss, vloss, total", rgbloss, hdiff, satloss, vloss, loss)
         if math.isnan(loss) or np.isnan(result).any():
             loss = float('Inf')
         return loss
-    guess = np.array([v * 1.1, max(s * .9, getattr(mincie, axes[1])), h])
+    guess = np.array([v, s, h])
 
-    bounds = ((v, v), (getattr(mincie, axes[1]), s), (h, h))
-    opt = {'disp': False, 'maxiter': 100, 'ftol': 0.1, 'eps': 0.1}
+    bounds = ((v, v), (0.0, s), (h, h))
+    opt = {'disp': True, 'maxiter': 100, 'xatol': 0.001}
 
     try:
-        x_opt = spo.minimize(loss,
-                             guess,
-                             method='SLSQP',
-                             bounds=bounds,
-                             options=opt
+        x_opt = spo.minimize_scalar(loss,
+                           #guess,
+                           #tol=0.001,
+                                          # bounds,
+                                         #maxiter=50,
+                                         #  polish=True
+                             method='Bounded',
+                             bounds=(0.0, s),
+                            options=opt
                              )
     except IndexError:
         print("gamut exception")
-        r, g, b = x
-        return r, g, b
+        #r, g, b = x
+        return 0, 0, 0
 
     # clip final result
     if (x_opt["success"]):
         result = x_opt["x"]
+        #print("final cam is", result)
+        result = (v, result, h)
         zipped = zip(axes, result)
         cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
         final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 300, 20)/100)
@@ -1270,12 +1256,14 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         # reset color to the new mapped color
         # This helps avoid impossible gamut situations
         if self.reset_intent:
-            self.v, self.s, self.h = result[0], result[1], result[2]
+            self.v = v
+            self.s = result[1]
+            self.h = h
         return r, g, b
     else:
-        print("failing back to clipping result")
-        r, g, b = np.clip(result, 0.0, 1.0)
-        return r, g, b
+        print("failing back to black")
+#        r, g, b = np.clip(result, 0.0, 1.0)
+        return 0, 0, 0
 
 ## Module testing
 
