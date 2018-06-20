@@ -24,13 +24,13 @@ with an adjuster does its type change to match the control's color space.
 from __future__ import division, print_function
 import re
 import colorsys
-import colorspacious
 import numpy as np
 import math
 import scipy.optimize as spo
 from scipy.cluster.vq import kmeans2
 import colour
 from collections import namedtuple
+import sys
 
 from gi.repository import GdkPixbuf
 from lib import helpers
@@ -577,7 +577,7 @@ class CIECAMColor (UIColor):
             self.lightsource = lightsource
 
         else:
-            self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100
+            self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
 
         # maybe we want to know if the gamut was constrained
         self.gamutexceeded = None
@@ -585,7 +585,7 @@ class CIECAMColor (UIColor):
 
         # limit color purity?
         self.limit_purity = None
-        self.reset_intent = True
+        self.reset_intent = False
         # try getting from preferences but fallback to avoid breaking doctest
         try:
             from gui.application import get_app
@@ -1125,9 +1125,12 @@ def RGB_to_CIECAM(self, rgb):
     maxcolorfulness = self.limit_purity
 
     xyz = colour.sRGB_to_XYZ(rgb)*100
-    cam16 =colour.XYZ_to_CAM16(xyz, self.lightsource, 300, 20)
+    print("rgb to xyz is", xyz)
+    sys.stdout.flush()
+    cam16 = colour.XYZ_to_CAM16(xyz, self.lightsource, 4.074366543152521, 20)
     axes = list(self.cieaxes)
     ciecam_vsh = [getattr(cam16, axes[0]), getattr(cam16, axes[1]), getattr(cam16, axes[2])]
+    print(ciecam_vsh)
 
     if maxcolorfulness:
         ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
@@ -1144,12 +1147,12 @@ def CIECAM_to_CIECAM(self, ciecam):
     CAM16_Specification = namedtuple('CAM16_Specification', axes)
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
     
-    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, 300, 20)
+    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, 4.074366543152521, 20)
     
     axes = list(self.cieaxes)
     v, s, h = self.v, self.s, self.h
     
-    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, 300, 20)
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, 4.074366543152521, 20)
     
     v = getattr(ciecam_vsh, axes[0])
     s = getattr(ciecam_vsh, axes[1])
@@ -1161,6 +1164,8 @@ def CIECAM_to_CIECAM(self, ciecam):
 
 
 def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
+
+
     # optional limiter 
     maxcolorfulness = self.limit_purity
     #converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
@@ -1183,22 +1188,23 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
 
     # convert CIECAM to sRGB, but it may be out of gamut
-    result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 300, 20)/100)
+    result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 4.074366543152521, 20)/100)
     
     print("cam, result", cam, result)
-    x = np.clip(result, -0.05, 1.05)
+    sys.stdout.flush()
+    x = np.clip(result, -0.1, 1.1)
     if (result == x).all():
         r, g, b = x
         return r, g, b
 
-    def loss(vsh_):
+    def loss(sat_):
         # set up loss function to penalize both out of gamut
         # RGB as well as CIE values far off target
-        vsh_ = (v, vsh_, h)
+        vsh_ = (v, sat_, h)
         zipped= zip(axes, vsh_)
         cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
-        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 300, 20)/100)
-        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0, 1))*100, self.lightsource, 300, 20)
+        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 4.074366543152521, 20)/100)
+        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0, 1))*100, self.lightsource, 4.074366543152521, 20)
 
         hdiff = getattr(cieresult, axes[2]) - h
         hdiff = abs((hdiff + 180) % 360 - 180)
@@ -1212,23 +1218,23 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         vloss = abs(v - getattr(cieresult, axes[0]))/v *s *5
         #loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
         loss = rgbloss + hdiff + satloss + vloss
-        print("loss- rgb, hdiff, satloss, vloss, total", rgbloss, hdiff, satloss, vloss, loss)
+        #print("loss- rgb, hdiff, satloss, vloss, total", rgbloss, hdiff, satloss, vloss, loss)
         if math.isnan(loss) or np.isnan(result).any():
             loss = float('Inf')
         return loss
     guess = np.array([v, s, h])
 
     bounds = ((v, v), (0.0, s), (h, h))
-    opt = {'disp': True, 'maxiter': 100, 'xatol': 0.001}
+    opt = {'disp': True, 'maxiter': 100,}
 
     try:
         x_opt = spo.minimize_scalar(loss,
                            #guess,
-                           #tol=0.001,
+                           tol=0.001,
                                           # bounds,
                                          #maxiter=50,
                                          #  polish=True
-                             method='Bounded',
+                             method='Brent',
                              bounds=(0.0, s),
                             options=opt
                              )
@@ -1244,7 +1250,7 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         result = (v, result, h)
         zipped = zip(axes, result)
         cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
-        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 300, 20)/100)
+        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 4.074366543152521, 20)/100)
         r, g, b = np.clip(final, 0, 1)
 
         if np.sum(final) >= 3.3:

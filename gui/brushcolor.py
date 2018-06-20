@@ -13,7 +13,7 @@ from __future__ import division, print_function
 
 from . import colors
 import lib.color
-import colorspacious
+import colour
 
 
 class BrushColorManager (colors.ColorManager):
@@ -42,7 +42,7 @@ class BrushColorManager (colors.ColorManager):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"

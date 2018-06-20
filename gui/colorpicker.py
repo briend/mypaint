@@ -11,7 +11,6 @@
 from __future__ import division, print_function
 
 import time
-import colorspacious
 
 from gettext import gettext as _
 import colorsys

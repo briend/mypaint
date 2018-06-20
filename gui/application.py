@@ -554,7 +554,7 @@ class Application (object):
             'color.dimension_lightsource': 'D65',
             'color.dimension_lightsource_XYZ': '',
             'color.limit_purity': -1.0,
-            'color.reset_intent_after_gamut_map': True,
+            'color.reset_intent_after_gamut_map': False,
             'color.average_use_dominant': True,
 
             "scratchpad.last_opened_scratchpad": "",
