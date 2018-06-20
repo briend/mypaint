@@ -12,7 +12,7 @@ from gettext import gettext as _
 from lib.helpers import rgb_to_hsv, hsv_to_rgb
 import lib.color
 
-import colorspacious
+import colour
 
 
 class BrushModifier (object):
@@ -230,7 +230,7 @@ class BrushModifier (object):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
