@@ -578,6 +578,9 @@ class CIECAMColor (UIColor):
 
         else:
             self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
+            
+        self.L_A = 300.0
+        self.Y_b = 20.0
 
         # maybe we want to know if the gamut was constrained
         self.gamutexceeded = None
@@ -1124,17 +1127,17 @@ def HCY_to_RGB(hcy):
 def RGB_to_CIECAM(self, rgb):
     maxcolorfulness = self.limit_purity
 
-    xyz = colour.sRGB_to_XYZ(rgb)*100
-    print("rgb to xyz is", xyz)
-    sys.stdout.flush()
-    cam16 = colour.XYZ_to_CAM16(xyz, self.lightsource, 4.074366543152521, 20)
+    xyz = colour.sRGB_to_XYZ(np.array(rgb)**2.4, apply_decoding_cctf=False)
+
+
+    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b)
     axes = list(self.cieaxes)
-    ciecam_vsh = [getattr(cam16, axes[0]), getattr(cam16, axes[1]), getattr(cam16, axes[2])]
-    print(ciecam_vsh)
+    ciecam_vsh = np.array([getattr(cam16, axes[0]), getattr(cam16, axes[1]), getattr(cam16, axes[2])])
 
     if maxcolorfulness:
         ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
 
+    sys.stdout.flush()
     return ciecam_vsh
 
 
@@ -1144,15 +1147,16 @@ def CIECAM_to_CIECAM(self, ciecam):
     v, s, h = ciecam.v, ciecam.s, ciecam.h
     zipped = zip(axes, (v, s, h))
 
-    CAM16_Specification = namedtuple('CAM16_Specification', axes)
-    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
+
+    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
     
-    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, 4.074366543152521, 20)
+    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, self.L_A, self.Y_b)
     
     axes = list(self.cieaxes)
     v, s, h = self.v, self.s, self.h
     
-    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, 4.074366543152521, 20)
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b)
+
     
     v = getattr(ciecam_vsh, axes[0])
     s = getattr(ciecam_vsh, axes[1])
@@ -1160,6 +1164,7 @@ def CIECAM_to_CIECAM(self, ciecam):
     
     if maxcolorfulness:
         s = min(getattr(ciecam_vsh, axes[1]), maxcolorfulness)
+
     return v, s, h
 
 
@@ -1184,14 +1189,11 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     self.gamutexceeded = False
     self.displayexceeded = False
     
-    CAM16_Specification = namedtuple('CAM16_Specification', axes)
-    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
-
+    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+    xyz = colour.CAM16_to_XYZ(cam, np.array(self.lightsource), np.array(self.L_A), np.array(self.Y_b), discount_illuminant=True)
     # convert CIECAM to sRGB, but it may be out of gamut
-    result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 4.074366543152521, 20)/100)
-    
-    print("cam, result", cam, result)
-    sys.stdout.flush()
+    result = colour.XYZ_to_sRGB(np.array(xyz/100.0), apply_encoding_cctf=False)**(1.0/2.4)
+
     x = np.clip(result, -0.1, 1.1)
     if (result == x).all():
         r, g, b = x
@@ -1202,9 +1204,9 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         # RGB as well as CIE values far off target
         vsh_ = (v, sat_, h)
         zipped= zip(axes, vsh_)
-        cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
-        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 4.074366543152521, 20)/100)
-        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0, 1))*100, self.lightsource, 4.074366543152521, 20)
+        cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b)/100.0, apply_encoding_cctf=False)
+        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0, 1), apply_decoding_cctf=False)*100.0, self.lightsource, self.L_A, self.Y_b)
 
         hdiff = getattr(cieresult, axes[2]) - h
         hdiff = abs((hdiff + 180) % 360 - 180)
@@ -1215,7 +1217,7 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         rgbloss = (np.sum(result[np.where(result - 1 >= 1)]-1)
                    + np.sum(abs((result[np.where(result < 0.0)]))))
         satloss = abs(s - getattr(cieresult, axes[1]))/s *.5
-        vloss = abs(v - getattr(cieresult, axes[0]))/v *s *5
+        vloss = abs(v - getattr(cieresult, axes[0]))/v *s *100
         #loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
         loss = rgbloss + hdiff + satloss + vloss
         #print("loss- rgb, hdiff, satloss, vloss, total", rgbloss, hdiff, satloss, vloss, loss)
@@ -1225,7 +1227,7 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     guess = np.array([v, s, h])
 
     bounds = ((v, v), (0.0, s), (h, h))
-    opt = {'disp': True, 'maxiter': 100,}
+    opt = {'maxiter': 100,}
 
     try:
         x_opt = spo.minimize_scalar(loss,
@@ -1241,7 +1243,7 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     except IndexError:
         print("gamut exception")
         #r, g, b = x
-        return 0, 0, 0
+        return 0.0, 0.0, 0.0
 
     # clip final result
     if (x_opt["success"]):
@@ -1249,9 +1251,9 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
         #print("final cam is", result)
         result = (v, result, h)
         zipped = zip(axes, result)
-        cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), CAM16_Specification)
-        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, 4.074366543152521, 20)/100)
-        r, g, b = np.clip(final, 0, 1)
+        cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b)/100.0, apply_encoding_cctf=False)**(1/2.4)
+        r, g, b = np.clip(final, 0.0, 1.0)
 
         if np.sum(final) >= 3.3:
             self.displayexceeded = True
@@ -1269,7 +1271,7 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     else:
         print("failing back to black")
 #        r, g, b = np.clip(result, 0.0, 1.0)
-        return 0, 0, 0
+        return 0.0, 0.0, 0.0
 
 ## Module testing
 

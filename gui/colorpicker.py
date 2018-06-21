@@ -15,6 +15,7 @@ import time
 from gettext import gettext as _
 import colorsys
 import colour
+import numpy as np
 
 import gui.mode
 from .overlays import Overlay
@@ -182,7 +183,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 cm.set_color(pickcolor)
             elif mode == "PickIlluminant":
                     p = self.app.preferences
-                    ill = colour.sRGB_to_XYZ(pickcolor_rgb)
+                    ill = colour.sRGB_to_XYZ(np.array(pickcolor_rgb)**2.4, apply_decoding_cctf=False)*100
                     if ill[1] <= 0:
                         return
                     fac = 1/ill[1]*100
@@ -452,7 +453,7 @@ class ColorPickPreviewOverlay (Overlay):
             if self._pickmode == "PickIlluminant":
                     p = self.app.preferences
                     xyz = p['color.dimension_lightsource_XYZ']
-                    ill = colour.XYZ_to_sRGB(xyz)
+                    ill = colour.XYZ_to_sRGB(np.array(xyz)/100.0, apply_encoding_cctf=False)**(1/2.4)
                     cr.set_source_rgb(*ill)
             else:
                 cr.set_source_rgb(*self._color.get_rgb())
