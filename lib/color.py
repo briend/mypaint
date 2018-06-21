@@ -1191,7 +1191,7 @@ def CIECAM_to_RGB(self):
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(np.array(xyz/100.0), apply_encoding_cctf=False)**(1.0/2.4)
     sys.stdout.flush()
-    x = np.clip(result, -0.1, 1.1)
+    x = np.clip(result, -0.001, 1.001)
     if (result == x).all():
         r, g, b = x
         return r, g, b
@@ -1214,7 +1214,7 @@ def CIECAM_to_RGB(self):
         rgbloss = (np.sum(result[np.where(result - 1 >= 1)]-1)
                    + np.sum(abs((result[np.where(result < 0.0)]))))
         satloss = abs(s - getattr(cieresult, axes[1]))/s *.5
-        vloss = abs(v - getattr(cieresult, axes[0]))/v *s *1
+        vloss = abs(v - getattr(cieresult, axes[0]))/v *s *10
         #loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
         loss = rgbloss + hdiff + satloss + vloss
         #print("loss- rgb, hdiff, satloss, vloss, total", rgbloss, hdiff, satloss, vloss, loss)
