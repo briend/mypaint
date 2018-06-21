@@ -575,12 +575,14 @@ class CIECAMColor (UIColor):
 
         if lightsource is not None:
             self.lightsource = lightsource
+            self.lightsourcexy = colour.XYZ_to_xy(np.array(self.lightsource)/100.0)
 
         else:
             self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
+            self.lightsourcexy = colour.ILLUMINANTS['cie_2_1931']['D65']
             
         self.L_A = 300.0
-        self.Y_b = 20.0
+        self.Y_b = 200.0
 
         # maybe we want to know if the gamut was constrained
         self.gamutexceeded = None
@@ -1190,7 +1192,7 @@ def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
     self.displayexceeded = False
     
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-    xyz = colour.CAM16_to_XYZ(cam, np.array(self.lightsource), np.array(self.L_A), np.array(self.Y_b), discount_illuminant=True)
+    xyz = colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b)
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(np.array(xyz/100.0), apply_encoding_cctf=False)**(1.0/2.4)
 
