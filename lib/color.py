@@ -581,8 +581,9 @@ class CIECAMColor (UIColor):
             self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
             self.lightsourcexy = colour.ILLUMINANTS['cie_2_1931']['D65']
             
-        self.L_A = 20.0
-        self.Y_b = 4.5
+        self.L_A = 300.0
+        self.Y_b = 1.0
+        self.surround=colour.CAM16_VIEWING_CONDITIONS['Dim']
 
         # maybe we want to know if the gamut was constrained
         self.gamutexceeded = None
@@ -1132,7 +1133,7 @@ def RGB_to_CIECAM(self, rgb):
     xyz = colour.sRGB_to_XYZ(np.array(rgb)**2.4, apply_decoding_cctf=False)
 
 
-    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b)
+    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
     axes = list(self.cieaxes)
     ciecam_vsh = np.array([getattr(cam16, axes[0]), getattr(cam16, axes[1]), getattr(cam16, axes[2])])
 
@@ -1152,12 +1153,12 @@ def CIECAM_to_CIECAM(self, ciecam):
 
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
     
-    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, self.L_A, self.Y_b)
+    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, self.L_A, self.Y_b, self.surround)
     
     axes = list(self.cieaxes)
     v, s, h = self.v, self.s, self.h
     
-    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b)
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround)
 
     
     v = getattr(ciecam_vsh, axes[0])
@@ -1186,7 +1187,7 @@ def CIECAM_to_RGB(self):
     self.displayexceeded = False
     
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-    xyz = colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b)
+    xyz = colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(np.array(xyz/100.0), apply_encoding_cctf=False)**(1.0/2.4)
     sys.stdout.flush()
@@ -1201,8 +1202,8 @@ def CIECAM_to_RGB(self):
         vsh_ = (v, sat_, h)
         zipped= zip(axes, vsh_)
         cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b)/100.0, apply_encoding_cctf=False)**(1/2.4)
-        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0)**2.4, apply_decoding_cctf=False)*100.0, self.lightsource, self.L_A, self.Y_b)
+        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0, apply_encoding_cctf=False)**(1/2.4)
+        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0)**2.4, apply_decoding_cctf=False)*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
 
         hdiff = getattr(cieresult, axes[2]) - h
         hdiff = abs((hdiff + 180) % 360 - 180)
@@ -1250,7 +1251,7 @@ def CIECAM_to_RGB(self):
         sys.stdout.flush()
         zipped = zip(axes, result)
         cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b)/100.0, apply_encoding_cctf=False)**(1/2.4)
+        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0, apply_encoding_cctf=False)**(1/2.4)
         r, g, b = np.clip(final, 0.0, 1.0)
 
         if np.sum(final) >= 3.3:
