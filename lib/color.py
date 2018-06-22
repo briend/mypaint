@@ -1188,7 +1188,7 @@ def CIECAM_to_RGB(self):
     xyz = colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(xyz/100.0)
-    print(cam, xyz, result, self.lightsource)
+    #print(cam, xyz, result, self.lightsource)
     sys.stdout.flush()
     x = np.clip(result, -0.001, 1.001)
     if (result == x).all():
@@ -1246,7 +1246,7 @@ def CIECAM_to_RGB(self):
         result = x_opt["x"]
         #print("final cam is", result)
         result = (v, result, h)
-        print("final cam is", result)
+        #print("final cam is", result)
         sys.stdout.flush()
         zipped = zip(axes, result)
         cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
@@ -1258,7 +1258,7 @@ def CIECAM_to_RGB(self):
 
         if result[1] < self.s:
             self.gamutexceeded = True
-        print("final rgb is", r, g, b)
+        #print("final rgb is", r, g, b)
         # reset color to the new mapped color
         # This helps avoid impossible gamut situations
         if self.reset_intent:
