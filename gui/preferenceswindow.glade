@@ -113,7 +113,6 @@
     <property name="value">-1</property>
     <property name="step_increment">0.10000000000000001</property>
     <property name="page_increment">1</property>
-    <property name="page_size">1</property>
   </object>
   <object class="GtkAdjustment" id="tune_step_size_adjustment">
     <property name="lower">0.01</property>
@@ -121,7 +120,6 @@
     <property name="value">1</property>
     <property name="step_increment">0.01</property>
     <property name="page_increment">1</property>
-    <property name="page_size">1</property>
   </object>
   <object class="GtkNotebook" id="prefs_notebook">
     <property name="visible">True</property>
@@ -1487,10 +1485,10 @@ dimensions of color from the CIECAM standard.</property>
                       <object class="GtkRadioButton" id="color_dimensions_Q_radiobutton">
                         <property name="label" translatable="yes">Brightness</property>
                         <property name="visible">True</property>
+                        <property name="sensitive">False</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="xalign">0</property>
-                        <property name="active">True</property>
                         <property name="draw_indicator">True</property>
                         <property name="group">color_dimensions_J_radiobutton</property>
                         <signal name="toggled" handler="color_dimensions_brightness_radiobutton_toggled_cb" swapped="no"/>
@@ -1521,10 +1519,10 @@ dimensions of color from the CIECAM standard.</property>
                       <object class="GtkRadioButton" id="color_dimensions_s_radiobutton">
                         <property name="label" translatable="yes">Saturation</property>
                         <property name="visible">True</property>
+                        <property name="sensitive">False</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="xalign">0</property>
-                        <property name="active">True</property>
                         <property name="draw_indicator">True</property>
                         <property name="group">color_dimensions_M_radiobutton</property>
                         <signal name="toggled" handler="color_dimensions_saturation_radiobutton_toggled_cb" swapped="no"/>
