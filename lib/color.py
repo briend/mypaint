@@ -574,15 +574,13 @@ class CIECAMColor (UIColor):
             self.cieaxes = "JMh"
 
         if lightsource is not None:
-            self.lightsource = lightsource
-            self.lightsourcexy = colour.XYZ_to_xy(np.array(self.lightsource)/100.0)
+            self.lightsource = np.array(lightsource)
 
         else:
-            self.lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
-            self.lightsourcexy = colour.ILLUMINANTS['cie_2_1931']['D65']
+            self.lightsource = np.array(colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0)
             
-        self.L_A = 300.0
-        self.Y_b = 1.0
+        self.L_A = 20.0
+        self.Y_b = 4.5
         self.surround=colour.CAM16_VIEWING_CONDITIONS['Dim']
 
         # maybe we want to know if the gamut was constrained
@@ -1130,7 +1128,7 @@ def HCY_to_RGB(hcy):
 def RGB_to_CIECAM(self, rgb):
     maxcolorfulness = self.limit_purity
 
-    xyz = colour.sRGB_to_XYZ(np.array(rgb)**2.4, apply_decoding_cctf=False)
+    xyz = colour.sRGB_to_XYZ(rgb)
 
 
     cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
@@ -1168,7 +1166,7 @@ def CIECAM_to_CIECAM(self, ciecam):
     if maxcolorfulness:
         s = min(getattr(ciecam_vsh, axes[1]), maxcolorfulness)
 
-    return v, s, h
+    return np.array([v, s, h])
 
 
 def CIECAM_to_RGB(self):
@@ -1176,7 +1174,7 @@ def CIECAM_to_RGB(self):
     # optional limiter 
     maxcolorfulness = self.limit_purity
     axes = list(self.cieaxes)
-    v, s, h = max(0.00001, self.v), self.s, self.h
+    v, s, h = max(0.00001, self.v), max(0.0001, self.s), self.h
     
     if maxcolorfulness:
        s = min(s, maxcolorfulness)
@@ -1189,7 +1187,8 @@ def CIECAM_to_RGB(self):
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
     xyz = colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)
     # convert CIECAM to sRGB, but it may be out of gamut
-    result = colour.XYZ_to_sRGB(np.array(xyz/100.0), apply_encoding_cctf=False)**(1.0/2.4)
+    result = colour.XYZ_to_sRGB(xyz/100.0)
+    print(cam, xyz, result, self.lightsource)
     sys.stdout.flush()
     x = np.clip(result, -0.001, 1.001)
     if (result == x).all():
@@ -1202,8 +1201,8 @@ def CIECAM_to_RGB(self):
         vsh_ = (v, sat_, h)
         zipped= zip(axes, vsh_)
         cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0, apply_encoding_cctf=False)**(1/2.4)
-        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0)**2.4, apply_decoding_cctf=False)*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
+        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
+        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
 
         hdiff = getattr(cieresult, axes[2]) - h
         hdiff = abs((hdiff + 180) % 360 - 180)
@@ -1251,7 +1250,7 @@ def CIECAM_to_RGB(self):
         sys.stdout.flush()
         zipped = zip(axes, result)
         cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0, apply_encoding_cctf=False)**(1/2.4)
+        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
         r, g, b = np.clip(final, 0.0, 1.0)
 
         if np.sum(final) >= 3.3:
@@ -1259,7 +1258,7 @@ def CIECAM_to_RGB(self):
 
         if result[1] < self.s:
             self.gamutexceeded = True
-
+        print("final rgb is", r, g, b)
         # reset color to the new mapped color
         # This helps avoid impossible gamut situations
         if self.reset_intent:
