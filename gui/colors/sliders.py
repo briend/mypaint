@@ -319,9 +319,8 @@ class HCYLumaSlider (SliderColorAdjuster):
 
 class CIECAMHueSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue")
-    samples = 8
+    samples = 4
     SCROLL_DELTA = 0.1  #: Delta for a scroll event
-    IS_DRAG_SOURCE = True  #: Set to True to make press+move do a select+drag
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -365,9 +364,7 @@ class CIECAMHueSlider (SliderColorAdjuster):
 class CIECAMChromaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
                              "CIECAM Colorfulness/Chroma/Saturation")
-    samples = 2
     SCROLL_DELTA = 0.1  #: Delta for a scroll event
-    IS_DRAG_SOURCE = True  #: Set to True to make press+move do a select+drag
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -413,7 +410,6 @@ class CIECAMLumaSlider (SliderColorAdjuster):
                              "CIECAM Lightness/Brightness")
     samples = 2
     SCROLL_DELTA = 0.1  #: Delta for a scroll event
-    IS_DRAG_SOURCE = True  #: Set to True to make press+move do a select+drag
 
     @property
     def samples(self):
@@ -458,7 +454,7 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
-        return col.v / 124
+        return col.v / 100
 
     def get_background_validity(self):
         col = CIECAMColor(color=self.get_managed_color())
