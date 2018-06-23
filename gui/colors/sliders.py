@@ -90,7 +90,7 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
                 CIECAMChromaSlider,
                 0,
             ), (
-                C_("color sliders panel: hue/chroma/luma: slider label", "L/Q"),
+                C_("color sliders panel: hue/chroma/luma: slider label", "J/Q"),
                 CIECAMLumaSlider,
                 0,
             ),
