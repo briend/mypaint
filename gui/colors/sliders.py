@@ -68,6 +68,18 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
                 C_("color sliders panel: hue/chroma/luma: slider label", "Y"),
                 HCYLumaSlider,
                 0,
+            ), (
+                C_("color sliders panel: hue/chroma/luma: slider label", "h"),
+                CIECAMHueSlider,
+                12,
+            ), (
+                C_("color sliders panel: hue/chroma/luma: slider label", "C/M/s"),
+                CIECAMChromaSlider,
+                0,
+            ), (
+                C_("color sliders panel: hue/chroma/luma: slider label", "L/Q"),
+                CIECAMLumaSlider,
+                0,
             ),
         ]
         row = 0
@@ -287,7 +299,7 @@ class HCYLumaSlider (SliderColorAdjuster):
     @property
     def samples(self):
         alloc = self.get_allocation()
-        len = self.vertical and alloc.height or alloc.width
+        len = self.vertical and alloc.heigcolorpiht or alloc.width
         len -= self.BORDER_WIDTH * 2
         return min(int(len // 3), 64)
 
@@ -327,7 +339,8 @@ class CIECAMHueSlider (SliderColorAdjuster):
         col = CIECAMColor(
             color=self.get_managed_color(),
             cieaxes=cieaxes,
-            lightsource=lightsource
+            lightsource=lightsource,
+            gamutmapping="highlight"
         )
         col.h = amt * 360
         return col
@@ -372,7 +385,8 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         col = CIECAMColor(
             color=self.get_managed_color(),
             cieaxes=cieaxes,
-            lightsource=lightsource
+            lightsource=lightsource,
+            gamutmapping="highlight"
         )
         col.s = amt * 112
         return col
@@ -424,9 +438,10 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         col = CIECAMColor(
             color=self.get_managed_color(),
             cieaxes=cieaxes,
-            lightsource=lightsource
+            lightsource=lightsource,
+            gamutmapping="highlight"
         )
-        col.v = amt * 124
+        col.v = amt * 100
         return col
 
     def get_bar_amount_for_color(self, col):
