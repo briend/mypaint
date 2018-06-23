@@ -553,7 +553,7 @@ class CIECAMColor (UIColor):
     h = None
 
     def __init__(self, v=None, s=None, h=None, vsh=None, color=None,
-                 cieaxes=None, lightsource=None):
+                 cieaxes=None, lightsource=None, gamutmapping="relativeColorimetric"):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
@@ -566,6 +566,12 @@ class CIECAMColor (UIColor):
         UIColor.__init__(self)
 
         self.cieconfig = None
+        
+        #gamut mapping strategy
+        #relativeColorimetric, highlight, or False
+        #highlight will flag out of gamut colors as magenta similar to GIMP
+        #False will simply clip the RGB values
+        self.gamutmapping = gamutmapping
 
         # The entire ciecam config needs to follow around the color
         if cieaxes is not None:
@@ -1191,85 +1197,90 @@ def CIECAM_to_RGB(self):
     #print(cam, xyz, result, self.lightsource)
     sys.stdout.flush()
     x = np.clip(result, -0.001, 1.001)
-    if (result == x).all():
+    if (result == x).all() or self.gamutmapping is False:
         r, g, b = x
         return r, g, b
-
-    def loss(sat_):
-        # set up loss function to penalize both out of gamut
-        # RGB as well as CIE values far off target
-        vsh_ = (v, sat_, h)
-        zipped= zip(axes, vsh_)
-        cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
-        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
-
-        hdiff = getattr(cieresult, axes[2]) - h
-        hdiff = abs((hdiff + 180) % 360 - 180)
-        #lossunweighted = np.array([(v - getattr(cieresult, axes[0]))**2,
-                                   #(s - getattr(cieresult, axes[1]))**2, hdiff**2])
-        #losscie = np.array([(v - vsh_[0])**2,
-        #                           (s - vsh_[1]))**2, hdiff**2])
-        rgbloss = (np.sum(result[np.where(result - 1 >= 1)]-1)
-                   + np.sum(abs((result[np.where(result < 0.0)]))))
-        satloss = abs(s - getattr(cieresult, axes[1]))/s *.5
-        vloss = abs(v - getattr(cieresult, axes[0]))/v *s *10
-        #loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
-        loss = rgbloss + hdiff + satloss + vloss
-        #print("loss- rgb, hdiff, satloss, vloss, total", rgbloss, hdiff, satloss, vloss, loss)
-        if math.isnan(loss) or np.isnan(result).any():
-            loss = float('Inf')
-        return loss
-    guess = np.array([v, s, h])
-
-    bounds = ((v, v), (0.0, s), (h, h))
-    opt = {'maxiter': 100,}
-
-    try:
-        x_opt = spo.minimize_scalar(loss,
-                           #guess,
-                           tol=0.001,
-                                          # bounds,
-                                         #maxiter=50,
-                                         #  polish=True
-                             method='Brent',
-                             bounds=(0.0, s),
-                            options=opt
-                             )
-    except IndexError:
-        print("gamut exception")
-        #r, g, b = x
-        return 0.0, 0.0, 0.0
-
-    # clip final result
-    if (x_opt["success"]):
-        result = x_opt["x"]
-        #print("final cam is", result)
-        result = (v, result, h)
-        #print("final cam is", result)
-        sys.stdout.flush()
-        zipped = zip(axes, result)
-        cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-        final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
-        r, g, b = np.clip(final, 0.0, 1.0)
-
-        if np.sum(final) >= 3.3:
-            self.displayexceeded = True
-
-        if result[1] < self.s:
-            self.gamutexceeded = True
-        #print("final rgb is", r, g, b)
-        # reset color to the new mapped color
-        # This helps avoid impossible gamut situations
-        if self.reset_intent:
-            self.v = v
-            self.s = result[1]
-            self.h = h
+    
+    if self.gamutmapping == "highlight":
+        r, g, b = 1.0, 0.0, 1.0
         return r, g, b
-    else:
-        print("failing back to black")
-#        r, g, b = np.clip(result, 0.0, 1.0)
-        return 0.0, 0.0, 0.0
+    if self.gamutmapping == "relativeColorimetric":
+
+        def loss(sat_):
+            # set up loss function to penalize both out of gamut
+            # RGB as well as CIE values far off target
+            vsh_ = (v, sat_, h)
+            zipped= zip(axes, vsh_)
+            cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+            result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
+            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
+
+            hdiff = getattr(cieresult, axes[2]) - h
+            hdiff = abs((hdiff + 180) % 360 - 180)
+            #lossunweighted = np.array([(v - getattr(cieresult, axes[0]))**2,
+                                       #(s - getattr(cieresult, axes[1]))**2, hdiff**2])
+            #losscie = np.array([(v - vsh_[0])**2,
+            #                           (s - vsh_[1]))**2, hdiff**2])
+            rgbloss = (np.sum(result[np.where(result - 1 >= 1)]-1)
+                       + np.sum(abs((result[np.where(result < 0.0)]))))
+            satloss = abs(s - getattr(cieresult, axes[1]))/s *.5
+            vloss = abs(v - getattr(cieresult, axes[0]))/v *s *10
+            #loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
+            loss = rgbloss + hdiff + satloss + vloss
+            #print("loss- rgb, hdiff, satloss, vloss, total", rgbloss, hdiff, satloss, vloss, loss)
+            if math.isnan(loss) or np.isnan(result).any():
+                loss = float('Inf')
+            return loss
+        guess = np.array([v, s, h])
+
+        bounds = ((v, v), (0.0, s), (h, h))
+        opt = {'maxiter': 100,}
+
+        try:
+            x_opt = spo.minimize_scalar(loss,
+                               #guess,
+                               tol=0.001,
+                                              # bounds,
+                                             #maxiter=50,
+                                             #  polish=True
+                                 method='Brent',
+                                 bounds=(0.0, s),
+                                options=opt
+                                 )
+        except IndexError:
+            print("gamut exception")
+            #r, g, b = x
+            return 0.0, 0.0, 0.0
+
+        # clip final result
+        if (x_opt["success"]):
+            result = x_opt["x"]
+            #print("final cam is", result)
+            result = (v, result, h)
+            #print("final cam is", result)
+            sys.stdout.flush()
+            zipped = zip(axes, result)
+            cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+            final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
+            r, g, b = np.clip(final, 0.0, 1.0)
+
+            if np.sum(final) >= 3.3:
+                self.displayexceeded = True
+
+            if result[1] < self.s:
+                self.gamutexceeded = True
+            #print("final rgb is", r, g, b)
+            # reset color to the new mapped color
+            # This helps avoid impossible gamut situations
+            if self.reset_intent:
+                self.v = v
+                self.s = result[1]
+                self.h = h
+            return r, g, b
+        else:
+            print("failing back to black")
+    #        r, g, b = np.clip(result, 0.0, 1.0)
+            return 0.0, 0.0, 0.0
 
 ## Module testing
 
