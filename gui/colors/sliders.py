@@ -14,6 +14,7 @@ from __future__ import division, print_function
 
 from gi.repository import Gtk
 import colour
+import numpy as np
 
 from lib.color import RGBColor
 from lib.color import HSVColor
@@ -45,30 +46,42 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
         grid.set_vexpand(False)
         row_defs = [
             (
-                C_("color sliders panel: red/green/blue: slider label", "R"),
-                RGBRedSlider,
-                0,
-            ), (
-                C_("color sliders panel: red/green/blue: slider label", "G"),
-                RGBGreenSlider,
-                0,
-            ), (
-                C_("color sliders panel: red/green/blue: slider label", "B"),
-                RGBBlueSlider,
-                0,
-            ), (
-                C_("color sliders panel: hue/chroma/luma: slider label", "H"),
-                HCYHueSlider,
-                12,
-            ), (
-                C_("color sliders panel: hue/chroma/luma: slider label", "C"),
-                HCYChromaSlider,
-                0,
-            ), (
-                C_("color sliders panel: hue/chroma/luma: slider label", "Y"),
-                HCYLumaSlider,
-                0,
-            ), (
+#                C_("color sliders panel: red/green/blue: slider label", "R"),
+#                RGBRedSlider,
+#                0,
+#            ), (
+#                C_("color sliders panel: red/green/blue: slider label", "G"),
+#                RGBGreenSlider,
+#                0,
+#            ), (
+#                C_("color sliders panel: red/green/blue: slider label", "B"),
+#                RGBBlueSlider,
+#                0,
+#            ), (
+#                C_("color sliders panel: hue/saturation/value: slider label", "H"),
+#                HSVHueSlider,
+#                12,
+#            ), (
+#                C_("color sliders panel: hue/saturation/value: slider label", "S"),
+#                HSVSaturationSlider,
+#                0,
+#            ), (
+#                C_("color sliders panel: hue/saturation/value: slider label", "V"),
+#                HSVValueSlider,
+#                0,
+#            ), (
+#                C_("color sliders panel: hue/chroma/luma: slider label", "H"),
+#                HCYHueSlider,
+#                12,
+#            ), (
+#                C_("color sliders panel: hue/chroma/luma: slider label", "C"),
+#                HCYChromaSlider,
+#                0,
+#            ), (
+#                C_("color sliders panel: hue/chroma/luma: slider label", "Y'"),
+#                HCYLumaSlider,
+#                0,
+#            ), (
                 C_("color sliders panel: hue/chroma/luma: slider label", "h"),
                 CIECAMHueSlider,
                 12,
@@ -319,8 +332,7 @@ class HCYLumaSlider (SliderColorAdjuster):
 
 class CIECAMHueSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue")
-    samples = 4
-    SCROLL_DELTA = 0.1  #: Delta for a scroll event
+    samples = 8
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -364,7 +376,7 @@ class CIECAMHueSlider (SliderColorAdjuster):
 class CIECAMChromaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
                              "CIECAM Colorfulness/Chroma/Saturation")
-    SCROLL_DELTA = 0.1  #: Delta for a scroll event
+    samples = 2
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -385,7 +397,7 @@ class CIECAMChromaSlider (SliderColorAdjuster):
             lightsource=lightsource,
             gamutmapping="highlight"
         )
-        col.s = amt * 112
+        col.s = amt * 120
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -402,14 +414,13 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
-        return col.s / 112
+        return col.s / 120
 
 
 class CIECAMLumaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
                              "CIECAM Lightness/Brightness")
     samples = 2
-    SCROLL_DELTA = 0.1  #: Delta for a scroll event
 
     @property
     def samples(self):
@@ -458,6 +469,9 @@ class CIECAMLumaSlider (SliderColorAdjuster):
 
     def get_background_validity(self):
         col = CIECAMColor(color=self.get_managed_color())
+        if np.isnan(np.array([col.h, col.s])).any():
+            return 0
+
         return int(col.h * 1000), int(col.s * 1000)
 
 
