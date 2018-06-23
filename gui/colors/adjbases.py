@@ -994,10 +994,7 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         for s in xrange(samples + 1):
             p = s / samples
             col = self.get_color_for_bar_amount(p)
-            if isinstance(col, CIECAMColor):
-                r, g, b = col.get_rgb()
-            else:
-                r, g, b = col.get_rgb()
+            r, g, b = col.get_rgb()
             if self.vertical:
                 p = 1 - p
             bar_gradient.add_color_stop_rgb(p, r, g, b)

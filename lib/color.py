@@ -566,7 +566,7 @@ class CIECAMColor (UIColor):
         UIColor.__init__(self)
 
         self.cieconfig = None
-        
+        print("creating new ciecam color object")
         #gamut mapping strategy
         #relativeColorimetric, highlight, or False
         #highlight will flag out of gamut colors as magenta similar to GIMP
@@ -592,6 +592,8 @@ class CIECAMColor (UIColor):
         # maybe we want to know if the gamut was constrained
         self.gamutexceeded = None
         self.displayexceeded = None
+        
+        self.cachedrgb = None
 
         # limit color purity?
         self.limit_purity = None
@@ -631,6 +633,8 @@ class CIECAMColor (UIColor):
         return h, s, v
 
     def get_rgb(self):
+        if self.cachedrgb:
+            return self.cachedrgb
         return CIECAM_to_RGB(self)
 
     def __repr__(self):
@@ -1183,7 +1187,10 @@ def CIECAM_to_RGB(self):
     v, s, h = max(0.00001, self.v), max(0.0001, self.s), self.h
     
     if maxcolorfulness:
-       s = min(s, maxcolorfulness)
+        if self.gamutmapping == "highlight" and self.s > maxcolorfulness:
+            r, g, b = 1.0, 0.0, 1.0
+            return r, g, b
+        s = min(s, maxcolorfulness)
 
     zipped = zip(axes, (v, s, h))
     
@@ -1194,13 +1201,15 @@ def CIECAM_to_RGB(self):
     xyz = colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(xyz/100.0)
-    #print(cam, xyz, result, self.lightsource)
+    print(cam, xyz, result, self.lightsource)
     sys.stdout.flush()
     x = np.clip(result, -0.001, 1.001)
     if (result == x).all() or self.gamutmapping is False:
         r, g, b = x
+        self.cachedrgb = (r, g, b)
         return r, g, b
-    
+
+    #return special rgb value to indicate out of gamut to sliders and guis
     if self.gamutmapping == "highlight":
         r, g, b = 1.0, 0.0, 1.0
         return r, g, b
@@ -1267,7 +1276,7 @@ def CIECAM_to_RGB(self):
             if np.sum(final) >= 3.3:
                 self.displayexceeded = True
 
-            if result[1] < self.s:
+            if result[1] < s:
                 self.gamutexceeded = True
             #print("final rgb is", r, g, b)
             # reset color to the new mapped color
@@ -1276,6 +1285,7 @@ def CIECAM_to_RGB(self):
                 self.v = v
                 self.s = result[1]
                 self.h = h
+            self.cachedrgb = (r, g, b)
             return r, g, b
         else:
             print("failing back to black")
