@@ -24,11 +24,13 @@ with an adjuster does its type change to match the control's color space.
 from __future__ import division, print_function
 import re
 import colorsys
-import colorspacious
 import numpy as np
 import math
 import scipy.optimize as spo
 from scipy.cluster.vq import kmeans2
+import colour
+from collections import namedtuple
+import sys
 
 from gi.repository import GdkPixbuf
 from lib import helpers
@@ -540,8 +542,8 @@ class CIECAMColor (UIColor):
       >>> col.s = 58.26474923
       >>> col.v = 95.67306142
       >>> result = col.get_rgb()
-      >>> print (round(result[0],4), round(result[1],4), round(result[2],4))
-      1.0 1.0 0.0001
+      >>> print (round(result[0],3), round(result[1],3), round(result[2],3))
+      1.0 1.0 0.0
 
     """
 
@@ -551,7 +553,7 @@ class CIECAMColor (UIColor):
     h = None
 
     def __init__(self, v=None, s=None, h=None, vsh=None, color=None,
-                 cieaxes=None, lightsource=None):
+                 cieaxes=None, lightsource=None, gamutmapping="relativeColorimetric"):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
@@ -564,6 +566,12 @@ class CIECAMColor (UIColor):
         UIColor.__init__(self)
 
         self.cieconfig = None
+        print("creating new ciecam color object")
+        #gamut mapping strategy
+        #relativeColorimetric, highlight, or False
+        #highlight will flag out of gamut colors as magenta similar to GIMP
+        #False will simply clip the RGB values
+        self.gamutmapping = gamutmapping
 
         # The entire ciecam config needs to follow around the color
         if cieaxes is not None:
@@ -572,48 +580,24 @@ class CIECAMColor (UIColor):
             self.cieaxes = "JMh"
 
         if lightsource is not None:
-            self.lightsource = lightsource
+            self.lightsource = np.array(lightsource)
 
-            try:
-                ciespace = colorspacious.CIECAM02Space(
-                    self.lightsource,
-                    20.0, 4.074366543152521,
-                    surround=colorspacious.CIECAM02Surround.AVERAGE
-                )
-            except ValueError:
-                self.lightsource = colorspacious.standard_illuminant_XYZ100(
-                    "D65"
-                )
-                ciespace = colorspacious.CIECAM02Space(
-                    self.lightsource,
-                    20.0, 4.074366543152521,
-                    surround=colorspacious.CIECAM02Surround.AVERAGE
-                )
-            self.cieconfig = {
-                "name": "CIECAM02-subset",
-                "axes": self.cieaxes,
-                "ciecam02_space": ciespace
-            }
         else:
-            self.lightsource = colorspacious.standard_illuminant_XYZ100("D65")
-            ciespace = colorspacious.CIECAM02Space(
-                self.lightsource,
-                20.0, 4.074366543152521,
-                surround=colorspacious.CIECAM02Surround.AVERAGE
-            )
-            self.cieconfig = {
-                "name": "CIECAM02-subset",
-                "axes": self.cieaxes,
-                "ciecam02_space": ciespace
-            }
+            self.lightsource = np.array(colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0)
+            
+        self.L_A = 20.0
+        self.Y_b = 4.5
+        self.surround=colour.CAM16_VIEWING_CONDITIONS['Dim']
 
         # maybe we want to know if the gamut was constrained
         self.gamutexceeded = None
         self.displayexceeded = None
+        
+        self.cachedrgb = None
 
         # limit color purity?
         self.limit_purity = None
-        self.reset_intent = True
+        self.reset_intent = False
         # try getting from preferences but fallback to avoid breaking doctest
         try:
             from gui.application import get_app
@@ -624,7 +608,7 @@ class CIECAMColor (UIColor):
             self.reset_intent = p['color.reset_intent_after_gamut_map']
         except AttributeError:
             self.limit_purity = None
-            self.reset_intent = True
+            self.reset_intent = False
 
         if color is not None:
             if isinstance(color, CIECAMColor):
@@ -649,6 +633,8 @@ class CIECAMColor (UIColor):
         return h, s, v
 
     def get_rgb(self):
+        if self.cachedrgb:
+            return self.cachedrgb
         return CIECAM_to_RGB(self)
 
     def __repr__(self):
@@ -1150,106 +1136,161 @@ def HCY_to_RGB(hcy):
 
 
 def RGB_to_CIECAM(self, rgb):
-    r, g, b = rgb
     maxcolorfulness = self.limit_purity
 
-    ciecam_vsh = colorspacious.cspace_convert([r, g, b],
-                                              "sRGB1", self.cieconfig)
+    xyz = colour.sRGB_to_XYZ(rgb)
+
+
+    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
+    axes = list(self.cieaxes)
+    ciecam_vsh = np.array([getattr(cam16, axes[0]), getattr(cam16, axes[1]), getattr(cam16, axes[2])])
 
     if maxcolorfulness:
         ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
 
+    sys.stdout.flush()
     return ciecam_vsh
 
 
 def CIECAM_to_CIECAM(self, ciecam):
     maxcolorfulness = self.limit_purity
-    ciecam_vsh = colorspacious.cspace_convert(
-        [ciecam.v, ciecam.s, ciecam.h],
-        ciecam.cieconfig,
-        self.cieconfig
-    )
+    axes = list(ciecam.cieaxes)
+    v, s, h = ciecam.v, ciecam.s, ciecam.h
+    zipped = zip(axes, (v, s, h))
 
+
+    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+    
+    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, self.L_A, self.Y_b, self.surround)
+    
+    axes = list(self.cieaxes)
+    v, s, h = self.v, self.s, self.h
+    
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround)
+
+    
+    v = getattr(ciecam_vsh, axes[0])
+    s = getattr(ciecam_vsh, axes[1])
+    h = getattr(ciecam_vsh, axes[2])
+    
     if maxcolorfulness:
-        ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
-    return ciecam_vsh
+        s = min(getattr(ciecam_vsh, axes[1]), maxcolorfulness)
+
+    return np.array([v, s, h])
 
 
-def CIECAM_to_RGB(self, gamutweights=(1, 1, 100)):
+def CIECAM_to_RGB(self):
+
+    # optional limiter 
     maxcolorfulness = self.limit_purity
-    converter = colorspacious.cspace_converter(self.cieconfig, "sRGB1")
-    convertback = colorspacious.cspace_converter("sRGB1", self.cieconfig)
-    # calculate minimum valid ciecam values
-    mincie = colorspacious.cspace_convert([0, 0, 0], "sRGB1", self.cieconfig)
-    maxcie = colorspacious.cspace_convert([1, 1, 1], "sRGB1", self.cieconfig)
-    v, s, h = max(self.v, mincie[0]), max(self.s, mincie[1]), self.h
-    self.gamutexceeded = False
-    self.displayexceeded = False
-
+    axes = list(self.cieaxes)
+    v, s, h = max(0.00001, self.v), max(0.0001, self.s), self.h
+    
     if maxcolorfulness:
+        if self.gamutmapping == "highlight" and self.s > maxcolorfulness:
+            r, g, b = 1.0, 0.0, 1.0
+            return r, g, b
         s = min(s, maxcolorfulness)
 
+    zipped = zip(axes, (v, s, h))
+    
+    self.gamutexceeded = False
+    self.displayexceeded = False
+    
+    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+    xyz = colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)
     # convert CIECAM to sRGB, but it may be out of gamut
-    result = converter([v, s, h])
-    x = np.clip(result, 0.0, 1.0)
-    if (result == x).all():
+    result = colour.XYZ_to_sRGB(xyz/100.0)
+    print(cam, xyz, result, self.lightsource)
+    sys.stdout.flush()
+    x = np.clip(result, -0.001, 1.001)
+    if (result == x).all() or self.gamutmapping is False:
         r, g, b = x
+        self.cachedrgb = (r, g, b)
         return r, g, b
 
-    def loss(vsh_):
-        # set up loss function to penalize both out of gamut
-        # RGB as well as CIE values far off target
-        result = converter([vsh_[0], vsh_[1], vsh_[2]])
-        cieresult = convertback(np.clip(result, 0, 1))
-
-        hdiff = cieresult[2] - h
-        hdiff = (hdiff + 180) % 360 - 180
-        lossunweighted = np.array([(v - cieresult[0])**2,
-                                   (s - cieresult[1])**2, hdiff**2])
-        rgbloss = (np.sum(result[np.where(result - 1 >= 1)])
-                   + np.sum(abs((result[np.where(result < 0.0)]))))
-        loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
-        if math.isnan(loss) or np.isnan(result).any():
-            loss = float('Inf')
-        return loss
-    guess = np.array([v * 1.1, s * .9, h])
-
-    bounds = ((v, v), (0.0, s), (h, h))
-    opt = {'disp': False, 'maxiter': 100, 'ftol': 0.1, 'eps': 0.1}
-
-    try:
-        x_opt = spo.minimize(loss,
-                             guess,
-                             method='SLSQP',
-                             bounds=bounds,
-                             options=opt
-                             )
-    except IndexError:
-        print("gamut exception")
-        r, g, b = x
+    #return special rgb value to indicate out of gamut to sliders and guis
+    if self.gamutmapping == "highlight":
+        r, g, b = 1.0, 0.0, 1.0
         return r, g, b
+    if self.gamutmapping == "relativeColorimetric":
 
-    # clip final result
-    if (x_opt["success"]):
-        result = x_opt["x"]
-        final = converter(result)
-        r, g, b = np.clip(final, 0, 1)
+        def loss(sat_):
+            # set up loss function to penalize both out of gamut
+            # RGB as well as CIE values far off target
+            vsh_ = (v, sat_, h)
+            zipped= zip(axes, vsh_)
+            cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+            result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
+            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
 
-        if np.sum(final) >= 3.3:
-            self.displayexceeded = True
+            hdiff = getattr(cieresult, axes[2]) - h
+            hdiff = abs((hdiff + 180) % 360 - 180)
+            #lossunweighted = np.array([(v - getattr(cieresult, axes[0]))**2,
+                                       #(s - getattr(cieresult, axes[1]))**2, hdiff**2])
+            #losscie = np.array([(v - vsh_[0])**2,
+            #                           (s - vsh_[1]))**2, hdiff**2])
+            rgbloss = (np.sum(result[np.where(result - 1 >= 1)]-1)
+                       + np.sum(abs((result[np.where(result < 0.0)]))))
+            satloss = abs(s - getattr(cieresult, axes[1]))/s *.5
+            vloss = abs(v - getattr(cieresult, axes[0]))/v *s *10
+            #loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
+            loss = rgbloss + hdiff + satloss + vloss
+            #print("loss- rgb, hdiff, satloss, vloss, total", rgbloss, hdiff, satloss, vloss, loss)
+            if math.isnan(loss) or np.isnan(result).any():
+                loss = float('Inf')
+            return loss
+        guess = np.array([v, s, h])
 
-        if result[1] < self.s:
-            self.gamutexceeded = True
+        bounds = ((v, v), (0.0, s), (h, h))
+        opt = {'maxiter': 100,}
 
-        # reset color to the new mapped color
-        # This helps avoid impossible gamut situations
-        if self.reset_intent:
-            self.v, self.s, self.h = result
-        return r, g, b
-    else:
-        print("failing back to clipping result")
-        r, g, b = x
-        return r, g, b
+        try:
+            x_opt = spo.minimize_scalar(loss,
+                               #guess,
+                               tol=0.001,
+                                              # bounds,
+                                             #maxiter=50,
+                                             #  polish=True
+                                 method='Brent',
+                                 bounds=(0.0, s),
+                                options=opt
+                                 )
+        except IndexError:
+            print("gamut exception")
+            #r, g, b = x
+            return 0.0, 0.0, 0.0
+
+        # clip final result
+        if (x_opt["success"]):
+            result = x_opt["x"]
+            #print("final cam is", result)
+            result = (v, result, h)
+            #print("final cam is", result)
+            sys.stdout.flush()
+            zipped = zip(axes, result)
+            cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+            final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
+            r, g, b = np.clip(final, 0.0, 1.0)
+
+            if np.sum(final) >= 3.3:
+                self.displayexceeded = True
+
+            if result[1] < s:
+                self.gamutexceeded = True
+            #print("final rgb is", r, g, b)
+            # reset color to the new mapped color
+            # This helps avoid impossible gamut situations
+            if self.reset_intent:
+                self.v = v
+                self.s = result[1]
+                self.h = h
+            self.cachedrgb = (r, g, b)
+            return r, g, b
+        else:
+            print("failing back to black")
+    #        r, g, b = np.clip(result, 0.0, 1.0)
+            return 0.0, 0.0, 0.0
 
 ## Module testing
 

@@ -28,7 +28,7 @@ from gi.repository import Gtk
 from gi.repository import GLib
 import cairo
 from lib.gettext import C_
-import colorspacious
+import colour
 
 from .util import clamp
 from lib.palette import Palette
@@ -888,7 +888,7 @@ class _PaletteGridLayout (ColorAdjusterWidget):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"

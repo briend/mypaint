@@ -11,10 +11,11 @@
 from __future__ import division, print_function
 
 import time
-import colorspacious
 
 from gettext import gettext as _
 import colorsys
+import colour
+import numpy as np
 
 import gui.mode
 from .overlays import Overlay
@@ -158,7 +159,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colorspacious.standard_illuminant_XYZ100(lightsource)
+            lightsource = colour.ILLUMINANTS['cie_2_1931'][lightsource]
 
         doc.last_colorpick_time = t
         pickcolor = tdw.pick_color(x, y, size=int(3/tdw.renderer.scale))
@@ -182,15 +183,11 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 cm.set_color(pickcolor)
             elif mode == "PickIlluminant":
                     p = self.app.preferences
-                    ill = (colorspacious.cspace_convert(
-                        pickcolor_rgb,
-                        "sRGB1",
-                        "XYZ100"
-                    )
-                    )
+                    ill = colour.sRGB_to_XYZ(np.array(pickcolor_rgb))*100
                     if ill[1] <= 0:
                         return
-                    fac = 100/ill[1]
+                    fac = 1/ill[1]*100
+                    #fac = 1
                     p['color.dimension_lightsource'] = "custom_XYZ"
                     p['color.dimension_lightsource_XYZ'] = (
                         ill[0]*fac,
@@ -456,12 +453,7 @@ class ColorPickPreviewOverlay (Overlay):
             if self._pickmode == "PickIlluminant":
                     p = self.app.preferences
                     xyz = p['color.dimension_lightsource_XYZ']
-                    ill = (colorspacious.cspace_convert(
-                        xyz,
-                        "XYZ100",
-                        "sRGB1"
-                    )
-                    )
+                    ill = colour.XYZ_to_sRGB(np.array(xyz)/100.0)
                     cr.set_source_rgb(*ill)
             else:
                 cr.set_source_rgb(*self._color.get_rgb())
