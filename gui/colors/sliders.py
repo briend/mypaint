@@ -46,42 +46,42 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
         grid.set_vexpand(False)
         row_defs = [
             (
-#                C_("color sliders panel: red/green/blue: slider label", "R"),
-#                RGBRedSlider,
-#                0,
-#            ), (
-#                C_("color sliders panel: red/green/blue: slider label", "G"),
-#                RGBGreenSlider,
-#                0,
-#            ), (
-#                C_("color sliders panel: red/green/blue: slider label", "B"),
-#                RGBBlueSlider,
-#                0,
-#            ), (
-#                C_("color sliders panel: hue/saturation/value: slider label", "H"),
-#                HSVHueSlider,
-#                12,
-#            ), (
-#                C_("color sliders panel: hue/saturation/value: slider label", "S"),
-#                HSVSaturationSlider,
-#                0,
-#            ), (
-#                C_("color sliders panel: hue/saturation/value: slider label", "V"),
-#                HSVValueSlider,
-#                0,
-#            ), (
-#                C_("color sliders panel: hue/chroma/luma: slider label", "H"),
-#                HCYHueSlider,
-#                12,
-#            ), (
-#                C_("color sliders panel: hue/chroma/luma: slider label", "C"),
-#                HCYChromaSlider,
-#                0,
-#            ), (
-#                C_("color sliders panel: hue/chroma/luma: slider label", "Y'"),
-#                HCYLumaSlider,
-#                0,
-#            ), (
+                C_("color sliders panel: red/green/blue: slider label", "R"),
+                RGBRedSlider,
+                0,
+            ), (
+                C_("color sliders panel: red/green/blue: slider label", "G"),
+                RGBGreenSlider,
+                0,
+            ), (
+                C_("color sliders panel: red/green/blue: slider label", "B"),
+                RGBBlueSlider,
+                0,
+            ), (
+                C_("color sliders panel: hue/saturation/value: slider label", "H"),
+                HSVHueSlider,
+                12,
+            ), (
+                C_("color sliders panel: hue/saturation/value: slider label", "S"),
+                HSVSaturationSlider,
+                0,
+            ), (
+                C_("color sliders panel: hue/saturation/value: slider label", "V"),
+                HSVValueSlider,
+                0,
+            ), (
+                C_("color sliders panel: hue/chroma/luma: slider label", "H"),
+                HCYHueSlider,
+                12,
+            ), (
+                C_("color sliders panel: hue/chroma/luma: slider label", "C"),
+                HCYChromaSlider,
+                0,
+            ), (
+                C_("color sliders panel: hue/chroma/luma: slider label", "Y'"),
+                HCYLumaSlider,
+                0,
+            ), (
                 C_("color sliders panel: hue/chroma/luma: slider label", "h"),
                 CIECAMHueSlider,
                 12,
