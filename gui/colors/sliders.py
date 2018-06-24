@@ -353,7 +353,7 @@ class CIECAMHueSlider (SliderColorAdjuster):
             lightsource=lightsource,
             gamutmapping="highlight"
         )
-        col.h = amt * 360
+        col.h = max(0.0, amt) * 360
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -370,7 +370,7 @@ class CIECAMHueSlider (SliderColorAdjuster):
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
-        return col.h / 360
+        return max(0.0, col.h) / 360
 
 
 class CIECAMChromaSlider (SliderColorAdjuster):
@@ -397,7 +397,7 @@ class CIECAMChromaSlider (SliderColorAdjuster):
             lightsource=lightsource,
             gamutmapping="highlight"
         )
-        col.s = amt * 120
+        col.s = max(0.0, amt) * 120
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -414,7 +414,7 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
-        return col.s / 120
+        return max(0.0, col.s) / 120
 
 
 class CIECAMLumaSlider (SliderColorAdjuster):
@@ -448,7 +448,7 @@ class CIECAMLumaSlider (SliderColorAdjuster):
             lightsource=lightsource,
             gamutmapping="highlight"
         )
-        col.v = amt * 100
+        col.v = max(0.0, amt) * 100
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -465,7 +465,7 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
-        return col.v / 100
+        return max(0.0, col.v) / 100
 
     def get_background_validity(self):
         col = CIECAMColor(color=self.get_managed_color())
