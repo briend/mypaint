@@ -246,6 +246,7 @@ class HSVHueSlider (SliderColorAdjuster):
         return col
 
     def get_bar_amount_for_color(self, col):
+        col = HSVColor(color=col)
         return col.h
 
 
@@ -261,6 +262,7 @@ class HSVSaturationSlider (SliderColorAdjuster):
         return col
 
     def get_bar_amount_for_color(self, col):
+        col = HSVColor(color=col)
         return col.s
 
 
@@ -273,6 +275,7 @@ class HSVValueSlider (SliderColorAdjuster):
         return col
 
     def get_bar_amount_for_color(self, col):
+        col = HSVColor(color=col)
         return col.v
 
 
@@ -420,7 +423,6 @@ class CIECAMChromaSlider (SliderColorAdjuster):
 class CIECAMLumaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
                              "CIECAM Lightness/Brightness")
-    samples = 2
 
     @property
     def samples(self):
