@@ -621,6 +621,15 @@ class DrawCursorMixin(object):
         base_radius = exp(b.get_base_value('radius_logarithmic'))
         r = base_radius
         r += 2 * base_radius * b.get_base_value('offset_by_random')
+
+        # consider custom offsets for radius
+        r += base_radius * exp(b.get_base_value('offset_multiplier')) * (
+                b.get_base_value('offset_angle') + b.get_base_value('offset_angle_2') +
+                b.get_base_value('offset_angle_asc') + b.get_base_value('offset_angle_2_asc') +
+                b.get_base_value('offset_angle_view') + b.get_base_value('offset_angle_2_view')
+        )
+        # TODO: consider dynamic inputs
+
         r *= self.scale
         r += 0.5
         if b.is_eraser():

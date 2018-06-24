@@ -312,7 +312,7 @@ class HCYLumaSlider (SliderColorAdjuster):
     @property
     def samples(self):
         alloc = self.get_allocation()
-        len = self.vertical and alloc.heigcolorpiht or alloc.width
+        len = self.vertical and alloc.height or alloc.width
         len -= self.BORDER_WIDTH * 2
         return min(int(len // 3), 64)
 
