@@ -1142,7 +1142,7 @@ def RGB_to_CIECAM(self, rgb):
     xyz = colour.sRGB_to_XYZ(rgb)
 
 
-    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
+    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=True)
     axes = list(self.cieaxes)
     ciecam_vsh = np.array([getattr(cam16, axes[0]), getattr(cam16, axes[1]), getattr(cam16, axes[2])])
 
@@ -1162,12 +1162,12 @@ def CIECAM_to_CIECAM(self, ciecam):
 
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
     
-    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, self.L_A, self.Y_b, self.surround)
+    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=True)
     
     axes = list(self.cieaxes)
     v, s, h = self.v, self.s, self.h
     
-    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround)
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=True)
 
     
     v = getattr(ciecam_vsh, axes[0])
@@ -1222,8 +1222,8 @@ def CIECAM_to_RGB(self):
             vsh_ = (v, sat_, h)
             zipped= zip(axes, vsh_)
             cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-            result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
-            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround)
+            result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=True)/100.0)
+            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=True)
 
             hdiff = getattr(cieresult, axes[2]) - h
             hdiff = abs((hdiff + 180) % 360 - 180)
@@ -1271,7 +1271,7 @@ def CIECAM_to_RGB(self):
             sys.stdout.flush()
             zipped = zip(axes, result)
             cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-            final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)/100.0)
+            final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=True)/100.0)
             r, g, b = np.clip(final, 0.0, 1.0)
 
             if np.sum(final) >= 3.3:
