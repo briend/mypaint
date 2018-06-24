@@ -337,7 +337,7 @@ class HCYLumaSlider (SliderColorAdjuster):
         return int(col.h * 1000), int(col.c * 1000)
 
 class CIECAMHueNormSlider (SliderColorAdjuster):
-    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue average")
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue @ s=30, v=50, D65")
 
     @property
     def samples(self):
@@ -350,12 +350,8 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         # pull in CIECAM config
         cm = self.get_color_manager()
         prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
 
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+        lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
@@ -365,6 +361,7 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
             lightsource=lightsource,
             gamutmapping="highlight"
         )
+        col.limit_purity = None
         col.h = max(0.0, amt) * 360
         col.v = 50
         col.s = 30
