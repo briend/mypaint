@@ -82,15 +82,19 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
                 HCYLumaSlider,
                 0,
             ), (
-                C_("color sliders panel: hue/chroma/luma: slider label", "h"),
-                CIECAMHueSlider,
+                C_("color sliders panel: hue/chroma/luma: slider label", "cHue"),
+                CIECAMHueNormSlider,
                 12,
             ), (
-                C_("color sliders panel: hue/chroma/luma: slider label", "C/M/s"),
+                C_("color sliders panel: hue/chroma/luma: slider label", "cH"),
+                CIECAMHueSlider,
+                0,
+            ), (
+                C_("color sliders panel: hue/chroma/luma: slider label", "cS"),
                 CIECAMChromaSlider,
                 0,
             ), (
-                C_("color sliders panel: hue/chroma/luma: slider label", "J/Q"),
+                C_("color sliders panel: hue/chroma/luma: slider label", "cV"),
                 CIECAMLumaSlider,
                 0,
             ),
@@ -332,10 +336,65 @@ class HCYLumaSlider (SliderColorAdjuster):
         col = HCYColor(color=self.get_managed_color())
         return int(col.h * 1000), int(col.c * 1000)
 
+class CIECAMHueNormSlider (SliderColorAdjuster):
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue average")
+
+    @property
+    def samples(self):
+        alloc = self.get_allocation()
+        len = self.vertical and alloc.height or alloc.width
+        len -= self.BORDER_WIDTH * 2
+        return min(int(len // 3), 64)
+
+    def get_color_for_bar_amount(self, amt):
+        # pull in CIECAM config
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+        col = CIECAMColor(
+            color=self.get_managed_color(),
+            cieaxes=cieaxes,
+            lightsource=lightsource,
+            gamutmapping="highlight"
+        )
+        col.h = max(0.0, amt) * 360
+        col.v = 50
+        col.s = 30
+        return col
+
+    def get_bar_amount_for_color(self, col):
+        # pull in CIECAM config
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+        # standard sRGB view environment except adjustable illuminant
+        cieaxes = prefs['color.dimension_value'] + \
+            prefs['color.dimension_purity'] + "h"
+        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        return max(0.0, col.h) / 360
 
 class CIECAMHueSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue")
-    samples = 8
+
+    @property
+    def samples(self):
+        alloc = self.get_allocation()
+        len = self.vertical and alloc.height or alloc.width
+        len -= self.BORDER_WIDTH * 2
+        return min(int(len // 3), 64)
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -379,7 +438,12 @@ class CIECAMHueSlider (SliderColorAdjuster):
 class CIECAMChromaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
                              "CIECAM Colorfulness/Chroma/Saturation")
-    samples = 2
+    @property
+    def samples(self):
+        alloc = self.get_allocation()
+        len = self.vertical and alloc.height or alloc.width
+        len -= self.BORDER_WIDTH * 2
+        return min(int(len // 3), 64)
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config

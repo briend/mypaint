@@ -31,6 +31,7 @@ from scipy.cluster.vq import kmeans2
 import colour
 from collections import namedtuple
 import sys
+import random
 
 from gi.repository import GdkPixbuf
 from lib import helpers
@@ -1188,8 +1189,8 @@ def CIECAM_to_RGB(self):
     
     if maxcolorfulness:
         if self.gamutmapping == "highlight" and self.s > maxcolorfulness:
-            r, g, b = 1.0, 0.0, 1.0
-            return r, g, b
+            rand = random.uniform(0.25, 0.90)
+            return rand, rand, rand
         s = min(s, maxcolorfulness)
 
     zipped = zip(axes, (v, s, h))
@@ -1211,8 +1212,8 @@ def CIECAM_to_RGB(self):
 
     #return special rgb value to indicate out of gamut to sliders and guis
     if self.gamutmapping == "highlight":
-        r, g, b = 1.0, 0.0, 1.0
-        return r, g, b
+        rand = random.uniform(0.25, 0.90)
+        return rand, rand, rand
     if self.gamutmapping == "relativeColorimetric":
 
         def loss(sat_):
