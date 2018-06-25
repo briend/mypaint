@@ -365,6 +365,8 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
             )
         col.limit_purity = None
         col.cachedrgb = None
+        col.lightsource = lightsource
+        col.cieaxes = cieaxes
         col.h = max(0.0, amt) * 360
         col.v = 50
         col.s = 30
@@ -419,7 +421,8 @@ class CIECAMHueSlider (SliderColorAdjuster):
                 lightsource=lightsource,
                 gamutmapping="highlight"
             )
-
+        col.lightsource = lightsource
+        col.cieaxes = cieaxes
         col.h = max(0.0, amt) * 360
         col.cachedrgb = None
         col.gamutmapping="highlight"
@@ -474,7 +477,8 @@ class CIECAMChromaSlider (SliderColorAdjuster):
                 lightsource=lightsource,
                 gamutmapping="highlight"
             )
-
+        col.lightsource = lightsource
+        col.cieaxes = cieaxes
         col.s = max(0.0, amt) * 120
         col.gamutmapping="highlight"
         col.cachedrgb = None
@@ -530,7 +534,8 @@ class CIECAMLumaSlider (SliderColorAdjuster):
                 lightsource=lightsource,
                 gamutmapping="highlight"
             )
-
+        col.lightsource = lightsource
+        col.cieaxes = cieaxes
         col.v = max(0.0, amt) * 100
         col.cachedrgb = None
         col.gamutmapping="highlight"
