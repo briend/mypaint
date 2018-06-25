@@ -615,15 +615,14 @@ class CIECAMColor (UIColor):
             if isinstance(color, CIECAMColor):
                 # convert from one to another (handle whitepoint changes)
                 v, s, h = CIECAM_to_CIECAM(self, color)
-                self.cachedrgb = color.get_rgb()
+                #self.cachedrgb = color.get_rgb()
             else:
                 # any other UIColor is assumed to be sRGB
                 rgb = color.get_rgb()
                 self.cachedrgb = rgb
                 v, s, h = RGB_to_CIECAM(self, rgb)
                 
-        if self.cachedrgb is None:
-            self.cachedrgb = CIECAM_to_RGB(self)
+
         if vsh is not None:
             v, s, h = vsh
         self.h = h  #: Read/write hue angle, 0-360
@@ -632,6 +631,8 @@ class CIECAMColor (UIColor):
         assert self.h is not None
         assert self.s is not None
         assert self.v is not None
+        if self.cachedrgb is None:
+            self.cachedrgb = CIECAM_to_RGB(self)
         
 
     def get_hsv(self):
@@ -1169,12 +1170,12 @@ def CIECAM_to_CIECAM(self, ciecam):
 
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
     
-    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)
+    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=True)
     
     axes = list(self.cieaxes)
     v, s, h = self.v, self.s, self.h
     
-    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=True)
 
     
     v = getattr(ciecam_vsh, axes[0])

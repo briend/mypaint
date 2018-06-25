@@ -344,7 +344,7 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         alloc = self.get_allocation()
         len = self.vertical and alloc.height or alloc.width
         len -= self.BORDER_WIDTH * 2
-        return min(int(len // 3), 16)
+        return min(int(len // 3), 8)
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -381,7 +381,7 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
@@ -441,8 +441,8 @@ class CIECAMHueSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        if not isinstance(col, CIECAMColor):
-            col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        #if not isinstance(col, CIECAMColor):
+        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.h) / 360
 
 
@@ -497,8 +497,8 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        if not isinstance(col, CIECAMColor):
-            col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        #if not isinstance(col, CIECAMColor):
+        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.s) / 120
 
 
@@ -554,8 +554,8 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        if not isinstance(col, CIECAMColor):
-            col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        #if not isinstance(col, CIECAMColor):
+        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.v) / 100
 
     def get_background_validity(self):
