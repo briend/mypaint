@@ -554,7 +554,8 @@ class CIECAMColor (UIColor):
     h = None
 
     def __init__(self, v=None, s=None, h=None, vsh=None, color=None,
-                 cieaxes=None, lightsource=None, gamutmapping="relativeColorimetric"):
+                 cieaxes=None, lightsource=None,
+                 gamutmapping="relativeColorimetric", hint=None):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
@@ -593,12 +594,11 @@ class CIECAMColor (UIColor):
         # maybe we want to know if the gamut was constrained
         self.gamutexceeded = None
         self.displayexceeded = None
-        
-        self.cachedrgb = None
 
         # limit color purity?
         self.limit_purity = None
         self.reset_intent = False
+        self.gamut_hint = hint
         # try getting from preferences but fallback to avoid breaking doctest
         try:
             from gui.application import get_app
@@ -610,15 +610,20 @@ class CIECAMColor (UIColor):
         except AttributeError:
             self.limit_purity = None
             self.reset_intent = False
-
+        self.cachedrgb = None
         if color is not None:
             if isinstance(color, CIECAMColor):
                 # convert from one to another (handle whitepoint changes)
                 v, s, h = CIECAM_to_CIECAM(self, color)
+                self.cachedrgb = color.get_rgb()
             else:
                 # any other UIColor is assumed to be sRGB
                 rgb = color.get_rgb()
+                self.cachedrgb = rgb
                 v, s, h = RGB_to_CIECAM(self, rgb)
+                
+        if self.cachedrgb is None:
+            self.cachedrgb = CIECAM_to_RGB(self)
         if vsh is not None:
             v, s, h = vsh
         self.h = h  #: Read/write hue angle, 0-360
@@ -627,6 +632,7 @@ class CIECAMColor (UIColor):
         assert self.h is not None
         assert self.s is not None
         assert self.v is not None
+        
 
     def get_hsv(self):
         rgb = self.get_rgb()
@@ -635,6 +641,7 @@ class CIECAMColor (UIColor):
 
     def get_rgb(self):
         if self.cachedrgb:
+            print("cache hit!")
             return self.cachedrgb
         return CIECAM_to_RGB(self)
 
@@ -1142,7 +1149,7 @@ def RGB_to_CIECAM(self, rgb):
     xyz = colour.sRGB_to_XYZ(rgb)
 
 
-    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=True)
+    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
     axes = list(self.cieaxes)
     ciecam_vsh = np.array([getattr(cam16, axes[0]), getattr(cam16, axes[1]), getattr(cam16, axes[2])])
 
@@ -1162,12 +1169,12 @@ def CIECAM_to_CIECAM(self, ciecam):
 
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
     
-    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=True)
+    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)
     
     axes = list(self.cieaxes)
     v, s, h = self.v, self.s, self.h
     
-    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=True)
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
 
     
     v = getattr(ciecam_vsh, axes[0])
@@ -1222,8 +1229,8 @@ def CIECAM_to_RGB(self):
             vsh_ = (v, sat_, h)
             zipped= zip(axes, vsh_)
             cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-            result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=True)/100.0)
-            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=True)
+            result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
+            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
 
             hdiff = getattr(cieresult, axes[2]) - h
             hdiff = abs((hdiff + 180) % 360 - 180)
@@ -1271,7 +1278,7 @@ def CIECAM_to_RGB(self):
             sys.stdout.flush()
             zipped = zip(axes, result)
             cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-            final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=True)/100.0)
+            final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
             r, g, b = np.clip(final, 0.0, 1.0)
 
             if np.sum(final) >= 3.3:

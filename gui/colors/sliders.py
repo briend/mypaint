@@ -203,7 +203,7 @@ class RGBRedSlider (SliderColorAdjuster):
         return col
 
     def get_bar_amount_for_color(self, col):
-        return col.r
+        return max(0.0, col.r)
 
 
 class RGBGreenSlider (SliderColorAdjuster):
@@ -220,7 +220,7 @@ class RGBGreenSlider (SliderColorAdjuster):
         return col
 
     def get_bar_amount_for_color(self, col):
-        return col.g
+        return max(0.0, col.g)
 
 
 class RGBBlueSlider (SliderColorAdjuster):
@@ -237,7 +237,7 @@ class RGBBlueSlider (SliderColorAdjuster):
         return col
 
     def get_bar_amount_for_color(self, col):
-        return col.b
+        return max(0.0, col.b)
 
 
 class HSVHueSlider (SliderColorAdjuster):
@@ -251,7 +251,7 @@ class HSVHueSlider (SliderColorAdjuster):
 
     def get_bar_amount_for_color(self, col):
         col = HSVColor(color=col)
-        return col.h
+        return max(0.0, col.h)
 
 
 class HSVSaturationSlider (SliderColorAdjuster):
@@ -267,7 +267,7 @@ class HSVSaturationSlider (SliderColorAdjuster):
 
     def get_bar_amount_for_color(self, col):
         col = HSVColor(color=col)
-        return col.s
+        return max(0.0, col.s)
 
 
 class HSVValueSlider (SliderColorAdjuster):
@@ -280,7 +280,7 @@ class HSVValueSlider (SliderColorAdjuster):
 
     def get_bar_amount_for_color(self, col):
         col = HSVColor(color=col)
-        return col.v
+        return max(0.0, col.v)
 
 
 class HCYHueSlider (SliderColorAdjuster):
@@ -294,7 +294,7 @@ class HCYHueSlider (SliderColorAdjuster):
 
     def get_bar_amount_for_color(self, col):
         col = HCYColor(color=col)
-        return col.h
+        return max(0.0, col.h)
 
 
 class HCYChromaSlider (SliderColorAdjuster):
@@ -307,7 +307,7 @@ class HCYChromaSlider (SliderColorAdjuster):
 
     def get_bar_amount_for_color(self, col):
         col = HCYColor(color=col)
-        return col.c
+        return max(0.0, col.c)
 
 
 class HCYLumaSlider (SliderColorAdjuster):
@@ -330,7 +330,7 @@ class HCYLumaSlider (SliderColorAdjuster):
 
     def get_bar_amount_for_color(self, col):
         col = HCYColor(color=col)
-        return col.y
+        return max(0.0, col.y)
 
     def get_background_validity(self):
         col = HCYColor(color=self.get_managed_color())
@@ -344,7 +344,7 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         alloc = self.get_allocation()
         len = self.vertical and alloc.height or alloc.width
         len -= self.BORDER_WIDTH * 2
-        return min(int(len // 3), 64)
+        return min(int(len // 3), 16)
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -355,13 +355,16 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(
-            color=self.get_managed_color(),
-            cieaxes=cieaxes,
-            lightsource=lightsource,
-            gamutmapping="highlight"
-        )
+        col = self.get_managed_color()
+        if not isinstance(col, CIECAMColor):
+            col = CIECAMColor(
+                color=self.get_managed_color(),
+                cieaxes=cieaxes,
+                lightsource=lightsource,
+                gamutmapping="highlight"
+            )
         col.limit_purity = None
+        col.cachedrgb = None
         col.h = max(0.0, amt) * 360
         col.v = 50
         col.s = 30
@@ -380,7 +383,9 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        if not isinstance(col, CIECAMColor):
+            col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+
         return max(0.0, col.h) / 360
 
 class CIECAMHueSlider (SliderColorAdjuster):
@@ -391,7 +396,7 @@ class CIECAMHueSlider (SliderColorAdjuster):
         alloc = self.get_allocation()
         len = self.vertical and alloc.height or alloc.width
         len -= self.BORDER_WIDTH * 2
-        return min(int(len // 3), 64)
+        return min(int(len // 3), 16)
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -406,13 +411,18 @@ class CIECAMHueSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(
-            color=self.get_managed_color(),
-            cieaxes=cieaxes,
-            lightsource=lightsource,
-            gamutmapping="highlight"
-        )
+        col = self.get_managed_color()
+        if not isinstance(col, CIECAMColor):
+            col = CIECAMColor(
+                color=self.get_managed_color(),
+                cieaxes=cieaxes,
+                lightsource=lightsource,
+                gamutmapping="highlight"
+            )
+
         col.h = max(0.0, amt) * 360
+        col.cachedrgb = None
+        col.gamutmapping="highlight"
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -428,7 +438,8 @@ class CIECAMHueSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        if not isinstance(col, CIECAMColor):
+            col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.h) / 360
 
 
@@ -440,7 +451,7 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         alloc = self.get_allocation()
         len = self.vertical and alloc.height or alloc.width
         len -= self.BORDER_WIDTH * 2
-        return min(int(len // 3), 64)
+        return min(int(len // 3), 16)
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -455,13 +466,18 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(
-            color=self.get_managed_color(),
-            cieaxes=cieaxes,
-            lightsource=lightsource,
-            gamutmapping="highlight"
-        )
+        col = self.get_managed_color()
+        if not isinstance(col, CIECAMColor):
+            col = CIECAMColor(
+                color=self.get_managed_color(),
+                cieaxes=cieaxes,
+                lightsource=lightsource,
+                gamutmapping="highlight"
+            )
+
         col.s = max(0.0, amt) * 120
+        col.gamutmapping="highlight"
+        col.cachedrgb = None
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -477,7 +493,8 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        if not isinstance(col, CIECAMColor):
+            col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.s) / 120
 
 
@@ -490,7 +507,7 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         alloc = self.get_allocation()
         len = self.vertical and alloc.height or alloc.width
         len -= self.BORDER_WIDTH * 2
-        return min(int(len // 3), 64)
+        return min(int(len // 3), 16)
 
     def get_color_for_bar_amount(self, amt):
         # pull in CIECAM config
@@ -505,13 +522,18 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(
-            color=self.get_managed_color(),
-            cieaxes=cieaxes,
-            lightsource=lightsource,
-            gamutmapping="highlight"
-        )
+        col = self.get_managed_color()
+        if not isinstance(col, CIECAMColor):
+            col = CIECAMColor(
+                color=self.get_managed_color(),
+                cieaxes=cieaxes,
+                lightsource=lightsource,
+                gamutmapping="highlight"
+            )
+
         col.v = max(0.0, amt) * 100
+        col.cachedrgb = None
+        col.gamutmapping="highlight"
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -527,7 +549,8 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        if not isinstance(col, CIECAMColor):
+            col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.v) / 100
 
     def get_background_validity(self):

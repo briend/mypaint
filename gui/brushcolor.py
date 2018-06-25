@@ -36,23 +36,26 @@ class BrushColorManager (colors.ColorManager):
     def set_color(self, color):
         """Propagate user-set colors to the brush too (extension).
         """
-        prefs = self.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
 
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
-        # standard sRGB view environment except adjustable illuminant
-        cieaxes = prefs['color.dimension_value'] + \
-            prefs['color.dimension_purity'] + "h"
 
         colors.ColorManager.set_color(self, color)
         if not self.__in_callback:
-            ciecam = lib.color.CIECAMColor(color=color, cieaxes=cieaxes,
+
+            if not isinstance(color, lib.color.CIECAMColor):
+                prefs = self.get_prefs()
+                lightsource = prefs['color.dimension_lightsource']
+
+                if lightsource == "custom_XYZ":
+                    lightsource = prefs['color.dimension_lightsource_XYZ']
+                else:
+                    lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+                # standard sRGB view environment except adjustable illuminant
+                cieaxes = prefs['color.dimension_value'] + \
+                    prefs['color.dimension_purity'] + "h"
+                color = lib.color.CIECAMColor(color=color, cieaxes=cieaxes,
                                            lightsource=lightsource)
-            self.__brush.set_ciecam_color(ciecam)
-            self.__brush.set_color_hsv(ciecam.get_hsv())
+            self.__brush.set_ciecam_color(color)
+            self.__brush.set_color_hsv(color.get_hsv())
 
     def __settings_changed_cb(self, settings):
         # When the color changes by external means, update the adjusters.
