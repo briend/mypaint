@@ -568,7 +568,7 @@ class CIECAMColor (UIColor):
         UIColor.__init__(self)
 
         self.cieconfig = None
-        print("creating new ciecam color object")
+        #print("creating new ciecam color object")
         #gamut mapping strategy
         #relativeColorimetric, highlight, or False
         #highlight will flag out of gamut colors as magenta similar to GIMP
@@ -642,7 +642,7 @@ class CIECAMColor (UIColor):
 
     def get_rgb(self):
         if self.cachedrgb:
-            print("cache hit!")
+            #print("cache hit!")
             return self.cachedrgb
         return CIECAM_to_RGB(self)
 
@@ -1157,7 +1157,7 @@ def RGB_to_CIECAM(self, rgb):
     if maxcolorfulness:
         ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
 
-    sys.stdout.flush()
+    #sys.stdout.flush()
     return ciecam_vsh
 
 
@@ -1175,7 +1175,7 @@ def CIECAM_to_CIECAM(self, ciecam):
     axes = list(self.cieaxes)
     v, s, h = self.v, self.s, self.h
     
-    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=True)
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
 
     
     v = getattr(ciecam_vsh, axes[0])
@@ -1210,8 +1210,8 @@ def CIECAM_to_RGB(self):
     xyz = colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(xyz/100.0)
-    print(cam, xyz, result, self.lightsource)
-    sys.stdout.flush()
+    #print(cam, xyz, result, self.lightsource)
+    #sys.stdout.flush()
     x = np.clip(result, -0.001, 1.001)
     if (result == x).all() or self.gamutmapping is False:
         r, g, b = x
@@ -1276,7 +1276,7 @@ def CIECAM_to_RGB(self):
             #print("final cam is", result)
             result = (v, result, h)
             #print("final cam is", result)
-            sys.stdout.flush()
+            #sys.stdout.flush()
             zipped = zip(axes, result)
             cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
             final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
