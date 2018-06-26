@@ -1032,7 +1032,12 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         """Color for a particular position using ``bar_amount`` methods.
         """
         amt = self.point_to_amount(x, y)
-        return self.get_color_for_bar_amount(amt)
+        col = self.get_color_for_bar_amount(amt)
+        if isinstance(col, CIECAMColor):
+            check=col.get_rgb()
+            if col.gamutexceeded and col.gamutmapping == "highlight":
+                return self.get_managed_color()
+        return col
 
     def paint_foreground_cb(self, cr, wd, ht):
         b = int(self.BORDER_WIDTH)

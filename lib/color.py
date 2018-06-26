@@ -1221,6 +1221,7 @@ def CIECAM_to_RGB(self):
     #return special rgb value to indicate out of gamut to sliders and guis
     if self.gamutmapping == "highlight":
         rand = random.uniform(0.25, 0.90)
+        self.gamutexceeded = True
         return rand, rand, rand
     if self.gamutmapping == "relativeColorimetric":
 
