@@ -555,7 +555,7 @@ class CIECAMColor (UIColor):
 
     def __init__(self, v=None, s=None, h=None, vsh=None, color=None,
                  cieaxes=None, lightsource=None,
-                 gamutmapping="relativeColorimetric", hint=None):
+                 gamutmapping="relativeColorimetric"):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
@@ -598,7 +598,7 @@ class CIECAMColor (UIColor):
         # limit color purity?
         self.limit_purity = None
         self.reset_intent = False
-        self.gamut_hint = hint
+        
         # try getting from preferences but fallback to avoid breaking doctest
         try:
             from gui.application import get_app
@@ -1234,50 +1234,27 @@ def CIECAM_to_RGB(self):
             result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
             cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
 
-            hdiff = getattr(cieresult, axes[2]) - h
-            hdiff = abs((hdiff + 180) % 360 - 180)
-            #lossunweighted = np.array([(v - getattr(cieresult, axes[0]))**2,
-                                       #(s - getattr(cieresult, axes[1]))**2, hdiff**2])
-            #losscie = np.array([(v - vsh_[0])**2,
-            #                           (s - vsh_[1]))**2, hdiff**2])
-            rgbloss = (np.sum(result[np.where(result - 1 >= 1)]-1)
+            rgbloss = (np.sum(result[np.where(result - 1 >= 0)]-1)
                        + np.sum(abs((result[np.where(result < 0.0)]))))
-            satloss = abs(s - getattr(cieresult, axes[1]))/s *.5
-            vloss = abs(v - getattr(cieresult, axes[0]))/v *s *10
-            #loss = rgbloss * 100 + np.sum(lossunweighted * gamutweights)
-            loss = rgbloss + hdiff + satloss + vloss
-            #print("loss- rgb, hdiff, satloss, vloss, total", rgbloss, hdiff, satloss, vloss, loss)
-            if math.isnan(loss) or np.isnan(result).any():
+            satloss = abs(s - getattr(cieresult, axes[1]))
+            loss = satloss
+
+            if math.isnan(loss) or np.isnan(result).any() or rgbloss:
                 loss = float('Inf')
             return loss
-        guess = np.array([v, s, h])
 
-        bounds = ((v, v), (0.0, s), (h, h))
-        opt = {'maxiter': 100,}
+        opt = {'maxiter': 100}
 
-        try:
-            x_opt = spo.minimize_scalar(loss,
-                               #guess,
-                               tol=0.001,
-                                              # bounds,
-                                             #maxiter=50,
-                                             #  polish=True
-                                 method='Brent',
-                                 bounds=(0.0, s),
-                                options=opt
-                                 )
-        except IndexError:
-            print("gamut exception")
-            #r, g, b = x
-            return 0.0, 0.0, 0.0
-
+        x_opt = spo.minimize_scalar(loss,
+                                    tol=0.001,
+                                    method='Brent',
+                                    bounds=(0.0, s),
+                                    options=opt
+                                   )
         # clip final result
         if (x_opt["success"]):
             result = x_opt["x"]
-            #print("final cam is", result)
             result = (v, result, h)
-            #print("final cam is", result)
-            #sys.stdout.flush()
             zipped = zip(axes, result)
             cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
             final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
@@ -1288,18 +1265,16 @@ def CIECAM_to_RGB(self):
 
             if result[1] < s:
                 self.gamutexceeded = True
-            #print("final rgb is", r, g, b)
-            # reset color to the new mapped color
-            # This helps avoid impossible gamut situations
+
             if self.reset_intent:
                 self.v = v
                 self.s = result[1]
                 self.h = h
             self.cachedrgb = (r, g, b)
+            
             return r, g, b
         else:
             print("failing back to black")
-    #        r, g, b = np.clip(result, 0.0, 1.0)
             return 0.0, 0.0, 0.0
 
 ## Module testing

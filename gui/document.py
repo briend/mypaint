@@ -1513,11 +1513,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             elapsed = t - self.last_brighter
             if elapsed < 100:
                 return
-        cm = self.app.brush_color_manager
-        brushcolor = cm.get_color()
-        if not isinstance(brushcolor, CIECAMColor):
-            brushcolor=(CIECAMColor(color=brushcolor))
 
+        brushcolor = self._get_app_brush_color()
+        
         if self.app.brush.displayexceeded:
             return
 
@@ -1542,8 +1540,10 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_brighter = t
-
-        cm.set_color(brushcolor)
+        #set brush color without reseting color intent
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def darker_cb(self, action):
         """``Darker`` GtkAction callback: darken the brush color"""
@@ -1557,10 +1557,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             if elapsed < 100:
                 return
 
-        cm = self.app.brush_color_manager
-        brushcolor = cm.get_color()
-        if not isinstance(brushcolor, CIECAMColor):
-            brushcolor=(CIECAMColor(color=brushcolor))
+        brushcolor = self._get_app_brush_color()
 
         if self.app.preferences['color.dynamic_step_size']:
             # pressing faster=bigger jump (max 25)
@@ -1583,8 +1580,11 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_darker = t
-
-        cm.set_color(brushcolor)
+        
+        #set brush color without reseting color intent
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def increase_hue_cb(self, action):
         """Clockwise hue rotation ("IncreaseHue" action)."""
@@ -1599,10 +1599,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             if elapsed < 100:
                 return
 
-        cm = self.app.brush_color_manager
-        brushcolor = cm.get_color()
-        if not isinstance(brushcolor, CIECAMColor):
-            brushcolor=(CIECAMColor(color=brushcolor))
+        brushcolor = self._get_app_brush_color()
 
         if self.app.preferences['color.dynamic_step_size']:
             # pressing faster=bigger jump (max 90)
@@ -1625,8 +1622,10 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_increase_hue = t
-
-        cm.set_color(brushcolor)
+        #set brush color without reseting color intent
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def decrease_hue_cb(self, action):
         """Anticlockwise hue rotation ("DecreaseHue" action)."""
@@ -1640,10 +1639,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             if elapsed < 100:
                 return
 
-        cm = self.app.brush_color_manager
-        brushcolor = cm.get_color()
-        if not isinstance(brushcolor, CIECAMColor):
-            brushcolor=(CIECAMColor(color=brushcolor))
+        brushcolor = self._get_app_brush_color()
 
         if self.app.preferences['color.dynamic_step_size']:
             # pressing faster=bigger jump (max 90)
@@ -1666,8 +1662,10 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_decrease_hue = t
-
-        cm.set_color(brushcolor)
+        #set brush color without reseting color intent
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def purer_cb(self, action):
         """``Purer`` GtkAction callback: make the brush color less grey"""
@@ -1680,11 +1678,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             elapsed = t - self.last_purer
             if elapsed < 100:
                 return
-
         cm = self.app.brush_color_manager
-        brushcolor = cm.get_color()
-        if not isinstance(brushcolor, CIECAMColor):
-            brushcolor=(CIECAMColor(color=brushcolor))
+        brushcolor = self._get_app_brush_color()
 
         if self.app.brush.gamutexceeded:
             return
@@ -1710,8 +1705,10 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_purer = t
-
-        cm.set_color(brushcolor)
+        #set brush color without reseting color intent
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     def grayer_cb(self, action):
         """``Grayer`` GtkAction callback: make the brush color more grey"""
@@ -1725,10 +1722,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
             if elapsed < 100:
                 return
-        cm = self.app.brush_color_manager
-        brushcolor = cm.get_color()
-        if not isinstance(brushcolor, CIECAMColor):
-            brushcolor=(CIECAMColor(color=brushcolor))
+
+        brushcolor = self._get_app_brush_color()
 
         if self.app.preferences['color.dynamic_step_size']:
             # pressing faster=bigger jump (max 25)
@@ -1751,10 +1746,10 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_grayer = t
-#        self.app.brush.set_color_hsv(lib.color.RGBColor(
-#                                     r=r, g=g, b=b).get_hsv())
-#        self.app.brush.set_ciecam_color(brushcolor)
-        cm.set_color(brushcolor)
+        #set brush color without reseting color intent
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+                                     r=r, g=g, b=b).get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)
 
     ## Brush settings
 
@@ -1800,6 +1795,25 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         else:
             if reset_action.get_sensitive():
                 reset_action.set_sensitive(False)
+
+    def _get_app_brush_color(self):
+        app = self.app
+        cm = self.app.brush_color_manager
+        brushcolor = cm.get_color()
+        if not isinstance(brushcolor, CIECAMColor):
+            return lib.color.CIECAMColor(
+                vsh=(
+                    app.brush.get_setting('cie_v'),
+                    app.brush.get_setting('cie_s'),
+                    app.brush.get_setting('cie_h')),
+                cieaxes=app.brush.get_setting('cieaxes'),
+                lightsource=(
+                    app.brush.get_setting('lightsource_X'),
+                    app.brush.get_setting('lightsource_Y'),
+                    app.brush.get_setting('lightsource_Z')
+                )
+            )
+        return brushcolor
 
     ## Brushkey callbacks
 
