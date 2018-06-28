@@ -1516,8 +1516,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
         brushcolor = self._get_app_brush_color()
         
-        if self.app.brush.displayexceeded:
-            return
+#        if self.app.brush.displayexceeded:
+#            return
 
         if self.app.preferences['color.dynamic_step_size']:
             # pressing faster=bigger jump (max 25)
@@ -1532,6 +1532,10 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         brushcolor.v = brushcolor.v + e
         brushcolor.cachedrgb = None
         r, g, b = brushcolor.get_rgb()
+        
+        if brushcolor.displayexceeded:
+            return
+
         if ((self.app.preferences['color.splash_before_stroke'] is True
              and self.in_input_stroke is False)
             or
@@ -1681,8 +1685,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         cm = self.app.brush_color_manager
         brushcolor = self._get_app_brush_color()
 
-        if self.app.brush.gamutexceeded:
-            return
+#        if self.app.brush.gamutexceeded:
+#            return
 
         if self.app.preferences['color.dynamic_step_size']:
             # pressing faster=bigger jump (max 25)
@@ -1697,6 +1701,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         brushcolor.s = brushcolor.s + e
         brushcolor.cachedrgb = None
         r, g, b = brushcolor.get_rgb()
+        if brushcolor.gamutexceeded:
+            return
         if ((self.app.preferences['color.splash_before_stroke'] is True
              and self.in_input_stroke is False)
             or

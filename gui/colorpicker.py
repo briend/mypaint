@@ -200,7 +200,9 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                     brushcolornew = lib.color.CIECAMColor(
                         color=brushcolor,
                         cieaxes=brushcolor.cieaxes,
-                        lightsource=ill
+                        lightsource=ill,
+                        discount_in=True,
+                        discount_out=True
                     )
                     app.brush.set_color_hsv(brushcolornew.get_hsv())
                     app.brush.set_ciecam_color(brushcolornew)

@@ -337,7 +337,7 @@ class HCYLumaSlider (SliderColorAdjuster):
         return int(col.h * 1000), int(col.c * 1000)
 
 class CIECAMHueNormSlider (SliderColorAdjuster):
-    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue @ s=30, v=50, D65")
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue @ s=35, v=50, D65")
 
     @property
     def samples(self):
@@ -352,42 +352,34 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         prefs = cm.get_prefs()
 
         lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
-        # standard sRGB view environment except adjustable illuminant
+
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = self.get_managed_color()
-        if not isinstance(col, CIECAMColor):
-            col = CIECAMColor(
-                color=self.get_managed_color(),
-                cieaxes=cieaxes,
-                lightsource=lightsource,
-                gamutmapping="highlight"
-            )
+        col = CIECAMColor(
+            color=self.get_managed_color(),
+            cieaxes=cieaxes,
+            lightsource=lightsource,
+            gamutmapping="highlight",
+            discount_in=False,
+            discount_out=False
+        )
         col.limit_purity = None
         col.cachedrgb = None
-        col.lightsource = lightsource
-        col.cieaxes = cieaxes
         col.h = max(0.0, amt) * 360
         col.v = 50
-        col.s = 30
+        col.s = 35
         return col
 
     def get_bar_amount_for_color(self, col):
         # pull in CIECAM config
         cm = self.get_color_manager()
         prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
-
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
+        lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        if not isinstance(col, CIECAMColor):
-            col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
-
+        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource, discount_in=False, discount_out=False)
+        
         return max(0.0, col.h) / 360
 
 class CIECAMHueSlider (SliderColorAdjuster):
