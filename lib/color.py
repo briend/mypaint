@@ -409,6 +409,95 @@ class RGBColor (UIColor):
             t2 = [round(c, 3) for c in t2]
             return t1 == t2
 
+class LinearRGBColor (UIColor):
+    """Additive Linear Light Red/Green/Blue representation of a color."""
+
+    # Base class overrides: make r,g,b attributes read/write
+    r = None
+    g = None
+    b = None
+
+    def __init__(self, r=None, g=None, b=None, rgb=None, color=None, gamma=2.4):
+        """Initializes from individual values, or another UIColor
+
+          >>> col1 = LinearRGBColor(1, 0, 1)
+          >>> col2 = LinearRGBColor(r=1, g=0.0, b=1)
+          >>> col1 == col2
+          True
+          >>> LinearRGBColor(color=HSVColor(0.0, 0.0, 0.5))
+          <LinearRGBColor r=0.5000, g=0.5000, b=0.5000>
+        """
+        UIColor.__init__(self)
+        if color is not None:
+            r, g, b = color.get_rgb()
+        if rgb is not None:
+            r, g, b = rgb
+        if gamma is not None:
+            r, g, b = r**gamma, g**gamma, b**gamma
+        self.r = r  #: Read/write red channel, range 0.0 to 1.0
+        self.g = g  #: Read/write green channel, range 0.0 to 1.0
+        self.b = b  #: Read/write blue channel, range 0.0 to 1.0
+        self.gamma = gamma
+        assert self.r is not None
+        assert self.g is not None
+        assert self.b is not None
+
+    def get_rgb(self):
+        # returns sRGB
+        if self.gamma is not None:
+            return self.r**(1/self.gamma), self.g**(1/self.gamma), self.b**(1/self.gamma)
+        else:
+            return self.r, self.g, self.b
+
+    def __repr__(self):
+        return "<LinearRGBColor r=%0.4f, g=%0.4f, b=%0.4f>" \
+            % (self.r, self.g, self.b)
+
+    def interpolate(self, other, steps):
+        """Linear RGB interpolation.
+
+        >>> white = LinearRGBColor(r=1, g=1, b=1)
+        >>> black = LinearRGBColor(r=0, g=0, b=0)
+        >>> [c.to_hex_str() for c in white.interpolate(black, 3)]
+        ['#ffffff', '#7f7f7f', '#000000']
+        >>> [c.to_hex_str() for c in black.interpolate(white, 3)]
+        ['#000000', '#7f7f7f', '#ffffff']
+
+        """
+        assert steps >= 3
+        other = LinearRGBColor(color=other, gamma=self.gamma)
+        for step in xrange(steps):
+            p = step / (steps - 1)
+            r = (self.r + (other.r - self.r) * p)**(1/self.gamma)
+            g = (self.g + (other.g - self.g) * p)**(1/self.gamma)
+            b = (self.b + (other.b - self.b) * p)**(1/self.gamma)
+            yield LinearRGBColor(r=r, g=g, b=b, gamma=self.gamma)
+
+    def __eq__(self, other):
+        """Equality test (override)
+
+        >>> c1 = LinearRGBColor(0.7, 0.45, 0.55)
+        >>> c2 = LinearRGBColor(0.4, 0.55, 0.45)
+        >>> c2hcy = HCYColor(color=c2)
+        >>> c1 == c2
+        False
+        >>> c1 == c1 and c2 == c2
+        True
+        >>> c2 == c2hcy
+        True
+        >>> c1 == c2hcy
+        False
+
+        """
+        try:
+            t1 = self.get_rgb()
+            t2 = other.get_rgb()
+        except AttributeError:
+            return UIColor.__eq__(self, other)
+        else:
+            t1 = [round(c, 3) for c in t1]
+            t2 = [round(c, 3) for c in t2]
+            return t1 == t2
 
 class HSVColor (UIColor):
     """Cylindrical Hue/Saturation/Value representation of a color.

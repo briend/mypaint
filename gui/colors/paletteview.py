@@ -36,6 +36,7 @@ from lib.color import RGBColor
 from lib.color import HCYColor
 from lib.color import HSVColor
 from lib.color import CIECAMColor
+from lib.color import LinearRGBColor
 import gui.uicolor
 from .adjbases import ColorAdjuster
 from .adjbases import ColorAdjusterWidget
@@ -810,6 +811,12 @@ class _PaletteGridLayout (ColorAdjusterWidget):
                 [RGBColor, empty_range],
             ),
             (
+                C_("palette view: context menu", "Fill Gap (Linear RGB)"),
+                self._interpolate_empty_range_cb,
+                bool(empty_range),
+                [LinearRGBColor, empty_range],
+            ),
+            (
                 C_("palette view: context menu", "Fill Gap (HCY)"),
                 self._interpolate_empty_range_cb,
                 bool(empty_range),
@@ -899,7 +906,9 @@ class _PaletteGridLayout (ColorAdjusterWidget):
             c0 = color_class(
                 color=palette[i0],
                 cieaxes=cieaxes,
-                lightsource=lightsource
+                lightsource=lightsource,
+                discount_in=True,
+                discount_out=True
             )
         else:
             c0 = color_class(color=palette[i0])
@@ -907,7 +916,9 @@ class _PaletteGridLayout (ColorAdjusterWidget):
             cx = color_class(
                 color=palette[ix],
                 cieaxes=cieaxes,
-                lightsource=lightsource
+                lightsource=lightsource,
+                discount_in=True,
+                discount_out=True
             )
         else:
             cx = color_class(color=palette[ix])
