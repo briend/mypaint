@@ -1213,7 +1213,7 @@ def CIECAM_to_RGB(self):
     result = colour.XYZ_to_sRGB(xyz/100.0)
     #print(cam, xyz, result, self.lightsource)
     #sys.stdout.flush()
-    x = np.clip(result, -0.001, 1.001)
+    x = np.clip(result, 0, 1.0)
     if (result == x).all() or self.gamutmapping is False:
         r, g, b = x
         self.cachedrgb = (r, g, b)
