@@ -499,6 +499,94 @@ class LinearRGBColor (UIColor):
             t2 = [round(c, 3) for c in t2]
             return t1 == t2
 
+
+class PigmentColor (UIColor):
+    """Subtractive Spectral-upsampled representation of a color."""
+
+    # Base class overrides: make r,g,b attributes read/write
+    r = None
+    g = None
+    b = None
+
+    def __init__(self, spd=None, color=None, gamma=2.4):
+        """Initializes from individual values, or another UIColor
+
+          >>> col1 = PigmentColor(1, 0, 1)
+          >>> col2 = PigmentColor(r=1, g=0.0, b=1)
+          >>> col1 == col2
+          True
+          >>> PigmentColor(color=HSVColor(0.0, 0.0, 0.5))
+          <PigmentColor r=0.5000, g=0.5000, b=0.5000>
+        """
+        UIColor.__init__(self)
+        self.gamma = gamma
+        if color is not None:
+            r, g, b = color.get_rgb()
+            if gamma is not None:
+                r, g, b = r**gamma, g**gamma, b**gamma
+        if spd is None:
+            self.spd = RGB_to_Spectral((r, g, b))
+        else:
+            self.spd = spd
+        assert self.spd is not None
+
+    def get_rgb(self):
+        # returns sRGB
+        self.r, self.g, self.b = np.clip(Spectral_to_RGB(self.spd), 0.0, 1.0)
+        if self.gamma is not None:
+            return (self.r**(1/self.gamma), self.g**(1/self.gamma), self.b**(1/self.gamma))
+        else:
+            return (self.r, self.g, self.b)
+
+    def __repr__(self):
+        return "<PigmentColor spd=np.ones(36)>" \
+            % (self.spd)
+
+    def interpolate(self, other, steps):
+        """WGM Spectral interpolation.
+
+        >>> white = PigmentColor(color=RGBColor(r=1, g=1, b=1))
+        >>> black = PigmentColor(color=RGBColor(r=0, g=0, b=0))
+        >>> [c.to_hex_str() for c in white.interpolate(black, 3)]
+        ['#ffffff', '#7f7f7f', '#000000']
+        >>> [c.to_hex_str() for c in black.interpolate(white, 3)]
+        ['#000000', '#7f7f7f', '#ffffff']
+
+        """
+        assert steps >= 3
+        other = PigmentColor(color=other, gamma=self.gamma)
+        for step in xrange(steps):
+            p = step / (steps - 1)
+            spd = Spectral_Mix_WGM(self.spd, other.spd, p)
+            yield PigmentColor(spd=spd, gamma=self.gamma)
+
+    def __eq__(self, other):
+        """Equality test (override)
+
+        >>> c1 = PigmentColor(0.7, 0.45, 0.55)
+        >>> c2 = PigmentColor(0.4, 0.55, 0.45)
+        >>> c2hcy = HCYColor(color=c2)
+        >>> c1 == c2
+        False
+        >>> c1 == c1 and c2 == c2
+        True
+        >>> c2 == c2hcy
+        True
+        >>> c1 == c2hcy
+        False
+
+        """
+        try:
+            t1 = self.get_rgb()
+            t2 = other.get_rgb()
+        except AttributeError:
+            return UIColor.__eq__(self, other)
+        else:
+            t1 = [round(c, 3) for c in t1]
+            t2 = [round(c, 3) for c in t2]
+            return t1 == t2
+
+
 class HSVColor (UIColor):
     """Cylindrical Hue/Saturation/Value representation of a color.
 
@@ -1366,6 +1454,77 @@ def CIECAM_to_RGB(self):
         else:
             print("failing back to black")
             return 0.0, 0.0, 0.0
+
+
+# weighted geometric mean must avoid absolute zero
+_WGM_EPSILON = 0.0001
+
+
+def RGB_to_Spectral(rgb):
+    """Converts RGB to 36 segments spectral power distribution curve.  Upsamples
+    to spectral primaries and sums them together into one SPD.  Based on work by
+    Scott Allen Burns.
+    """
+
+    r, g, b = rgb
+    r = max(r, _WGM_EPSILON)
+    g = max(g, _WGM_EPSILON)
+    b = max(b, _WGM_EPSILON)
+    # Spectral primaries derived by an optimization routine devised by Scott Burns.  Smooth curve < 1.0 to match XYZ
+    spectral_r = r * np.array([0.022963, 0.022958, 0.022965, 0.022919973, 0.022752, 0.022217,
+                          0.021023, 0.019115, 0.016784, 0.014467, 0.012473, 0.010941,
+                          0.009881, 0.009311, 0.009313, 0.010067, 0.011976, 0.015936,
+                          0.024301, 0.043798, 0.09737, 0.279537, 0.903191, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1])
+
+    spectral_g = g * np.array([0.023091, 0.023094, 0.02311, 0.023186201, 0.023473, 0.02446,
+                          0.02704, 0.032978, 0.045879, 0.075263, 0.148204, 0.344509,
+                          0.810966, 1, 1, 1, 1, 1,
+                          1, 1, 0.644441, 0.332202, 0.19032, 0.127354,
+                          0.097532, 0.082594, 0.074711, 0.070621, 0.068506, 0.067451,
+                          0.066952, 0.066725, 0.066613, 0.066559, 0.066531, 0.066521])
+
+    spectral_b = b * np.array([1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 0.870246, 0.582997, 0.344759,
+                           0.198566, 0.116401, 0.071107, 0.045856, 0.031371, 0.022678,
+                           0.017256, 0.013751, 0.011428, 0.009878, 0.008831, 0.008138,
+                           0.007697, 0.00743, 0.007271, 0.007182, 0.007136, 0.007111,
+                           0.007099, 0.007094, 0.007092, 0.007091, 0.007089, 0.007089])
+    return np.sum([spectral_r, spectral_g, spectral_b], axis=0)
+
+
+def Spectral_to_RGB(spd):
+    """Converts 36 segments spectral power distribution curve to RGB.  Based on work by
+    Scott Allen Burns.
+    """
+
+    # Spectral_to_XYZ CIE matrix weighted w/ diagonal D65 matrix.  sRGB
+    T_MATRIX = np.array([[5.47813E-05, 0.000184722, 0.000935514, 0.003096265, 0.009507714, 0.017351596,
+                        0.022073595, 0.016353161, 0.002002407, -0.016177731, -0.033929391, -0.046158952,
+                        -0.06381706, -0.083911194, -0.091832385, -0.08258148, -0.052950086, -0.012727224,
+                        0.037413037, 0.091701812, 0.147964686, 0.181542886, 0.210684154, 0.210058081,
+                        0.181312094, 0.132064724, 0.093723787, 0.057159281, 0.033469657, 0.018235464,
+                        0.009298756, 0.004023687, 0.002068643, 0.00109484, 0.000454231, 0.000255925],
+                        [-4.65552E-05, -0.000157894, -0.000806935, -0.002707449, -0.008477628, -0.016058258,
+                        -0.02200529, -0.020027434, -0.011137726, 0.003784809, 0.022138944, 0.038965605,
+                        0.063361718, 0.095981626, 0.126280277, 0.148575844, 0.149044804, 0.14239936,
+                        0.122084916, 0.09544734, 0.067421931, 0.035691251, 0.01313278, -0.002384996,
+                        -0.009409573, -0.009888983, -0.008379513, -0.005606153, -0.003444663, -0.001921041,
+                        -0.000995333, -0.000435322, -0.000224537, -0.000118838, -4.93038E-05, -2.77789E-05],
+                        [0.00032594, 0.001107914, 0.005677477, 0.01918448, 0.060978641, 0.121348231,
+                        0.184875618, 0.208804428, 0.197318551, 0.147233899, 0.091819086, 0.046485543,
+                        0.022982618, 0.00665036, -0.005816014, -0.012450334, -0.015524259, -0.016712927,
+                        -0.01570093, -0.013647887, -0.011317812, -0.008077223, -0.005863171, -0.003943485,
+                        -0.002490472, -0.001440876, -0.000852895, -0.000458929, -0.000248389, -0.000129773,
+                        -6.41985E-05, -2.71982E-05, -1.38913E-05, -7.35203E-06, -3.05024E-06, -1.71858E-06]])
+    r, g, b = np.sum(spd*T_MATRIX, axis=1)
+    return r, g, b
+
+def Spectral_Mix_WGM(spd_a, spd_b, ratio):
+    """Mixes two SPDs via weighted geomtric mean and returns an SPD.  Based on work by
+    Scott Allen Burns.
+    """
+    return spd_a**(1.0 -ratio) * spd_b**ratio
 
 ## Module testing
 

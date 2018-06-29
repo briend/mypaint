@@ -37,6 +37,7 @@ from lib.color import HCYColor
 from lib.color import HSVColor
 from lib.color import CIECAMColor
 from lib.color import LinearRGBColor
+from lib.color import PigmentColor
 import gui.uicolor
 from .adjbases import ColorAdjuster
 from .adjbases import ColorAdjusterWidget
@@ -833,6 +834,12 @@ class _PaletteGridLayout (ColorAdjusterWidget):
                 self._interpolate_empty_range_cb,
                 bool(empty_range),
                 [CIECAMColor, empty_range],
+            ),
+            (
+                C_("palette view: context menu", "Fill Gap (Pigment)"),
+                self._interpolate_empty_range_cb,
+                bool(empty_range),
+                [PigmentColor, empty_range],
             ),
         ]
         for item_def in item_defs:
