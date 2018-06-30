@@ -251,9 +251,10 @@ class ColorPickMode (gui.mode.OneshotDragMode):
             lightsource=(
                 app.brush.get_setting('lightsource_X'),
                 app.brush.get_setting('lightsource_Y'),
-                app.brush.get_setting('lightsource_Z')
-            )
-        )
+                app.brush.get_setting('lightsource_Z'),
+                        ),
+                discount_in=True, discount_out=True
+                )
 
 
 class ColorPickModeH(ColorPickMode):
