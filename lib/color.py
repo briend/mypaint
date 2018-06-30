@@ -560,6 +560,14 @@ class PigmentColor (UIColor):
             spd = Spectral_Mix_WGM(self.spd, other.spd, p)
             yield PigmentColor(spd=spd, gamma=self.gamma)
 
+    def mix(self, other, ratio):
+        """WGM Spectral mix 0-1 ratio.
+
+        """
+        other = PigmentColor(color=other, gamma=self.gamma)
+        spd = Spectral_Mix_WGM(self.spd, other.spd, ratio)
+        return PigmentColor(spd=spd, gamma=self.gamma)
+
     def __eq__(self, other):
         """Equality test (override)
 

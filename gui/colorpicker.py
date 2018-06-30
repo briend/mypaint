@@ -79,6 +79,9 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         self._start_drag_on_next_motion_event = False
         self._pickmode = pickmode
         self.app = gui.application.get_app()
+        self.starting_position = None
+        self.starting_color = None
+        self.blending_color = None
 
     def enter(self, doc, **kwds):
         """Enters the mode, arranging for necessary grabs ASAP"""
@@ -90,6 +93,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
             t, x, y = doc.get_last_event_info(tdw)
 
             if None not in (x, y):
+                self.starting_position = (x, y)
                 self._pick_color_mode(tdw, x, y, self._pickmode)
             # Start the drag when possible
             self._start_drag_on_next_motion_event = True
@@ -97,6 +101,10 @@ class ColorPickMode (gui.mode.OneshotDragMode):
 
     def leave(self, **kwds):
         self._remove_overlay()
+        if self.blending_color is not None:
+            app = self.doc.app
+            app.brush.set_color_hsv(self.blending_color.get_hsv())
+            app.brush.set_ciecam_color(lib.color.CIECAMColor(color=self.blending_color))
         super(ColorPickMode, self).leave(**kwds)
 
     def button_press_cb(self, tdw, event):
@@ -123,9 +131,11 @@ class ColorPickMode (gui.mode.OneshotDragMode):
     def _place_overlay(self, tdw, x, y):
         if self._overlay is None:
             self._overlay = ColorPickPreviewOverlay(self.doc, tdw, x, y,
-                                                    self._pickmode)
+                                                    self._pickmode,
+                                                    blending_color=self.blending_color)
         else:
             self._overlay.move(x, y)
+            self._overlay.blending_color=self.blending_color
 
     def _remove_overlay(self):
         if self._overlay is None:
@@ -182,35 +192,42 @@ class ColorPickMode (gui.mode.OneshotDragMode):
             if mode == "PickAll":
                 cm.set_color(pickcolor)
             elif mode == "PickIlluminant":
-                    p = self.app.preferences
-                    ill = colour.sRGB_to_XYZ(np.array(pickcolor_rgb))*100
-                    if ill[1] <= 0:
-                        return
-                    fac = 1/ill[1]*100
-                    #fac = 1
-                    p['color.dimension_lightsource'] = "custom_XYZ"
-                    p['color.dimension_lightsource_XYZ'] = (
-                        ill[0]*fac,
-                        ill[1]*fac,
-                        ill[2]*fac
-                    )
+                p = self.app.preferences
+                ill = colour.sRGB_to_XYZ(np.array(pickcolor_rgb))*100
+                if ill[1] <= 0:
+                    return
+                fac = 1/ill[1]*100
+                #fac = 1
+                p['color.dimension_lightsource'] = "custom_XYZ"
+                p['color.dimension_lightsource_XYZ'] = (
+                    ill[0]*fac,
+                    ill[1]*fac,
+                    ill[2]*fac
+                )
 
-                    # reset the brush color with the same color
-                    # under the new illuminant
-                    brushcolornew = lib.color.CIECAMColor(
-                        color=brushcolor,
-                        cieaxes=brushcolor.cieaxes,
-                        lightsource=ill,
-                        discount_in=True,
-                        discount_out=True
-                    )
-                    app.brush.set_color_hsv(brushcolornew.get_hsv())
-                    app.brush.set_ciecam_color(brushcolornew)
+                # reset the brush color with the same color
+                # under the new illuminant
+                brushcolornew = lib.color.CIECAMColor(
+                    color=brushcolor,
+                    cieaxes=brushcolor.cieaxes,
+                    lightsource=ill,
+                    discount_in=True,
+                    discount_out=True
+                )
+                app.brush.set_color_hsv(brushcolornew.get_hsv())
+                app.brush.set_ciecam_color(brushcolornew)
+            elif mode == "PickandBlend":
+                if self.starting_color is None:
+                    self.starting_color = pickcolor
+                dist = np.linalg.norm(np.array(self.starting_position) - np.array((x, y)))
+                dist = np.clip(dist/200, 0, 1)
+                brushcolor_pig = lib.color.PigmentColor(color=brushcolor)
+                pickcolor_pig = lib.color.PigmentColor(color=self.starting_color)
+                self.blending_color = brushcolor_pig.mix(pickcolor_pig, dist)
             else:
                 # pick V, S, H independently
                 # using CIECAM
                 brushcolornew = brushcolor
-
                 if mode == "PickHue":
                     brushcolornew.h = pickcolor_cie.h
                 elif mode == "PickLuma":
@@ -261,6 +278,30 @@ class ColorPickModeH(ColorPickMode):
         self._started_from_key_press = ignore_modifiers
         self._start_drag_on_next_motion_event = False
         self._pickmode = pickmode
+
+
+class ColorPickModeBlend (ColorPickMode):
+    # Class configuration
+    ACTION_NAME = 'ColorPickModeBlend'
+
+    @property
+    def inactive_cursor(self):
+        return self.doc.app.cursor_color_picker
+
+    @classmethod
+    def get_name(cls):
+        return _(u"Pick and Blend")
+
+    def get_usage(self):
+        return _(u"Blend the canvas color with brush color until leaving the mode")
+
+    def __init__(self, ignore_modifiers=False, pickmode="PickandBlend", **kwds):
+        super(ColorPickModeBlend, self).__init__(**kwds)
+        self._overlay = None
+        self._started_from_key_press = ignore_modifiers
+        self._start_drag_on_next_motion_event = False
+        self._pickmode = pickmode
+        self.starting_position = None
 
 
 class ColorPickModeC (ColorPickMode):
@@ -345,7 +386,7 @@ class ColorPickPreviewOverlay (Overlay):
     OUTLINE_WIDTH = 3
     CORNER_RADIUS = 10
 
-    def __init__(self, doc, tdw, x, y, pickmode):
+    def __init__(self, doc, tdw, x, y, pickmode, blending_color=None):
         """Initialize, attaching to the brush and to the tdw.
 
         Observer callbacks and canvas overlays are registered by this
@@ -368,6 +409,7 @@ class ColorPickPreviewOverlay (Overlay):
         self._queue_tdw_redraw()
         self._pickmode = pickmode
         self.app = gui.application.get_app()
+        self.blending_color = blending_color
 
     def cleanup(self):
         """Cleans up temporary observer stuff, allowing garbage collection.
@@ -453,10 +495,12 @@ class ColorPickPreviewOverlay (Overlay):
 
             # if we're picking an illuminant splash that instead of brush color
             if self._pickmode == "PickIlluminant":
-                    p = self.app.preferences
-                    xyz = p['color.dimension_lightsource_XYZ']
-                    ill = colour.XYZ_to_sRGB(np.array(xyz)/100.0)
-                    cr.set_source_rgb(*ill)
+                p = self.app.preferences
+                xyz = p['color.dimension_lightsource_XYZ']
+                ill = colour.XYZ_to_sRGB(np.array(xyz)/100.0)
+                cr.set_source_rgb(*ill)
+            elif self.blending_color is not None:
+                cr.set_source_rgb(*self.blending_color.get_rgb())
             else:
                 cr.set_source_rgb(*self._color.get_rgb())
             x += (self.OUTLINE_WIDTH // 2) + 1.5
