@@ -204,6 +204,8 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                     ill[1]*fac,
                     ill[2]*fac
                 )
+                # update pref ui
+                app.preferences_window.update_ui()
 
                 # reset the brush color with the same color
                 # under the new illuminant
