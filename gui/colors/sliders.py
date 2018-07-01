@@ -383,7 +383,7 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         return max(0.0, col.h) / 360
 
     def get_background_validity(self):
-
+        # This bg should never change
         return True
 
 class CIECAMHueSlider (SliderColorAdjuster):
@@ -442,9 +442,20 @@ class CIECAMHueSlider (SliderColorAdjuster):
         return max(0.0, col.h) / 360
 
     def get_background_validity(self):
+        from gui.application import get_app
+        app = get_app()
+        vsh=(
+            app.brush.get_setting('cie_v'),
+            app.brush.get_setting('cie_s'),
+            app.brush.get_setting('cie_h'))
 
-        return True
-
+        cieaxes=app.brush.get_setting('cieaxes'),
+        lightsource=(
+            app.brush.get_setting('lightsource_X'),
+            app.brush.get_setting('lightsource_Y'),
+            app.brush.get_setting('lightsource_Z')
+            )
+        return vsh, cieaxes, lightsource
 
 class CIECAMChromaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
@@ -502,8 +513,20 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         return max(0.0, col.s) / 120
 
     def get_background_validity(self):
+        from gui.application import get_app
+        app = get_app()
+        vsh=(
+            app.brush.get_setting('cie_v'),
+            app.brush.get_setting('cie_s'),
+            app.brush.get_setting('cie_h'))
 
-        return True
+        cieaxes=app.brush.get_setting('cieaxes'),
+        lightsource=(
+            app.brush.get_setting('lightsource_X'),
+            app.brush.get_setting('lightsource_Y'),
+            app.brush.get_setting('lightsource_Z')
+            )
+        return vsh, cieaxes, lightsource
 
 
 class CIECAMLumaSlider (SliderColorAdjuster):
@@ -563,8 +586,20 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         return max(0.0, col.v) / 100
 
     def get_background_validity(self):
+        from gui.application import get_app
+        app = get_app()
+        vsh=(
+            app.brush.get_setting('cie_v'),
+            app.brush.get_setting('cie_s'),
+            app.brush.get_setting('cie_h'))
 
-        return True
+        cieaxes=app.brush.get_setting('cieaxes'),
+        lightsource=(
+            app.brush.get_setting('lightsource_X'),
+            app.brush.get_setting('lightsource_Y'),
+            app.brush.get_setting('lightsource_Z')
+            )
+        return vsh, cieaxes, lightsource
 
 
 if __name__ == '__main__':
