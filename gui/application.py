@@ -414,9 +414,7 @@ class Application (object):
         return self._preferences
 
     def _at_application_start(self, filenames, fullscreen):
-        col = self.brush_color_manager.get_color()
         self.brushmanager.select_initial_brush()
-        self.brush_color_manager.set_color(col)
         if filenames:
             # Open only the first file, no matter how many has been specified
             # If the file does not exist just set it as the file to save to
@@ -475,6 +473,9 @@ class Application (object):
         self._apply_button_mapping_settings()
         self._apply_autosave_settings()
         self.preferences_window.update_ui()
+        # reset brush color in case we changed color model
+        col = self.brush_color_manager.get_color()
+        self.brush_color_manager.set_color(col)
 
     def load_settings(self):
         """Loads the settings from persistent storage.
