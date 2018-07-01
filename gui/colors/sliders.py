@@ -382,6 +382,10 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         
         return max(0.0, col.h) / 360
 
+    def get_background_validity(self):
+
+        return True
+
 class CIECAMHueSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue")
 
@@ -436,6 +440,10 @@ class CIECAMHueSlider (SliderColorAdjuster):
         #if not isinstance(col, CIECAMColor):
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.h) / 360
+
+    def get_background_validity(self):
+
+        return True
 
 
 class CIECAMChromaSlider (SliderColorAdjuster):
@@ -492,6 +500,10 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         #if not isinstance(col, CIECAMColor):
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.s) / 120
+
+    def get_background_validity(self):
+
+        return True
 
 
 class CIECAMLumaSlider (SliderColorAdjuster):
@@ -551,11 +563,8 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         return max(0.0, col.v) / 100
 
     def get_background_validity(self):
-        col = CIECAMColor(color=self.get_managed_color())
-        if np.isnan(np.array([col.h, col.s])).any():
-            return 0
 
-        return int(col.h * 1000), int(col.s * 1000)
+        return True
 
 
 if __name__ == '__main__':
