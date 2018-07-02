@@ -1379,7 +1379,7 @@ def CIECAM_to_RGB(self):
     # optional limiter 
     maxcolorfulness = self.limit_purity
     axes = list(self.cieaxes)
-    v, s, h = max(0.00001, self.v), max(0.0001, self.s), self.h
+    v, s, h = max(0.00001, self.v), max(0.00001, self.s), self.h
     
     if maxcolorfulness:
         if self.gamutmapping == "highlight" and self.s > maxcolorfulness:
@@ -1422,8 +1422,26 @@ def CIECAM_to_RGB(self):
 
             rgbloss = (np.sum(result[np.where(result - 1 >= 0)]-1)
                        + np.sum(abs((result[np.where(result < 0.0)]))))
+            #rgbloss = np.sum(abs((result[np.where(result < 0.0)])))
             satloss = abs(s - getattr(cieresult, axes[1]))
             loss = satloss
+
+            if math.isnan(loss) or np.isnan(result).any() or rgbloss:
+                loss = float('Inf')
+            return loss
+
+        def loss_value(val_):
+            # set up loss function to penalize out-of-display range and gamut
+            vsh_ = (val_, s, h)
+            zipped= zip(axes, vsh_)
+            cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+            result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
+            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
+
+            rgbloss = (np.sum(result[np.where(result - 1 >= 0)]-1)
+                       + np.sum(abs((result[np.where(result < 0.0)]))))
+            val_loss = abs(v - getattr(cieresult, axes[0]))
+            loss = val_loss
 
             if math.isnan(loss) or np.isnan(result).any() or rgbloss:
                 loss = float('Inf')
@@ -1434,30 +1452,40 @@ def CIECAM_to_RGB(self):
         x_opt = spo.minimize_scalar(loss,
                                     tol=0.001,
                                     method='Brent',
-                                    bounds=(0.0, s),
+                                    bounds=(0.00001, s),
                                     options=opt
                                    )
-        # clip final result
         if (x_opt["success"]):
-            result = x_opt["x"]
-            result = (v, result, h)
+            s = x_opt["x"]
+            result = (v, s, h)
             zipped = zip(axes, result)
             cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
             final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
-            r, g, b = np.clip(final, 0.0, 1.0)
 
+            #if we're out of display-referred range, reduce value
             if any(x > 1.0 for x in final):
                 self.displayexceeded = True
 
-#            if result[1] < s:
-#                self.gamutexceeded = True
+                x_opt_val = spo.minimize_scalar(loss_value,
+                                            tol=0.001,
+                                            method='Brent',
+                                            bounds=(0.00001, v),
+                                            options=opt
+                                           )
+                if (x_opt_val["success"]):
+                    v = x_opt_val["x"]
+                    result = (v, s, h)
+                    zipped = zip(axes, result)
+                    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+                    final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
+
+            r, g, b = np.clip(final, 0.0, 1.0)
 
             if self.reset_intent:
                 self.v = v
-                self.s = result[1]
+                self.s = s
                 self.h = h
             self.cachedrgb = (r, g, b)
-            
             return r, g, b
         else:
             print("failing back to black")
