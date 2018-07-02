@@ -37,7 +37,6 @@ class BrushColorManager (colors.ColorManager):
         """Propagate user-set colors to the brush too (extension).
         """
 
-
         colors.ColorManager.set_color(self, color)
         if not self.__in_callback:
 
@@ -48,12 +47,13 @@ class BrushColorManager (colors.ColorManager):
                 if lightsource == "custom_XYZ":
                     lightsource = prefs['color.dimension_lightsource_XYZ']
                 else:
-                    lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+                    lightsource = colour.xy_to_XYZ(
+                        colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
                 # standard sRGB view environment except adjustable illuminant
                 cieaxes = prefs['color.dimension_value'] + \
                     prefs['color.dimension_purity'] + "h"
                 color = lib.color.CIECAMColor(color=color, cieaxes=cieaxes,
-                                           lightsource=lightsource)
+                                              lightsource=lightsource)
             self.__brush.set_ciecam_color(color)
             self.__brush.set_color_hsv(color.get_hsv())
 

@@ -58,15 +58,18 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
                 RGBBlueSlider,
                 0,
             ), (
-                C_("color sliders panel: hue/saturation/value: slider label", "H"),
+                C_("color sliders panel: hue/saturation/value: slider label",
+                   "H"),
                 HSVHueSlider,
                 12,
             ), (
-                C_("color sliders panel: hue/saturation/value: slider label", "S"),
+                C_("color sliders panel: hue/saturation/value: slider label",
+                   "S"),
                 HSVSaturationSlider,
                 0,
             ), (
-                C_("color sliders panel: hue/saturation/value: slider label", "V"),
+                C_("color sliders panel: hue/saturation/value: slider label",
+                   "V"),
                 HSVValueSlider,
                 0,
             ), (
@@ -82,7 +85,8 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
                 HCYLumaSlider,
                 0,
             ), (
-                C_("color sliders panel: hue/chroma/luma: slider label", "cHue"),
+                C_("color sliders panel: hue/chroma/luma: slider label",
+                   "cHue"),
                 CIECAMHueNormSlider,
                 12,
             ), (
@@ -336,8 +340,10 @@ class HCYLumaSlider (SliderColorAdjuster):
         col = HCYColor(color=self.get_managed_color())
         return int(col.h * 1000), int(col.c * 1000)
 
+
 class CIECAMHueNormSlider (SliderColorAdjuster):
-    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue @ s=35, v=50, D65")
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
+                             "CIECAM Hue @ s=35, v=50, D65")
 
     @property
     def samples(self):
@@ -351,7 +357,8 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         cm = self.get_color_manager()
         prefs = cm.get_prefs()
 
-        lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
+        lightsource = colour.xy_to_XYZ(
+            colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
 
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
@@ -374,17 +381,20 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
         # pull in CIECAM config
         cm = self.get_color_manager()
         prefs = cm.get_prefs()
-        lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
+        lightsource = colour.xy_to_XYZ(
+            colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource, discount_in=False, discount_out=False)
-        
+        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource,
+                          discount_in=False, discount_out=False)
+
         return max(0.0, col.h) / 360
 
     def get_background_validity(self):
         # This bg should never change
         return True
+
 
 class CIECAMHueSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue")
@@ -405,23 +415,23 @@ class CIECAMHueSlider (SliderColorAdjuster):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+            lightsource = colour.xy_to_XYZ(
+                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
         col = self.get_managed_color()
         if not isinstance(col, CIECAMColor):
             col = CIECAMColor(
-                color=self.get_managed_color(),
-                cieaxes=cieaxes,
-                lightsource=lightsource,
-                gamutmapping="highlight"
-            )
+                color = self.get_managed_color(),
+                cieaxes = cieaxes,
+                lightsource = lightsource,
+                gamutmapping = "highlight")
         col.lightsource = lightsource
         col.cieaxes = cieaxes
         col.h = max(0.0, amt) * 360
         col.cachedrgb = None
-        col.gamutmapping="highlight"
+        col.gamutmapping = "highlight"
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -433,33 +443,34 @@ class CIECAMHueSlider (SliderColorAdjuster):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+            lightsource = colour.xy_to_XYZ(
+                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        #if not isinstance(col, CIECAMColor):
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.h) / 360
 
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
-        vsh=(
+        vsh = (
             app.brush.get_setting('cie_v'),
             app.brush.get_setting('cie_s'),
             app.brush.get_setting('cie_h'))
 
-        cieaxes=app.brush.get_setting('cieaxes'),
-        lightsource=(
+        cieaxes = app.brush.get_setting('cieaxes'),
+        lightsource = (
             app.brush.get_setting('lightsource_X'),
             app.brush.get_setting('lightsource_Y'),
-            app.brush.get_setting('lightsource_Z')
-            )
+            app.brush.get_setting('lightsource_Z'))
         return vsh, cieaxes, lightsource
+
 
 class CIECAMChromaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
                              "CIECAM Colorfulness/Chroma/Saturation")
+
     @property
     def samples(self):
         alloc = self.get_allocation()
@@ -476,22 +487,23 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+            lightsource = colour.xy_to_XYZ(
+                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
         col = self.get_managed_color()
         if not isinstance(col, CIECAMColor):
             col = CIECAMColor(
-                color=self.get_managed_color(),
-                cieaxes=cieaxes,
-                lightsource=lightsource,
-                gamutmapping="highlight"
+                color = self.get_managed_color(),
+                cieaxes = cieaxes,
+                lightsource = lightsource,
+                gamutmapping = "highlight"
             )
         col.lightsource = lightsource
         col.cieaxes = cieaxes
         col.s = max(0.0, amt) * 120
-        col.gamutmapping="highlight"
+        col.gamutmapping = "highlight"
         col.cachedrgb = None
         return col
 
@@ -504,28 +516,27 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+            lightsource = colour.xy_to_XYZ(
+                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        #if not isinstance(col, CIECAMColor):
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.s) / 120
 
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
-        vsh=(
+        vsh = (
             app.brush.get_setting('cie_v'),
             app.brush.get_setting('cie_s'),
             app.brush.get_setting('cie_h'))
 
-        cieaxes=app.brush.get_setting('cieaxes'),
-        lightsource=(
+        cieaxes = app.brush.get_setting('cieaxes'),
+        lightsource = (
             app.brush.get_setting('lightsource_X'),
             app.brush.get_setting('lightsource_Y'),
-            app.brush.get_setting('lightsource_Z')
-            )
+            app.brush.get_setting('lightsource_Z'))
         return vsh, cieaxes, lightsource
 
 
@@ -549,7 +560,8 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+            lightsource = colour.xy_to_XYZ(
+                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
@@ -565,7 +577,7 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         col.cieaxes = cieaxes
         col.v = max(0.0, amt) * 100
         col.cachedrgb = None
-        col.gamutmapping="highlight"
+        col.gamutmapping = "highlight"
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -577,28 +589,27 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+            lightsource = colour.xy_to_XYZ(
+                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"
-        #if not isinstance(col, CIECAMColor):
         col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
         return max(0.0, col.v) / 100
 
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
-        vsh=(
+        vsh = (
             app.brush.get_setting('cie_v'),
             app.brush.get_setting('cie_s'),
             app.brush.get_setting('cie_h'))
 
-        cieaxes=app.brush.get_setting('cieaxes'),
-        lightsource=(
+        cieaxes = app.brush.get_setting('cieaxes'),
+        lightsource = (
             app.brush.get_setting('lightsource_X'),
             app.brush.get_setting('lightsource_Y'),
-            app.brush.get_setting('lightsource_Z')
-            )
+            app.brush.get_setting('lightsource_Z'))
         return vsh, cieaxes, lightsource
 
 

@@ -230,7 +230,8 @@ class BrushModifier (object):
         if lightsource == "custom_XYZ":
             lightsource = prefs['color.dimension_lightsource_XYZ']
         else:
-            lightsource = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
+            lightsource = colour.xy_to_XYZ(
+                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
         # standard sRGB view environment except adjustable illuminant
         cieaxes = prefs['color.dimension_value'] + \
             prefs['color.dimension_purity'] + "h"

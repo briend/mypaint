@@ -409,6 +409,7 @@ class RGBColor (UIColor):
             t2 = [round(c, 3) for c in t2]
             return t1 == t2
 
+
 class LinearRGBColor (UIColor):
     """Additive Linear Light Red/Green/Blue representation of a color."""
 
@@ -417,7 +418,8 @@ class LinearRGBColor (UIColor):
     g = None
     b = None
 
-    def __init__(self, r=None, g=None, b=None, rgb=None, color=None, gamma=2.4):
+    def __init__(self, r=None, g=None, b=None, rgb=None, color=None,
+                 gamma=2.4):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = LinearRGBColor(1, 0, 1)
@@ -425,7 +427,7 @@ class LinearRGBColor (UIColor):
           >>> col1 == col2
           True
           >>> LinearRGBColor(color=HSVColor(0.0, 0.0, 0.5))
-          <LinearRGBColor r=0.5000, g=0.5000, b=0.5000>
+          <LinearRGBColor r=0.1895, g=0.1895, b=0.1895>
         """
         UIColor.__init__(self)
         if color is not None:
@@ -445,7 +447,8 @@ class LinearRGBColor (UIColor):
     def get_rgb(self):
         # returns sRGB
         if self.gamma is not None:
-            return self.r**(1/self.gamma), self.g**(1/self.gamma), self.b**(1/self.gamma)
+            return (self.r**(1/self.gamma), self.g**(1/self.gamma),
+                    self.b**(1/self.gamma))
         else:
             return self.r, self.g, self.b
 
@@ -459,9 +462,9 @@ class LinearRGBColor (UIColor):
         >>> white = LinearRGBColor(r=1, g=1, b=1)
         >>> black = LinearRGBColor(r=0, g=0, b=0)
         >>> [c.to_hex_str() for c in white.interpolate(black, 3)]
-        ['#ffffff', '#7f7f7f', '#000000']
+        ['#ffffff', '#bfbfbf', '#000000']
         >>> [c.to_hex_str() for c in black.interpolate(white, 3)]
-        ['#000000', '#7f7f7f', '#ffffff']
+        ['#000000', '#bfbfbf', '#ffffff']
 
         """
         assert steps >= 3
@@ -510,13 +513,19 @@ class PigmentColor (UIColor):
 
     def __init__(self, spd=None, color=None, gamma=2.4):
         """Initializes from individual values, or another UIColor
-
-          >>> col1 = PigmentColor(1, 0, 1)
-          >>> col2 = PigmentColor(r=1, g=0.0, b=1)
+          # noqa: E519,E527
+          >>> col1 = PigmentColor(spd=np.ones(36))
+          >>> col2 = PigmentColor(color=RGBColor(r=1.0, g=1.0, b=1.0))
           >>> col1 == col2
           True
           >>> PigmentColor(color=HSVColor(0.0, 0.0, 0.5))
-          <PigmentColor r=0.5000, g=0.5000, b=0.5000>
+          <PigmentColor spd=[ 0.19819017  0.19818979  0.19819415  0.19820006  0.19822257  0.19830821
+            0.19857081  0.19933435  0.20133699  0.18188144  0.14089988  0.1326648
+            0.19314265  0.21328254  0.20470131  0.20006     0.19767729  0.19678056
+            0.19733815  0.20036807  0.1427121   0.1177744   0.20885475  0.2151355
+            0.20940174  0.20652093  0.20499726  0.20420548  0.20379605  0.20359143
+            0.20349461  0.20345066  0.20342906  0.20341864  0.20341295  0.20341106]>
+
         """
         UIColor.__init__(self)
         self.gamma = gamma
@@ -534,13 +543,14 @@ class PigmentColor (UIColor):
         # returns sRGB
         self.r, self.g, self.b = np.clip(Spectral_to_RGB(self.spd), 0.0, 1.0)
         if self.gamma is not None:
-            return (self.r**(1/self.gamma), self.g**(1/self.gamma), self.b**(1/self.gamma))
+            return (self.r**(1/self.gamma), self.g**(1/self.gamma),
+                    self.b**(1/self.gamma))
         else:
             return (self.r, self.g, self.b)
 
     def __repr__(self):
-        return "<PigmentColor spd=np.ones(36)>" \
-            % (self.spd)
+        return "<PigmentColor spd=%s>" \
+            % (np.array2string(self.spd))
 
     def interpolate(self, other, steps):
         """WGM Spectral interpolation.
@@ -548,9 +558,9 @@ class PigmentColor (UIColor):
         >>> white = PigmentColor(color=RGBColor(r=1, g=1, b=1))
         >>> black = PigmentColor(color=RGBColor(r=0, g=0, b=0))
         >>> [c.to_hex_str() for c in white.interpolate(black, 3)]
-        ['#ffffff', '#7f7f7f', '#000000']
+        ['#ffffff', '#252525', '#050505']
         >>> [c.to_hex_str() for c in black.interpolate(white, 3)]
-        ['#000000', '#7f7f7f', '#ffffff']
+        ['#050505', '#252525', '#ffffff']
 
         """
         assert steps >= 3
@@ -571,16 +581,16 @@ class PigmentColor (UIColor):
     def __eq__(self, other):
         """Equality test (override)
 
-        >>> c1 = PigmentColor(0.7, 0.45, 0.55)
-        >>> c2 = PigmentColor(0.4, 0.55, 0.45)
-        >>> c2hcy = HCYColor(color=c2)
+        >>> c1 = PigmentColor(color=RGBColor(r=0.7, g=0.45, b=0.55))
+        >>> c2 = PigmentColor(color=RGBColor(r=0.4, g=0.55, b=0.45))
+        >>> c2pig =RGBColor(color=c2)
         >>> c1 == c2
         False
         >>> c1 == c1 and c2 == c2
         True
-        >>> c2 == c2hcy
+        >>> c2 == c2pig
         True
-        >>> c1 == c2hcy
+        >>> c1 == c2pig
         False
 
         """
@@ -723,13 +733,13 @@ class HSVColor (UIColor):
 class CIECAMColor (UIColor):
     """CIECAM representation of a color.  Use VSH as stand-ins for axes
 
-      >>> col = CIECAMColor(95.67306142, 58.26474923, 106.14599451)
+      >>> col = CIECAMColor(55.67306142, 28.26474923, 106.14599451)
       >>> col.h = 106.14599451
-      >>> col.s = 58.26474923
+      >>> col.s = 28.26474923
       >>> col.v = 95.67306142
       >>> result = col.get_rgb()
       >>> print (round(result[0],3), round(result[1],3), round(result[2],3))
-      1.0 1.0 0.0
+      0.566 0.537 0.279
 
     """
 
@@ -749,16 +759,16 @@ class CIECAMColor (UIColor):
           >>> col1 == col2
           True
           >>> CIECAMColor(color=RGBColor(0.5, 0.5, 0.5))
-          <CIECAM , v=42.8403, s=1.4981, h=211.0592>
+          <CIECAM , v=53.0488, s=2.4757, h=209.5203>
         """
         UIColor.__init__(self)
 
         self.cieconfig = None
-        #print("creating new ciecam color object")
-        #gamut mapping strategy
-        #relativeColorimetric, highlight, or False
-        #highlight will flag out of gamut colors as magenta similar to GIMP
-        #False will simply clip the RGB values
+
+        # gamut mapping strategy
+        # relativeColorimetric, highlight, or False
+        # highlight will flag out of gamut colors as magenta similar to GIMP
+        # False will simply clip the RGB values
         self.gamutmapping = gamutmapping
 
         # The entire ciecam config needs to follow around the color
@@ -771,11 +781,13 @@ class CIECAMColor (UIColor):
             self.lightsource = np.array(lightsource)
 
         else:
-            self.lightsource = np.array(colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0)
-            
+            self.lightsource = np.array(
+                colour.xy_to_XYZ(
+                    colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0)
+
         self.L_A = 20.0
         self.Y_b = 4.5
-        self.surround=colour.CAM16_VIEWING_CONDITIONS['Dim']
+        self.surround = colour.CAM16_VIEWING_CONDITIONS['Dim']
 
         # maybe we want to know if the gamut was constrained
         self.gamutexceeded = None
@@ -784,7 +796,7 @@ class CIECAMColor (UIColor):
         # limit color purity?
         self.limit_purity = None
         self.reset_intent = False
-        
+
         # try getting from preferences but fallback to avoid breaking doctest
         try:
             from gui.application import get_app
@@ -800,14 +812,14 @@ class CIECAMColor (UIColor):
         if color is not None:
             if isinstance(color, CIECAMColor):
                 # convert from one to another (handle whitepoint changes)
-                v, s, h = CIECAM_to_CIECAM(self, color, discount_in=discount_in, discount_out=discount_out)
-                #self.cachedrgb = color.get_rgb()
+                v, s, h = CIECAM_to_CIECAM(self, color,
+                                           discount_in=discount_in,
+                                           discount_out=discount_out)
             else:
                 # any other UIColor is assumed to be sRGB
                 rgb = color.get_rgb()
                 self.cachedrgb = rgb
                 v, s, h = RGB_to_CIECAM(self, rgb)
-                
 
         if vsh is not None:
             v, s, h = vsh
@@ -819,7 +831,6 @@ class CIECAMColor (UIColor):
         assert self.v is not None
         if self.cachedrgb is None:
             self.cachedrgb = CIECAM_to_RGB(self)
-        
 
     def get_hsv(self):
         rgb = self.get_rgb()
@@ -828,7 +839,6 @@ class CIECAMColor (UIColor):
 
     def get_rgb(self):
         if self.cachedrgb:
-            #print("cache hit!")
             return self.cachedrgb
         return CIECAM_to_RGB(self)
 
@@ -842,9 +852,9 @@ class CIECAMColor (UIColor):
         >>> red_hsv = CIECAMColor(h=32.1526953,s=80.46644073,v=46.9250674 )
         >>> green_hsv = CIECAMColor(h=136.6478602,s=76.64436113,v=79.7493805)
         >>> [c.to_hex_str() for c in green_hsv.interpolate(red_hsv, 3)]
-        ['#00fe00', '#dca500', '#fe0000']
+        ['#79e725', '#c69100', '#c72d00']
         >>> [c.to_hex_str() for c in red_hsv.interpolate(green_hsv, 3)]
-        ['#fe0000', '#dca500', '#00fe00']
+        ['#c82c00', '#c59200', '#71e828']
 
         """
         assert steps >= 3
@@ -1335,15 +1345,16 @@ def RGB_to_CIECAM(self, rgb):
 
     xyz = colour.sRGB_to_XYZ(rgb)
 
-
-    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
+    cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A,
+                                self.Y_b, self.surround,
+                                discount_illuminant=False)
     axes = list(self.cieaxes)
-    ciecam_vsh = np.array([getattr(cam16, axes[0]), getattr(cam16, axes[1]), getattr(cam16, axes[2])])
+    ciecam_vsh = np.array([getattr(cam16, axes[0]),
+                          getattr(cam16, axes[1]), getattr(cam16, axes[2])])
 
     if maxcolorfulness:
         ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
 
-    #sys.stdout.flush()
     return ciecam_vsh
 
 
@@ -1353,21 +1364,24 @@ def CIECAM_to_CIECAM(self, ciecam, discount_in=True, discount_out=False):
     v, s, h = ciecam.v, ciecam.s, ciecam.h
     zipped = zip(axes, (v, s, h))
 
+    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped),
+                                         colour.CAM16_Specification)
 
-    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-    
-    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=discount_in)
-    
+    oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, np.array(self.L_A),
+                                 self.Y_b, self.surround,
+                                 discount_illuminant=discount_in)
+
     axes = list(self.cieaxes)
     v, s, h = self.v, self.s, self.h
-    
-    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=discount_out)
 
-    
+    ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A,
+                                     self.Y_b, self.surround,
+                                     discount_illuminant=discount_out)
+
     v = getattr(ciecam_vsh, axes[0])
     s = getattr(ciecam_vsh, axes[1])
     h = getattr(ciecam_vsh, axes[2])
-    
+
     if maxcolorfulness:
         s = min(getattr(ciecam_vsh, axes[1]), maxcolorfulness)
 
@@ -1376,11 +1390,10 @@ def CIECAM_to_CIECAM(self, ciecam, discount_in=True, discount_out=False):
 
 def CIECAM_to_RGB(self):
 
-    # optional limiter 
     maxcolorfulness = self.limit_purity
     axes = list(self.cieaxes)
     v, s, h = max(0.00001, self.v), max(0.00001, self.s), self.h
-    
+    # max colorfulness is optional limiter to help enforce limited palette
     if maxcolorfulness:
         if self.gamutmapping == "highlight" and self.s > maxcolorfulness:
             rand = random.uniform(0.25, 0.90)
@@ -1388,16 +1401,15 @@ def CIECAM_to_RGB(self):
         s = min(s, maxcolorfulness)
 
     zipped = zip(axes, (v, s, h))
-    
+
     self.gamutexceeded = False
     self.displayexceeded = False
-    
-    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-    xyz = colour.CAM16_to_XYZ(cam, self.lightsource, self.L_A, self.Y_b, self.surround)
+    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped),
+                                         colour.CAM16_Specification)
+    xyz = colour.CAM16_to_XYZ(cam, self.lightsource,
+                              self.L_A, self.Y_b, self.surround)
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(xyz/100.0)
-    #print(cam, xyz, result, self.lightsource)
-    #sys.stdout.flush()
     x = np.clip(result, 0, 1.0)
     if (result == x).all() or self.gamutmapping is False:
         r, g, b = x
@@ -1405,7 +1417,8 @@ def CIECAM_to_RGB(self):
         return r, g, b
     self.gamutexceeded = True
 
-    #return special rgb value to indicate out of gamut to sliders and guis
+    # return special rgb value to indicate out of gamut to sliders and guis
+    # TODO switch to stripes, return alpha channel of 0
     if self.gamutmapping == "highlight":
         rand = random.uniform(0.25, 0.90)
         return rand, rand, rand
@@ -1415,14 +1428,21 @@ def CIECAM_to_RGB(self):
             # set up loss function to penalize both out of gamut
             # RGB as well as CIE values far off target
             vsh_ = (v, sat_, h)
-            zipped= zip(axes, vsh_)
-            cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-            result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
-            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
+            zipped = zip(axes, vsh_)
+            cam = colour.utilities.as_namedtuple(
+                dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+            result = colour.XYZ_to_sRGB(
+                colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
+                                    self.Y_b, self.surround,
+                                    discount_illuminant=False)/100.0)
+            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result,
+                                            0.0, 1.0)) * 100.0,
+                                            self.lightsource, self.L_A,
+                                            self.Y_b, self.surround,
+                                            discount_illuminant=False)
 
             rgbloss = (np.sum(result[np.where(result - 1 >= 0)]-1)
                        + np.sum(abs((result[np.where(result < 0.0)]))))
-            #rgbloss = np.sum(abs((result[np.where(result < 0.0)])))
             satloss = abs(s - getattr(cieresult, axes[1]))
             loss = satloss
 
@@ -1433,10 +1453,17 @@ def CIECAM_to_RGB(self):
         def loss_value(val_):
             # set up loss function to penalize out-of-display range and gamut
             vsh_ = (val_, s, h)
-            zipped= zip(axes, vsh_)
-            cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-            result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
-            cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0, self.lightsource, self.L_A, self.Y_b, self.surround, discount_illuminant=False)
+            zipped = zip(axes, vsh_)
+            cam = colour.utilities.as_namedtuple(
+                dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+            result = colour.XYZ_to_sRGB(
+                colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
+                                    self.Y_b, self.surround,
+                                    discount_illuminant=False)/100.0)
+            cieresult = colour.XYZ_to_CAM16(
+                colour.sRGB_to_XYZ(np.clip(result, 0.0, 1.0))*100.0,
+                self.lightsource, self.L_A, self.Y_b, self.surround,
+                discount_illuminant=False)
 
             rgbloss = (np.sum(result[np.where(result - 1 >= 0)]-1)
                        + np.sum(abs((result[np.where(result < 0.0)]))))
@@ -1454,30 +1481,39 @@ def CIECAM_to_RGB(self):
                                     method='Brent',
                                     bounds=(0.00001, s),
                                     options=opt
-                                   )
+                                    )
         if (x_opt["success"]):
             s = x_opt["x"]
             result = (v, s, h)
             zipped = zip(axes, result)
-            cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-            final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
+            cam = colour.utilities.as_namedtuple(
+                dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+            final = colour.XYZ_to_sRGB(
+                colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
+                                    self.Y_b, self.surround,
+                                    discount_illuminant=False)/100.0)
 
-            #if we're out of display-referred range, reduce value
+            # if we're out of display-referred range, reduce value
             if any(x > 1.0 for x in final):
                 self.displayexceeded = True
 
                 x_opt_val = spo.minimize_scalar(loss_value,
-                                            tol=0.001,
-                                            method='Brent',
-                                            bounds=(0.00001, v),
-                                            options=opt
-                                           )
+                                                tol=0.001,
+                                                method='Brent',
+                                                bounds=(0.00001, v),
+                                                options=opt
+                                                )
                 if (x_opt_val["success"]):
                     v = x_opt_val["x"]
                     result = (v, s, h)
                     zipped = zip(axes, result)
-                    cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-                    final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A), self.Y_b, self.surround, discount_illuminant=False)/100.0)
+                    cam = colour.utilities.as_namedtuple(
+                        dict((x, y) for x, y in zipped),
+                        colour.CAM16_Specification)
+                    final = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(
+                        cam, self.lightsource, np.array(self.L_A),
+                        self.Y_b, self.surround,
+                        discount_illuminant=False)/100.0)
 
             r, g, b = np.clip(final, 0.0, 1.0)
 
@@ -1497,70 +1533,94 @@ _WGM_EPSILON = 0.0001
 
 
 def RGB_to_Spectral(rgb):
-    """Converts RGB to 36 segments spectral power distribution curve.  Upsamples
-    to spectral primaries and sums them together into one SPD.  Based on work by
-    Scott Allen Burns.
+    """Converts RGB to 36 segments spectral power distribution curve.
+    Upsamples to spectral primaries and sums them together into one SPD
+    Based on work by Scott Allen Burns.
     """
 
     r, g, b = rgb
     r = max(r, _WGM_EPSILON)
     g = max(g, _WGM_EPSILON)
     b = max(b, _WGM_EPSILON)
-    # Spectral primaries derived by an optimization routine devised by Scott Burns.  Smooth curve < 1.0 to match XYZ
-    spectral_r = r * np.array([0.022963, 0.022958, 0.022965, 0.022919973, 0.022752, 0.022217,
-                          0.021023, 0.019115, 0.016784, 0.014467, 0.012473, 0.010941,
-                          0.009881, 0.009311, 0.009313, 0.010067, 0.011976, 0.015936,
-                          0.024301, 0.043798, 0.09737, 0.279537, 0.903191, 1, 1, 1, 1,
-                          1, 1, 1, 1, 1, 1, 1, 1, 1])
+    # Spectral primaries derived by an optimization routine devised by
+    # Allen Burns. Smooth curves <= 1.0 to match XYZ
+    spectral_r = r * np.array(
+        [0.022963, 0.022958, 0.022965, 0.022919973, 0.022752, 0.022217,
+         0.021023, 0.019115, 0.016784, 0.014467, 0.012473, 0.010941,
+         0.009881, 0.009311, 0.009313, 0.010067, 0.011976, 0.015936,
+         0.024301, 0.043798, 0.09737, 0.279537, 0.903191, 1, 1, 1, 1,
+         1, 1, 1, 1, 1, 1, 1, 1, 1
+         ]
+    )
 
-    spectral_g = g * np.array([0.023091, 0.023094, 0.02311, 0.023186201, 0.023473, 0.02446,
-                          0.02704, 0.032978, 0.045879, 0.075263, 0.148204, 0.344509,
-                          0.810966, 1, 1, 1, 1, 1,
-                          1, 1, 0.644441, 0.332202, 0.19032, 0.127354,
-                          0.097532, 0.082594, 0.074711, 0.070621, 0.068506, 0.067451,
-                          0.066952, 0.066725, 0.066613, 0.066559, 0.066531, 0.066521])
+    spectral_g = g * np.array(
+        [0.023091, 0.023094, 0.02311, 0.023186201, 0.023473, 0.02446,
+         0.02704, 0.032978, 0.045879, 0.075263, 0.148204, 0.344509,
+         0.810966, 1, 1, 1, 1, 1,
+         1, 1, 0.644441, 0.332202, 0.19032, 0.127354,
+         0.097532, 0.082594, 0.074711, 0.070621, 0.068506, 0.067451,
+         0.066952, 0.066725, 0.066613, 0.066559, 0.066531, 0.066521
+         ]
+    )
 
-    spectral_b = b * np.array([1, 1, 1, 1, 1, 1,
-                           1, 1, 1, 0.870246, 0.582997, 0.344759,
-                           0.198566, 0.116401, 0.071107, 0.045856, 0.031371, 0.022678,
-                           0.017256, 0.013751, 0.011428, 0.009878, 0.008831, 0.008138,
-                           0.007697, 0.00743, 0.007271, 0.007182, 0.007136, 0.007111,
-                           0.007099, 0.007094, 0.007092, 0.007091, 0.007089, 0.007089])
+    spectral_b = b * np.array(
+        [1, 1, 1, 1, 1, 1,
+         1, 1, 1, 0.870246, 0.582997, 0.344759,
+         0.198566, 0.116401, 0.071107, 0.045856, 0.031371, 0.022678,
+         0.017256, 0.013751, 0.011428, 0.009878, 0.008831, 0.008138,
+         0.007697, 0.00743, 0.007271, 0.007182, 0.007136, 0.007111,
+         0.007099, 0.007094, 0.007092, 0.007091, 0.007089, 0.007089
+         ]
+    )
     return np.sum([spectral_r, spectral_g, spectral_b], axis=0)
 
 
 def Spectral_to_RGB(spd):
-    """Converts 36 segments spectral power distribution curve to RGB.  Based on work by
-    Scott Allen Burns.
+    """Converts 36 segments spectral power distribution curve to RGB.
+    Based on work by Scott Allen Burns.
     """
 
     # Spectral_to_XYZ CIE matrix weighted w/ diagonal D65 matrix.  sRGB
-    T_MATRIX = np.array([[5.47813E-05, 0.000184722, 0.000935514, 0.003096265, 0.009507714, 0.017351596,
-                        0.022073595, 0.016353161, 0.002002407, -0.016177731, -0.033929391, -0.046158952,
-                        -0.06381706, -0.083911194, -0.091832385, -0.08258148, -0.052950086, -0.012727224,
-                        0.037413037, 0.091701812, 0.147964686, 0.181542886, 0.210684154, 0.210058081,
-                        0.181312094, 0.132064724, 0.093723787, 0.057159281, 0.033469657, 0.018235464,
-                        0.009298756, 0.004023687, 0.002068643, 0.00109484, 0.000454231, 0.000255925],
-                        [-4.65552E-05, -0.000157894, -0.000806935, -0.002707449, -0.008477628, -0.016058258,
-                        -0.02200529, -0.020027434, -0.011137726, 0.003784809, 0.022138944, 0.038965605,
-                        0.063361718, 0.095981626, 0.126280277, 0.148575844, 0.149044804, 0.14239936,
-                        0.122084916, 0.09544734, 0.067421931, 0.035691251, 0.01313278, -0.002384996,
-                        -0.009409573, -0.009888983, -0.008379513, -0.005606153, -0.003444663, -0.001921041,
-                        -0.000995333, -0.000435322, -0.000224537, -0.000118838, -4.93038E-05, -2.77789E-05],
-                        [0.00032594, 0.001107914, 0.005677477, 0.01918448, 0.060978641, 0.121348231,
-                        0.184875618, 0.208804428, 0.197318551, 0.147233899, 0.091819086, 0.046485543,
-                        0.022982618, 0.00665036, -0.005816014, -0.012450334, -0.015524259, -0.016712927,
-                        -0.01570093, -0.013647887, -0.011317812, -0.008077223, -0.005863171, -0.003943485,
-                        -0.002490472, -0.001440876, -0.000852895, -0.000458929, -0.000248389, -0.000129773,
-                        -6.41985E-05, -2.71982E-05, -1.38913E-05, -7.35203E-06, -3.05024E-06, -1.71858E-06]])
+    T_MATRIX = (
+        np.array(
+            [[5.47813E-05, 0.000184722, 0.000935514, 0.003096265,
+              0.009507714, 0.017351596, 0.022073595, 0.016353161,
+              0.002002407, -0.016177731, -0.033929391, -0.046158952,
+              -0.06381706, -0.083911194, -0.091832385, -0.08258148,
+              -0.052950086, -0.012727224, 0.037413037, 0.091701812,
+              0.147964686, 0.181542886, 0.210684154, 0.210058081,
+              0.181312094, 0.132064724, 0.093723787, 0.057159281,
+              0.033469657, 0.018235464, 0.009298756, 0.004023687,
+              0.002068643, 0.00109484, 0.000454231, 0.000255925],
+             [-4.65552E-05, -0.000157894, -0.000806935, -0.002707449,
+              -0.008477628, -0.016058258, -0.02200529, -0.020027434,
+              -0.011137726, 0.003784809, 0.022138944, 0.038965605,
+              0.063361718, 0.095981626, 0.126280277, 0.148575844,
+              0.149044804, 0.14239936, 0.122084916, 0.09544734,
+              0.067421931, 0.035691251, 0.01313278, -0.002384996,
+              -0.009409573, -0.009888983, -0.008379513, -0.005606153,
+              -0.003444663, -0.001921041, -0.000995333, -0.000435322,
+              -0.000224537, -0.000118838, -4.93038E-05, -2.77789E-05],
+             [0.00032594, 0.001107914, 0.005677477, 0.01918448,
+              0.060978641, 0.121348231, 0.184875618, 0.208804428,
+              0.197318551, 0.147233899, 0.091819086, 0.046485543,
+              0.022982618, 0.00665036, -0.005816014, -0.012450334,
+              -0.015524259, -0.016712927, -0.01570093, -0.013647887,
+              -0.011317812, -0.008077223, -0.005863171, -0.003943485,
+              -0.002490472, -0.001440876, -0.000852895, -0.000458929,
+              -0.000248389, -0.000129773, -6.41985E-05, -2.71982E-05,
+              -1.38913E-05, -7.35203E-06, -3.05024E-06, -1.71858E-06]]
+        )
+    )
     r, g, b = np.sum(spd*T_MATRIX, axis=1)
     return r, g, b
 
+
 def Spectral_Mix_WGM(spd_a, spd_b, ratio):
-    """Mixes two SPDs via weighted geomtric mean and returns an SPD.  Based on work by
-    Scott Allen Burns.
+    """Mixes two SPDs via weighted geomtric mean and returns an SPD.
+    Based on work by Scott Allen Burns.
     """
-    return spd_a**(1.0 -ratio) * spd_b**ratio
+    return spd_a**(1.0 - ratio) * spd_b**ratio
 
 ## Module testing
 

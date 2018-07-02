@@ -1515,7 +1515,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 return
 
         brushcolor = self._get_app_brush_color()
-        
         if self.app.brush.displayexceeded:
             return
 
@@ -1532,9 +1531,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         brushcolor.v = brushcolor.v + e
         brushcolor.cachedrgb = None
         r, g, b = brushcolor.get_rgb()
-        
-#        if brushcolor.displayexceeded:
-#            return
 
         if ((self.app.preferences['color.splash_before_stroke'] is True
              and self.in_input_stroke is False)
@@ -1544,7 +1540,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_brighter = t
-        #set brush color without reseting color intent
         self.app.brush.set_color_hsv(lib.color.RGBColor(
                                      r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
@@ -1584,8 +1579,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_darker = t
-        
-        #set brush color without reseting color intent
         self.app.brush.set_color_hsv(lib.color.RGBColor(
                                      r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
@@ -1626,7 +1619,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_increase_hue = t
-        #set brush color without reseting color intent
         self.app.brush.set_color_hsv(lib.color.RGBColor(
                                      r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
@@ -1666,7 +1658,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_decrease_hue = t
-        #set brush color without reseting color intent
         self.app.brush.set_color_hsv(lib.color.RGBColor(
                                      r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
@@ -1684,9 +1675,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 return
         cm = self.app.brush_color_manager
         brushcolor = self._get_app_brush_color()
-
-#        if self.app.brush.gamutexceeded:
-#            return
 
         if self.app.preferences['color.dynamic_step_size']:
             # pressing faster=bigger jump (max 25)
@@ -1711,7 +1699,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_purer = t
-        #set brush color without reseting color intent
         self.app.brush.set_color_hsv(lib.color.RGBColor(
                                      r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)
@@ -1752,7 +1739,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
 
         self.last_grayer = t
-        #set brush color without reseting color intent
         self.app.brush.set_color_hsv(lib.color.RGBColor(
                                      r=r, g=g, b=b).get_hsv())
         self.app.brush.set_ciecam_color(brushcolor)

@@ -104,7 +104,8 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         if self.blending_color is not None:
             app = self.doc.app
             app.brush.set_color_hsv(self.blending_color.get_hsv())
-            app.brush.set_ciecam_color(lib.color.CIECAMColor(color=self.blending_color))
+            app.brush.set_ciecam_color(lib.color.CIECAMColor(
+                                       color=self.blending_color))
         super(ColorPickMode, self).leave(**kwds)
 
     def button_press_cb(self, tdw, event):
@@ -130,12 +131,12 @@ class ColorPickMode (gui.mode.OneshotDragMode):
 
     def _place_overlay(self, tdw, x, y):
         if self._overlay is None:
-            self._overlay = ColorPickPreviewOverlay(self.doc, tdw, x, y,
-                                                    self._pickmode,
-                                                    blending_color=self.blending_color)
+            self._overlay = ColorPickPreviewOverlay(
+                self.doc, tdw, x, y, self._pickmode,
+                blending_color=self.blending_color)
         else:
             self._overlay.move(x, y)
-            self._overlay.blending_color=self.blending_color
+            self._overlay.blending_color = self.blending_color
 
     def _remove_overlay(self):
         if self._overlay is None:
@@ -197,7 +198,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 if ill[1] <= 0:
                     return
                 fac = 1/ill[1]*100
-                #fac = 1
+
                 p['color.dimension_lightsource'] = "custom_XYZ"
                 p['color.dimension_lightsource_XYZ'] = (
                     ill[0]*fac,
@@ -221,10 +222,12 @@ class ColorPickMode (gui.mode.OneshotDragMode):
             elif mode == "PickandBlend":
                 if self.starting_color is None:
                     self.starting_color = pickcolor
-                dist = np.linalg.norm(np.array(self.starting_position) - np.array((x, y)))
+                dist = np.linalg.norm(
+                    np.array(self.starting_position) - np.array((x, y)))
                 dist = np.clip(dist/200, 0, 1)
                 brushcolor_pig = lib.color.PigmentColor(color=brushcolor)
-                pickcolor_pig = lib.color.PigmentColor(color=self.starting_color)
+                pickcolor_pig = lib.color.PigmentColor(
+                    color=self.starting_color)
                 self.blending_color = brushcolor_pig.mix(pickcolor_pig, dist)
             else:
                 # pick V, S, H independently
@@ -245,18 +248,14 @@ class ColorPickMode (gui.mode.OneshotDragMode):
     def _get_app_brush_color(self):
         app = self.app
         return lib.color.CIECAMColor(
-            vsh=(
-                app.brush.get_setting('cie_v'),
-                app.brush.get_setting('cie_s'),
-                app.brush.get_setting('cie_h')),
+            vsh=(app.brush.get_setting('cie_v'),
+                 app.brush.get_setting('cie_s'),
+                 app.brush.get_setting('cie_h')),
             cieaxes=app.brush.get_setting('cieaxes'),
-            lightsource=(
-                app.brush.get_setting('lightsource_X'),
-                app.brush.get_setting('lightsource_Y'),
-                app.brush.get_setting('lightsource_Z'),
-                        ),
-                discount_in=True, discount_out=True
-                )
+            lightsource=(app.brush.get_setting('lightsource_X'),
+                         app.brush.get_setting('lightsource_Y'),
+                         app.brush.get_setting('lightsource_Z')),
+            discount_in=True, discount_out=True)
 
 
 class ColorPickModeH(ColorPickMode):
@@ -296,9 +295,10 @@ class ColorPickModeBlend (ColorPickMode):
         return _(u"Pick and Blend")
 
     def get_usage(self):
-        return _(u"Blend the canvas color with brush color until leaving the mode")
+        return _(u"Blend the canvas color with brush color-> drag distance")
 
-    def __init__(self, ignore_modifiers=False, pickmode="PickandBlend", **kwds):
+    def __init__(self, ignore_modifiers=False, pickmode="PickandBlend",
+                 **kwds):
         super(ColorPickModeBlend, self).__init__(**kwds)
         self._overlay = None
         self._started_from_key_press = ignore_modifiers

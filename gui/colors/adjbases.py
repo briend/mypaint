@@ -1034,7 +1034,7 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         amt = self.point_to_amount(x, y)
         col = self.get_color_for_bar_amount(amt)
         if isinstance(col, CIECAMColor):
-            check=col.get_rgb()
+            check = col.get_rgb()
             if col.gamutexceeded and col.gamutmapping == "highlight":
                 return self.get_managed_color()
         return col
@@ -1095,7 +1095,7 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         amt = clamp(amt + d, 0.0, 1.0)
         col = self.get_color_for_bar_amount(amt)
         if isinstance(col, CIECAMColor):
-            check=col.get_rgb()
+            check = col.get_rgb()
             if col.gamutexceeded and col.gamutmapping == "highlight":
                 return False
         self.set_managed_color(col)
