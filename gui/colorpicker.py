@@ -79,9 +79,12 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         self._start_drag_on_next_motion_event = False
         self._pickmode = pickmode
         self.app = gui.application.get_app()
+        # interactive blend mode blends brush+canvas using ratio
+        # based on distance from starting position
         self.starting_position = None
         self.starting_color = None
         self.blending_color = None
+        self.blending_ratio = None
 
     def enter(self, doc, **kwds):
         """Enters the mode, arranging for necessary grabs ASAP"""
@@ -101,6 +104,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
 
     def leave(self, **kwds):
         self._remove_overlay()
+        # if we're interactively blending, set the brushcolor when leaving
         if self.blending_color is not None:
             app = self.doc.app
             app.brush.set_color_hsv(self.blending_color.get_hsv())
@@ -133,10 +137,12 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         if self._overlay is None:
             self._overlay = ColorPickPreviewOverlay(
                 self.doc, tdw, x, y, self._pickmode,
-                blending_color=self.blending_color)
+                blending_color=self.blending_color,
+                blending_ratio=self.blending_ratio)
         else:
             self._overlay.move(x, y)
             self._overlay.blending_color = self.blending_color
+            self._overlay.blending_ratio = self.blending_ratio
 
     def _remove_overlay(self):
         if self._overlay is None:
@@ -225,6 +231,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 dist = np.linalg.norm(
                     np.array(self.starting_position) - np.array((x, y)))
                 dist = np.clip(dist/200, 0, 1)
+                self.blending_ratio = dist
                 brushcolor_pig = lib.color.PigmentColor(color=brushcolor)
                 pickcolor_pig = lib.color.PigmentColor(
                     color=self.starting_color)
@@ -389,7 +396,8 @@ class ColorPickPreviewOverlay (Overlay):
     OUTLINE_WIDTH = 3
     CORNER_RADIUS = 10
 
-    def __init__(self, doc, tdw, x, y, pickmode, blending_color=None):
+    def __init__(self, doc, tdw, x, y, pickmode,
+                 blending_color=None, blending_ratio=None):
         """Initialize, attaching to the brush and to the tdw.
 
         Observer callbacks and canvas overlays are registered by this
@@ -413,6 +421,7 @@ class ColorPickPreviewOverlay (Overlay):
         self._pickmode = pickmode
         self.app = gui.application.get_app()
         self.blending_color = blending_color
+        self.blending_ratio = blending_ratio
 
     def cleanup(self):
         """Cleans up temporary observer stuff, allowing garbage collection.
@@ -514,6 +523,17 @@ class ColorPickPreviewOverlay (Overlay):
             cr.fill_preserve()
             cr.set_source_rgb(0, 0, 0)
             cr.set_line_width(self.OUTLINE_WIDTH)
+
             cr.stroke()
+            if self.blending_ratio is not None:
+                cr.move_to(x + 5, y + 20)
+                cr.select_font_face('Sans')
+                cr.set_font_size(20) # em-square height is 90 pixels
+                cr.text_path(str(int(self.blending_ratio * 100)) + '%')
+                cr.set_source_rgb(1, 1, 1)
+                cr.fill_preserve()
+                cr.set_source_rgb(0, 0, 0)
+                cr.set_line_width(1.0)
+                cr.stroke()
 
         self._previous_area = area
