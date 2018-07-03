@@ -454,16 +454,19 @@ class CIECAMHueSlider (SliderColorAdjuster):
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
-        vsh = (
-            app.brush.get_setting('cie_v'),
-            app.brush.get_setting('cie_s'),
-            app.brush.get_setting('cie_h'))
+        try:
+            vsh = (
+                app.brush.get_setting('cie_v'),
+                app.brush.get_setting('cie_s'),
+                app.brush.get_setting('cie_h'))
 
-        cieaxes = app.brush.get_setting('cieaxes'),
-        lightsource = (
-            app.brush.get_setting('lightsource_X'),
-            app.brush.get_setting('lightsource_Y'),
-            app.brush.get_setting('lightsource_Z'))
+            cieaxes = app.brush.get_setting('cieaxes'),
+            lightsource = (
+                app.brush.get_setting('lightsource_X'),
+                app.brush.get_setting('lightsource_Y'),
+                app.brush.get_setting('lightsource_Z'))
+        except KeyError:
+            return True
         return vsh, cieaxes, lightsource
 
 
@@ -527,16 +530,19 @@ class CIECAMChromaSlider (SliderColorAdjuster):
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
-        vsh = (
-            app.brush.get_setting('cie_v'),
-            app.brush.get_setting('cie_s'),
-            app.brush.get_setting('cie_h'))
+        try:
+            vsh = (
+                app.brush.get_setting('cie_v'),
+                app.brush.get_setting('cie_s'),
+                app.brush.get_setting('cie_h'))
 
-        cieaxes = app.brush.get_setting('cieaxes'),
-        lightsource = (
-            app.brush.get_setting('lightsource_X'),
-            app.brush.get_setting('lightsource_Y'),
-            app.brush.get_setting('lightsource_Z'))
+            cieaxes = app.brush.get_setting('cieaxes'),
+            lightsource = (
+                app.brush.get_setting('lightsource_X'),
+                app.brush.get_setting('lightsource_Y'),
+                app.brush.get_setting('lightsource_Z'))
+        except KeyError:
+            return True
         return vsh, cieaxes, lightsource
 
 
@@ -600,16 +606,20 @@ class CIECAMLumaSlider (SliderColorAdjuster):
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
-        vsh = (
-            app.brush.get_setting('cie_v'),
-            app.brush.get_setting('cie_s'),
-            app.brush.get_setting('cie_h'))
+        
+        try:
+            vsh = (
+                app.brush.get_setting('cie_v'),
+                app.brush.get_setting('cie_s'),
+                app.brush.get_setting('cie_h'))
 
-        cieaxes = app.brush.get_setting('cieaxes'),
-        lightsource = (
-            app.brush.get_setting('lightsource_X'),
-            app.brush.get_setting('lightsource_Y'),
-            app.brush.get_setting('lightsource_Z'))
+            cieaxes = app.brush.get_setting('cieaxes'),
+            lightsource = (
+                app.brush.get_setting('lightsource_X'),
+                app.brush.get_setting('lightsource_Y'),
+                app.brush.get_setting('lightsource_Z'))
+        except KeyError:
+            return True
         return vsh, cieaxes, lightsource
 
 
