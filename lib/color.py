@@ -538,15 +538,20 @@ class PigmentColor (UIColor):
         else:
             self.spd = spd
         assert self.spd is not None
+        self.cachedrgb = None
 
     def get_rgb(self):
+        if self.cachedrgb is not None:
+            return self.cachedrgb
         # returns sRGB
         self.r, self.g, self.b = np.clip(Spectral_to_RGB(self.spd), 0.0, 1.0)
         if self.gamma is not None:
-            return (self.r**(1/self.gamma), self.g**(1/self.gamma),
+            self.cachedrgb = (self.r**(1/self.gamma), self.g**(1/self.gamma),
                     self.b**(1/self.gamma))
+            return self.cachedrgb
         else:
-            return (self.r, self.g, self.b)
+            self.cachedrgb = (self.r, self.g, self.b)
+            return self.cachedrgb
 
     def __repr__(self):
         return "<PigmentColor spd=%s>" \
