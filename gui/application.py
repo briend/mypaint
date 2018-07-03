@@ -557,6 +557,7 @@ class Application (object):
             'color.limit_purity': -1.0,
             'color.reset_intent_after_gamut_map': False,
             'color.average_use_dominant': True,
+            'color.pick_blend_reverse': False,
 
             "scratchpad.last_opened_scratchpad": "",
 
