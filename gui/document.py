@@ -146,6 +146,7 @@ class CanvasController (object):
         tdw.__last_event_x = event.x
         tdw.__last_event_y = event.y
         tdw.__last_event_time = event.time
+        tdw.__last_event_pressure = event.get_axis(Gdk.AxisUse.PRESSURE)
 
     def get_last_event_info(self, tdw):
         """Get details of the last event delegated to a mode in the stack.
@@ -159,9 +160,10 @@ class CanvasController (object):
             t = tdw.__last_event_time
             x = tdw.__last_event_x
             y = tdw.__last_event_y
+            p = tdw.__last_event_pressure
         except AttributeError:
             pass
-        return (t, x, y)
+        return (t, x, y, p)
 
     ## High-level event observing interface
 

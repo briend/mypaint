@@ -93,7 +93,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
             # Pick now using the last recorded event position
             doc = self.doc
             tdw = self.doc.tdw
-            t, x, y = doc.get_last_event_info(tdw)
+            t, x, y, p = doc.get_last_event_info(tdw)
 
             if None not in (x, y):
                 self.starting_position = (x, y)
@@ -160,7 +160,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         app = self.doc.app
         p = self.app.preferences
         elapsed = None
-        t, x, y = doc.get_last_event_info(tdw)
+        t, x, y, pressure = doc.get_last_event_info(tdw)
         if t <= doc.last_colorpick_time:
             t = (time.time() * 1000)
 
@@ -230,10 +230,9 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                     self.starting_color = pickcolor
                 dist = np.linalg.norm(
                     np.array(self.starting_position) - np.array((x, y)))
+                dist = np.clip(dist / 200 + pressure, 0, 1)
                 if p['color.pick_blend_reverse'] is True:
-                    dist = np.clip((200 - dist) / 200, 0, 1)
-                else:
-                    dist = np.clip(dist / 200, 0, 1)
+                    dist = 1 - dist
                 self.blending_ratio = dist
                 brushcolor_pig = lib.color.PigmentColor(color=brushcolor)
                 pickcolor_pig = lib.color.PigmentColor(
