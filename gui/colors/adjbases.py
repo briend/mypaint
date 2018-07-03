@@ -1033,10 +1033,14 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         """
         amt = self.point_to_amount(x, y)
         col = self.get_color_for_bar_amount(amt)
+        # if we're attempting to get an impossible color
+        # from the striped out-of-bounds zones
+        # we should perform gamut mapping and return it
         if isinstance(col, CIECAMColor):
-            check = col.get_rgb()
+            col.get_rgb()
             if col.gamutexceeded and col.gamutmapping == "highlight":
-                return self.get_managed_color()
+                col.gamutmapping = "relativeColorimetric"
+                col.cachedrgb = None
         return col
 
     def paint_foreground_cb(self, cr, wd, ht):
