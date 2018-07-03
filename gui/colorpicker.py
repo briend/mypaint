@@ -161,6 +161,11 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         p = self.app.preferences
         elapsed = None
         t, x, y, pressure = doc.get_last_event_info(tdw)
+        # TODO configure static pressure as a slider?
+        # This would allow non-pressure devices to use
+        # pressures besides 50% for brushes too
+        if pressure is None:
+            pressure = 0.5
         if t <= doc.last_colorpick_time:
             t = (time.time() * 1000)
 
