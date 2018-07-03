@@ -1506,7 +1506,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
     def brighter_cb(self, action):
         """``Brighter`` GtkAction callback: lighten the brush color"""
-        t, x, y = self.get_last_event_info(self.tdw)
+        t, x, y, p = self.get_last_event_info(self.tdw)
 
         if t <= self.last_brighter:
             t = (time.time() * 1000)
@@ -1548,7 +1548,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
     def darker_cb(self, action):
         """``Darker`` GtkAction callback: darken the brush color"""
-        t, x, y = self.get_last_event_info(self.tdw)
+        t, x, y, p = self.get_last_event_info(self.tdw)
 
         if t <= self.last_darker:
             t = (time.time() * 1000)
@@ -1587,7 +1587,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
     def increase_hue_cb(self, action):
         """Clockwise hue rotation ("IncreaseHue" action)."""
-        t, x, y = self.get_last_event_info(self.tdw)
+        t, x, y, p = self.get_last_event_info(self.tdw)
 
         if t <= self.last_increase_hue:
             t = (time.time() * 1000)
@@ -1627,7 +1627,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
     def decrease_hue_cb(self, action):
         """Anticlockwise hue rotation ("DecreaseHue" action)."""
-        t, x, y = self.get_last_event_info(self.tdw)
+        t, x, y, p = self.get_last_event_info(self.tdw)
 
         if t <= self.last_decrease_hue:
             t = (time.time() * 1000)
@@ -1666,7 +1666,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
     def purer_cb(self, action):
         """``Purer`` GtkAction callback: make the brush color less grey"""
-        t, x, y = self.get_last_event_info(self.tdw)
+        t, x, y, p = self.get_last_event_info(self.tdw)
 
         if t <= self.last_purer:
             t = (time.time() * 1000)
@@ -1707,7 +1707,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
     def grayer_cb(self, action):
         """``Grayer`` GtkAction callback: make the brush color more grey"""
-        t, x, y = self.get_last_event_info(self.tdw)
+        t, x, y, p = self.get_last_event_info(self.tdw)
 
         if t <= self.last_grayer:
             t = (time.time() * 1000)
@@ -1909,7 +1909,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         """
 
         if center == self.CENTER_ON_POINTER:
-            etime, ex, ey = self.get_last_event_info(self.tdw)
+            etime, ex, ey, ep = self.get_last_event_info(self.tdw)
             center = (ex, ey)
         elif center == self.CENTER_ON_VIEWPORT:
             center = self.tdw.get_center()
@@ -1950,7 +1950,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             or `CENTER_ON_VIEWPORT`
         """
         if center == self.CENTER_ON_POINTER:
-            etime, ex, ey = self.get_last_event_info(self.tdw)
+            etime, ex, ey, ep = self.get_last_event_info(self.tdw)
             center = (ex, ey)
         elif center == self.CENTER_ON_VIEWPORT:
             center = self.tdw.get_center()
