@@ -304,28 +304,32 @@ class ColorAdjustOverlay (FadingOverlay):
     For comparing to area on canvas
     Mostly a copy of ColorPickerOverlay
     """
-    fade_fps = 1  #: Nominal frames per second
-    fade_duration = 3  #: Time for fading entirely to zero, in seconds
-    PREVIEW_SIZE = 70
+    fade_fps = 30  #: Nominal frames per second
+    fade_duration = 5 #: Time for fading entirely to zero, in seconds
+    # PREVIEW_SIZE = 70
     CORNER_RADIUS = 10
 
-    def __init__(self, doc, tdw, x, y, r, g, b):
+    def __init__(self, doc, x, y, r, g, b):
         FadingOverlay.__init__(self, doc)
         doc.input_stroke_started += self.input_stroke_started
         doc.input_stroke_ended += self.input_stroke_ended
         self.in_input_stroke = False
+        self.app = gui.application.get_app()
+        p = self.app.preferences
+        self.preview_size = p['color.preview_size']
         self._doc = doc
-        self._tdw = tdw
+        self._tdw = doc.tdw
         self._r = r
         self._g = g
         self._b = b
         self._x = int(x)+0.5
         self._y = int(y)+0.5
-        alloc = tdw.get_allocation()
+        alloc = doc.tdw.get_allocation()
         self._tdw_w = alloc.width
         self._tdw_h = alloc.height
-        tdw.display_overlays.append(self)
+        doc.tdw.display_overlays.append(self)
         self._previous_area = None
+        self._placed_in_stroke = False
         self._queue_tdw_redraw()
 
     def input_stroke_started(self, doc, event):
@@ -333,9 +337,18 @@ class ColorAdjustOverlay (FadingOverlay):
 
     def input_stroke_ended(self, doc, event):
         self.in_input_stroke = False
+        self._placed_in_stroke = self.in_input_stroke
 
     def overlay_changed(self):
         return False
+
+    def move(self, x, y):
+        """Moves the preview square to a new location, in tdw pointer coords.
+        """
+        self._x = int(x)+0.5
+        self._y = int(y)+0.5
+        self._placed_in_stroke = self.in_input_stroke
+        self._queue_tdw_redraw()
 
     def cleanup(self):
         """Cleans up temporary observer stuff, allowing garbage collection.
@@ -354,7 +367,7 @@ class ColorAdjustOverlay (FadingOverlay):
 
     def _get_area(self):
         # Returns the drawing area for the square
-        size = self.PREVIEW_SIZE
+        size = self.preview_size
         # Start with the pointer location
         x = self._x
         y = self._y
@@ -364,38 +377,27 @@ class ColorAdjustOverlay (FadingOverlay):
         if x < 0 or y < 0 or y > alloc.height or x > alloc.width:
             return None
         # Convert to preview location
-        # Pick a direction - N,W,E,S - in which to offset the preview
-        if y + size > alloc.height - offset:
-            x -= offset
-            y -= size + offset
-        elif x < offset:
-            x += offset
-            y -= offset
-        elif x > alloc.width - offset:
-            x -= size + offset
-            y -= offset
-        else:
-            x -= offset
-            y += offset
+        x -= offset
+        y -= offset
         return (int(x), int(y), size, size)
 
     def paint_frame(self, cr):
         # Cleanup if starting stroke regardless of prefs
-        if self.in_input_stroke is True:
-            self.cleanup()
-            return
+        # Tricky due to prefs for in_stroke placement
+        if self.in_input_stroke is True and self._placed_in_stroke is False:
+            self.alpha = 0
 
         area = self._get_area()
         if area is not None:
             x, y, w, h = area
             # keep opacity at 100% for a while
-            actual_alpha = self.alpha
-            if self.alpha > .25:
+            if self.alpha > 0.5:
                 actual_alpha = 1.0
+            else:
+                actual_alpha = pow(self.alpha, 2)
             cr.set_source_rgba(self._r, self._g, self._b, actual_alpha)
-            rounded_box(cr, x, y, w, h, self.CORNER_RADIUS)
+            rounded_box_hole(cr, x, y, w, h, self.CORNER_RADIUS)
+            cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
             cr.fill()
-            # remove overlay once it is almost transparent
-            if self.alpha <= .1:
-                self.cleanup()
-            return area
+        self._previous_area = area
+        return area

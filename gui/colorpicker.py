@@ -267,15 +267,13 @@ class ColorPickMode (gui.mode.OneshotDragMode):
 
     def _get_app_brush_color(self):
         app = self.app
-        return lib.color.CIECAMColor(
-            vsh=(app.brush.get_setting('cie_v'),
-                 app.brush.get_setting('cie_s'),
-                 app.brush.get_setting('cie_h')),
-            cieaxes=app.brush.get_setting('cieaxes'),
-            lightsource=(app.brush.get_setting('lightsource_X'),
-                         app.brush.get_setting('lightsource_Y'),
-                         app.brush.get_setting('lightsource_Z')),
-            discount_in=True, discount_out=True)
+        cm = self.app.brush_color_manager
+        brushcolor = cm.get_color()
+        if not isinstance(brushcolor, lib.color.CIECAMColor):
+            brushcolor = lib.color.CIECAMColor(
+                color=lib.color.HSVColor(*app.brush.get_color_hsv())
+            )
+        return brushcolor
 
 
 class ColorPickModeH(ColorPickMode):
@@ -405,7 +403,7 @@ class ColorPickPreviewOverlay (Overlay):
 
     """
 
-    PREVIEW_SIZE = 70
+    # PREVIEW_SIZE = 70
     OUTLINE_WIDTH = 3
     CORNER_RADIUS = 10
 
@@ -420,6 +418,8 @@ class ColorPickPreviewOverlay (Overlay):
         Overlay.__init__(self)
         self._pickmode = pickmode
         self.app = gui.application.get_app()
+        p = self.app.preferences
+        self.preview_size = p['color.preview_size']
         self.blending_color = blending_color
         self.blending_ratio = blending_ratio
         self._doc = doc
@@ -435,6 +435,7 @@ class ColorPickPreviewOverlay (Overlay):
         tdw.display_overlays.append(self)
         self._previous_area = None
         self._queue_tdw_redraw()
+
 
 
     def cleanup(self):
@@ -475,9 +476,9 @@ class ColorPickPreviewOverlay (Overlay):
     def _get_area(self):
         # Returns the drawing area for the square
         if self._pickmode == "PickandBlend":
-            size = self.PREVIEW_SIZE * 2
+            size = self.preview_size * 2
         else:
-            size = self.PREVIEW_SIZE
+            size = self.preview_size
 
         # Start with the pointer location
         x = self._x

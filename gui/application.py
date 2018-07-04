@@ -560,6 +560,7 @@ class Application (object):
             'color.pick_blend_reverse': False,
             'color.pick_blend_use_pressure': False,
             'color.adjuster_min_wait': 300,
+            'color.preview_size': 140,
 
             "scratchpad.last_opened_scratchpad": "",
 

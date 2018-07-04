@@ -342,6 +342,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         self.last_decrease_hue = None
         self.in_input_stroke = False
         self.last_colorpick_time = None
+        self._color_overlay = None
 
         self._init_stategroups()
 
@@ -1504,6 +1505,18 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         adj = self.app.brush_adjustment['opaque']
         adj.set_value(adj.get_value() / 1.8)
 
+    def _place_overlay(self, x, y, r, g, b):
+        if self._color_overlay is None:
+            self._color_overlay = ColorAdjustOverlay(self, x, y, r, g, b)
+        else:
+            self._color_overlay.move(x, y)
+            self._color_overlay._r = r
+            self._color_overlay._g = g
+            self._color_overlay._b = b
+            # need to reset alpha because it fades away
+            self._color_overlay.alpha = 1.0
+            self._color_overlay._queue_tdw_redraw()
+
     def brighter_cb(self, action):
         """``Brighter`` GtkAction callback: lighten the brush color"""
         t, x, y, p = self.get_last_event_info(self.tdw)
@@ -1539,7 +1552,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             or
             (self.app.preferences['color.splash_during_stroke'] is True
              and self.in_input_stroke is True)):
-                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+                self._place_overlay(x, y, r, g, b)
 
         self.last_brighter = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1578,7 +1591,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             or
             (self.app.preferences['color.splash_during_stroke'] is True
              and self.in_input_stroke is True)):
-                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+                self._place_overlay(x, y, r, g, b)
 
         self.last_darker = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1618,7 +1631,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             or
             (self.app.preferences['color.splash_during_stroke'] is True
              and self.in_input_stroke is True)):
-                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+                self._place_overlay(x, y, r, g, b)
 
         self.last_increase_hue = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1657,7 +1670,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             or
             (self.app.preferences['color.splash_during_stroke'] is True
              and self.in_input_stroke is True)):
-                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+                self._place_overlay(x, y, r, g, b)
 
         self.last_decrease_hue = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1698,7 +1711,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             or
             (self.app.preferences['color.splash_during_stroke'] is True
              and self.in_input_stroke is True)):
-                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+                self._place_overlay(x, y, r, g, b)
 
         self.last_purer = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1738,7 +1751,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             or
             (self.app.preferences['color.splash_during_stroke'] is True
              and self.in_input_stroke is True)):
-                ColorAdjustOverlay(self, self.tdw, x, y, r, g, b)
+                self._place_overlay(x, y, r, g, b)
 
         self.last_grayer = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1794,18 +1807,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         app = self.app
         cm = self.app.brush_color_manager
         brushcolor = cm.get_color()
-        if not isinstance(brushcolor, CIECAMColor):
-            return lib.color.CIECAMColor(
-                vsh=(
-                    app.brush.get_setting('cie_v'),
-                    app.brush.get_setting('cie_s'),
-                    app.brush.get_setting('cie_h')),
-                cieaxes=app.brush.get_setting('cieaxes'),
-                lightsource=(
-                    app.brush.get_setting('lightsource_X'),
-                    app.brush.get_setting('lightsource_Y'),
-                    app.brush.get_setting('lightsource_Z')
-                )
+        if not isinstance(brushcolor, lib.color.CIECAMColor):
+            brushcolor = lib.color.CIECAMColor(
+                color=lib.color.HSVColor(*app.brush.get_color_hsv())
             )
         return brushcolor
 
