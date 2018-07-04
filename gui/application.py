@@ -558,6 +558,8 @@ class Application (object):
             'color.reset_intent_after_gamut_map': False,
             'color.average_use_dominant': True,
             'color.pick_blend_reverse': False,
+            'color.pick_blend_use_pressure': False,
+            'color.adjuster_min_wait': 300,
 
             "scratchpad.last_opened_scratchpad": "",
 

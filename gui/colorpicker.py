@@ -140,9 +140,13 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 blending_color=self.blending_color,
                 blending_ratio=self.blending_ratio)
         else:
-            self._overlay.move(x, y)
-            self._overlay.blending_color = self.blending_color
-            self._overlay.blending_ratio = self.blending_ratio
+            # don't move if pick and blend
+            if self._pickmode != "PickandBlend":
+                self._overlay.move(x, y)
+            if self._pickmode == "PickandBlend":
+                self._overlay.blending_color = self.blending_color
+                self._overlay.blending_ratio = self.blending_ratio
+                self._overlay._queue_tdw_redraw()
 
     def _remove_overlay(self):
         if self._overlay is None:
@@ -166,13 +170,16 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         # pressures besides 50% for brushes too
         if pressure is None:
             pressure = 0.5
+        if p['color.pick_blend_use_pressure'] is False:
+            pressure = 0.0
         if t <= doc.last_colorpick_time:
             t = (time.time() * 1000)
 
+        # limit rate for performance
+        min_wait = p['color.adjuster_min_wait']
         if doc.last_colorpick_time:
             elapsed = t - doc.last_colorpick_time
-
-            if elapsed < 300:
+            if elapsed < min_wait:
                 return
 
         cm = app.brush_color_manager
@@ -191,10 +198,8 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         pickcolor_rgb = pickcolor.get_rgb()
 
         # grab the color with sRGB context
-        pickcolor_cie = lib.color.CIECAMColor(
-            color=pickcolor,
-            cieaxes=brushcolor.cieaxes
-        )
+        pickcolor_cie = lib.color.CIECAMColor(color=pickcolor,
+                                              cieaxes=brushcolor.cieaxes)
         # if brush and pick colors are the same, nothing to do
         if brushcolor_rgb != pickcolor_rgb:
             pickcolor_hsv = pickcolor.get_hsv()
@@ -528,19 +533,24 @@ class ColorPickPreviewOverlay (Overlay):
             h -= self.OUTLINE_WIDTH + 3
             rounded_box(cr, x, y, w, h, self.CORNER_RADIUS)
             cr.fill_preserve()
-            cr.set_source_rgb(0, 0, 0)
-            cr.set_line_width(self.OUTLINE_WIDTH)
-
-            cr.stroke()
-            if self.blending_ratio is not None:
-                cr.move_to(x + 5, y + 20)
-                cr.select_font_face('Sans')
-                cr.set_font_size(20) # em-square height is 90 pixels
-                cr.text_path(str(int(self.blending_ratio * 100)) + '%')
-                cr.set_source_rgb(1, 1, 1)
-                cr.fill_preserve()
+            
+            # don't outline when blending, will detract from
+            # color comparisons
+            if self.blending_ratio is None:
                 cr.set_source_rgb(0, 0, 0)
-                cr.set_line_width(1.0)
-                cr.stroke()
+                cr.set_line_width(self.OUTLINE_WIDTH)
+            cr.stroke()
+            # TODO make this an overlay like the Scale overlay
+            # Ugly percentage text box
+#            if self.blending_ratio is not None:
+#                cr.move_to(x + 5, y + 20)
+#                cr.select_font_face('Sans')
+#                cr.set_font_size(20) # em-square height is 90 pixels
+#                cr.text_path(str(int(self.blending_ratio * 100)) + '%')
+#                cr.set_source_rgb(1, 1, 1)
+#                cr.fill_preserve()
+#                cr.set_source_rgb(0, 0, 0)
+#                cr.set_line_width(1.0)
+#                cr.stroke()
 
         self._previous_area = area
