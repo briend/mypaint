@@ -137,6 +137,27 @@ def rounded_box(cr, x, y, w, h, r):
     cr.arc(x+r, y+h-r, r, pi*0.5, pi)
     cr.close_path()
 
+def rounded_box_hole(cr, x, y, w, h, r):
+    """Paint a rounded box path with a hole into a Cairo context.
+
+    The position is given by `x` and `y`, and the size by `w` and `h`. The
+    cornders are of radius `r`, and must be smaller than half the minimum
+    dimension. The path is created as a new, nested closed subpaths
+    """
+    assert r <= min(w, h) / 2
+    cr.new_sub_path()
+    cr.arc(x+r, y+r, r, pi, pi*1.5)
+    cr.line_to(x+w-r, y)
+    cr.arc(x+w-r, y+r, r, pi*1.5, pi*2)
+    cr.line_to(x+w, y+h-r)
+    cr.arc(x+w-r, y+h-r, r, 0, pi*0.5)
+    cr.line_to(x+r, y+h)
+    cr.arc(x+r, y+h-r, r, pi*0.5, pi)
+    cr.close_path()
+
+    cr.new_sub_path()
+    cr.arc(x+w/2, y+h/2, w/4, 0, 2*pi)
+    cr.close_path()
 
 ## Minor builtin overlays
 

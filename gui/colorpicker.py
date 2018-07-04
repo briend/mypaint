@@ -16,10 +16,11 @@ from gettext import gettext as _
 import colorsys
 import colour
 import numpy as np
+import cairo
 
 import gui.mode
 from .overlays import Overlay
-from .overlays import rounded_box
+from .overlays import rounded_box, rounded_box_hole
 import lib.color
 
 
@@ -417,6 +418,10 @@ class ColorPickPreviewOverlay (Overlay):
 
         """
         Overlay.__init__(self)
+        self._pickmode = pickmode
+        self.app = gui.application.get_app()
+        self.blending_color = blending_color
+        self.blending_ratio = blending_ratio
         self._doc = doc
         self._tdw = tdw
         self._x = int(x)+0.5
@@ -430,10 +435,7 @@ class ColorPickPreviewOverlay (Overlay):
         tdw.display_overlays.append(self)
         self._previous_area = None
         self._queue_tdw_redraw()
-        self._pickmode = pickmode
-        self.app = gui.application.get_app()
-        self.blending_color = blending_color
-        self.blending_ratio = blending_ratio
+
 
     def cleanup(self):
         """Cleans up temporary observer stuff, allowing garbage collection.
@@ -472,7 +474,10 @@ class ColorPickPreviewOverlay (Overlay):
 
     def _get_area(self):
         # Returns the drawing area for the square
-        size = self.PREVIEW_SIZE
+        if self._pickmode == "PickandBlend":
+            size = self.PREVIEW_SIZE * 2
+        else:
+            size = self.PREVIEW_SIZE
 
         # Start with the pointer location
         x = self._x
@@ -487,18 +492,22 @@ class ColorPickPreviewOverlay (Overlay):
 
         # Convert to preview location
         # Pick a direction - N,W,E,S - in which to offset the preview
-        if y + size > alloc.height - offset:
+        if self._pickmode == "PickandBlend":
             x -= offset
-            y -= size + offset
-        elif x < offset:
-            x += offset
-            y -= offset
-        elif x > alloc.width - offset:
-            x -= size + offset
             y -= offset
         else:
-            x -= offset
-            y += offset
+            if y + size > alloc.height - offset:
+                x -= offset
+                y -= size + offset
+            elif x < offset:
+                x += offset
+                y -= offset
+            elif x > alloc.width - offset:
+                x -= size + offset
+                y -= offset
+            else:
+                x -= offset
+                y += offset
 
         ## Correct to place within the tdw
         #   if x < 0:
@@ -516,7 +525,6 @@ class ColorPickPreviewOverlay (Overlay):
         area = self._get_area()
         if area is not None:
             x, y, w, h = area
-
             # if we're picking an illuminant splash that instead of brush color
             if self._pickmode == "PickIlluminant":
                 p = self.app.preferences
@@ -531,9 +539,13 @@ class ColorPickPreviewOverlay (Overlay):
             y += (self.OUTLINE_WIDTH // 2) + 1.5
             w -= self.OUTLINE_WIDTH + 3
             h -= self.OUTLINE_WIDTH + 3
-            rounded_box(cr, x, y, w, h, self.CORNER_RADIUS)
-            cr.fill_preserve()
             
+            if self._pickmode == "PickandBlend":
+                rounded_box_hole(cr, x, y, w, h, self.CORNER_RADIUS)
+                cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+            else:
+                rounded_box(cr, x, y, w, h, self.CORNER_RADIUS)
+            cr.fill_preserve()
             # don't outline when blending, will detract from
             # color comparisons
             if self.blending_ratio is None:
