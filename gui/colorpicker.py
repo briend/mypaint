@@ -270,8 +270,17 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         cm = self.app.brush_color_manager
         brushcolor = cm.get_color()
         if not isinstance(brushcolor, lib.color.CIECAMColor):
-            brushcolor = lib.color.CIECAMColor(
-                color=lib.color.HSVColor(*app.brush.get_color_hsv())
+            return lib.color.CIECAMColor(
+                vsh=(
+                    app.brush.get_setting('cie_v'),
+                    app.brush.get_setting('cie_s'),
+                    app.brush.get_setting('cie_h')),
+                cieaxes=app.brush.get_setting('cieaxes'),
+                lightsource=(
+                    app.brush.get_setting('lightsource_X'),
+                    app.brush.get_setting('lightsource_Y'),
+                    app.brush.get_setting('lightsource_Z')
+                )
             )
         return brushcolor
 
