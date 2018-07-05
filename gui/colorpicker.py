@@ -484,10 +484,11 @@ class ColorPickPreviewOverlay (Overlay):
 
     def _get_area(self):
         # Returns the drawing area for the square
+        alloc = self._tdw.get_allocation()
         if self._pickmode == "PickandBlend":
-            size = self.preview_size * 2
+            size = self.preview_size * .01 * alloc.height * 2
         else:
-            size = self.preview_size
+            size = self.preview_size * .01 * alloc.height
 
         # Start with the pointer location
         x = self._x
@@ -496,7 +497,6 @@ class ColorPickPreviewOverlay (Overlay):
         offset = size // 2
 
         # Only show if the pointer is inside the tdw
-        alloc = self._tdw.get_allocation()
         if x < 0 or y < 0 or y > alloc.height or x > alloc.width:
             return None
 
