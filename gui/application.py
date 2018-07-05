@@ -561,6 +561,7 @@ class Application (object):
             'color.pick_blend_use_pressure': False,
             'color.adjuster_min_wait': 300,
             'color.preview_size': 10,
+            'color.slider_bar_size': 0.02,
 
             "scratchpad.last_opened_scratchpad": "",
 
