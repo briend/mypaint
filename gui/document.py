@@ -1517,6 +1517,26 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             self._color_overlay.alpha = 1.0
             self._color_overlay._queue_tdw_redraw()
 
+    def _overlay_is_enabled(self):
+        return ((self.app.preferences['color.splash_before_stroke'] is True
+                 and self.in_input_stroke is False)
+                or
+                (self.app.preferences['color.splash_during_stroke'] is True
+                 and self.in_input_stroke is True))
+
+    def _get_step_size(self, action_time, last_action_time, multiplier,
+                       max_value):
+        """if enabled, pressing faster = bigger jump (with a max value)"""
+        step_size = self.app.preferences['color.tune_step_size']
+        if self.app.preferences['color.dynamic_step_size']:
+            if not last_action_time:
+                return 0.1
+            else:
+                return min(multiplier * step_size
+                           / (action_time - last_action_time), max_value)
+        else:
+            return 1 * step_size
+
     def brighter_cb(self, action):
         """``Brighter`` GtkAction callback: lighten the brush color"""
         t, x, y, p = self.get_last_event_info(self.tdw)
@@ -1524,6 +1544,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if t <= self.last_brighter:
             t = (time.time() * 1000)
 
+        # throttling
         if self.last_brighter:
             elapsed = t - self.last_brighter
             if elapsed < 100:
@@ -1533,28 +1554,16 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if self.app.brush.displayexceeded:
             return
 
-        if self.app.preferences['color.dynamic_step_size']:
-            # pressing faster=bigger jump (max 25)
-            if not self.last_brighter:
-                e = 0.1
-            else:
-                e = min(1000 * self.app.preferences['color.tune_step_size'] /
-                        (t - self.last_brighter), 25)
-        else:
-            e = 1 * self.app.preferences['color.tune_step_size']
+        step_size = self._get_step_size(t, self.last_brighter, 1000, 25)
 
-        brushcolor.v = brushcolor.v + e
+        brushcolor.v = brushcolor.v + step_size
         brushcolor.cachedrgb = None
         r, g, b = brushcolor.get_rgb()
         if brushcolor.displayexceeded:
             return
 
-        if ((self.app.preferences['color.splash_before_stroke'] is True
-             and self.in_input_stroke is False)
-            or
-            (self.app.preferences['color.splash_during_stroke'] is True
-             and self.in_input_stroke is True)):
-                self._place_overlay(x, y, r, g, b)
+        if self._overlay_is_enabled():
+            self._place_overlay(x, y, r, g, b)
 
         self.last_brighter = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1568,37 +1577,50 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if t <= self.last_darker:
             t = (time.time() * 1000)
 
+        # throttling
         if self.last_darker:
             elapsed = t - self.last_darker
             if elapsed < 100:
                 return
 
         brushcolor = self._get_app_brush_color()
+        step_size = self._get_step_size(t, self.last_darker, 1000, 25)
 
-        if self.app.preferences['color.dynamic_step_size']:
-            # pressing faster=bigger jump (max 25)
-            if not self.last_darker:
-                e = 0.1
-            else:
-                e = min(1000 * self.app.preferences['color.tune_step_size'] /
-                        (t - self.last_darker), 25)
+        # TODO
+        # self.app.brush_color_manager.
+        # self.app.brush.get_color_hsv()
+
+        tune_model = self.app.preferences['color.tune_model']
+        if tune_model == 'CIECAM':
+            print('TODO: darken using CIECAM...')
+
+        elif tune_model == 'HCY':
+            print('TODO: darken using HCY...')
+
+        elif tune_model == 'HSV':
+            print('TODO: darken using HSV...')
+
         else:
-            e = 1 * self.app.preferences['color.tune_step_size']
+            logger.error('Incorrect color model "%s"' % tune_model)
+            return
 
-        brushcolor.v = max(brushcolor.v - e, 0.0)
+        # darken color
+        brushcolor.v = max(brushcolor.v - step_size, 0.0)
         brushcolor.cachedrgb = None
+
         r, g, b = brushcolor.get_rgb()
-        if ((self.app.preferences['color.splash_before_stroke'] is True
-             and self.in_input_stroke is False)
-            or
-            (self.app.preferences['color.splash_during_stroke'] is True
-             and self.in_input_stroke is True)):
-                self._place_overlay(x, y, r, g, b)
+
+        if self._overlay_is_enabled():
+            self._place_overlay(x, y, r, g, b)
+
+        # update all needed color models
+        # TODO: private method for 6x
+
+        self.app.brush.set_color_hsv(lib.color.RGBColor(
+            r=r, g=g, b=b).get_hsv())
+        self.app.brush.set_ciecam_color(brushcolor)  # TODO: get ciecam from any of the 3 above without much conversion
 
         self.last_darker = t
-        self.app.brush.set_color_hsv(lib.color.RGBColor(
-                                     r=r, g=g, b=b).get_hsv())
-        self.app.brush.set_ciecam_color(brushcolor)
 
     def increase_hue_cb(self, action):
         """Clockwise hue rotation ("IncreaseHue" action)."""
@@ -1607,6 +1629,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if t <= self.last_increase_hue:
             t = (time.time() * 1000)
 
+        # throttling
         if self.last_increase_hue:
             elapsed = t - self.last_increase_hue
 
@@ -1614,26 +1637,15 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 return
 
         brushcolor = self._get_app_brush_color()
+        step_size = self._get_step_size(t, self.last_increase_hue, 1500, 90)
 
-        if self.app.preferences['color.dynamic_step_size']:
-            # pressing faster=bigger jump (max 90)
-            if not self.last_increase_hue:
-                e = 0.1
-            else:
-                e = min(1500 * self.app.preferences['color.tune_step_size'] /
-                        (t - self.last_increase_hue), 90)
-        else:
-            e = 1 * self.app.preferences['color.tune_step_size']
 
-        brushcolor.h = (brushcolor.h + e) % 360
+        brushcolor.h = (brushcolor.h + step_size) % 360
         brushcolor.cachedrgb = None
         r, g, b = brushcolor.get_rgb()
-        if ((self.app.preferences['color.splash_before_stroke'] is True
-             and self.in_input_stroke is False)
-            or
-            (self.app.preferences['color.splash_during_stroke'] is True
-             and self.in_input_stroke is True)):
-                self._place_overlay(x, y, r, g, b)
+
+        if self._overlay_is_enabled():
+            self._place_overlay(x, y, r, g, b)
 
         self.last_increase_hue = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1647,32 +1659,21 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if t <= self.last_decrease_hue:
             t = (time.time() * 1000)
 
+        # throttling
         if self.last_decrease_hue:
             elapsed = t - self.last_decrease_hue
             if elapsed < 100:
                 return
 
         brushcolor = self._get_app_brush_color()
+        step_size = self._get_step_size(t, self.last_decrease_hue, 1500, 90)
 
-        if self.app.preferences['color.dynamic_step_size']:
-            # pressing faster=bigger jump (max 90)
-            if not self.last_decrease_hue:
-                e = 0.1
-            else:
-                e = min(1500 * self.app.preferences['color.tune_step_size'] /
-                        (t - self.last_decrease_hue), 90)
-        else:
-            e = 1 * self.app.preferences['color.tune_step_size']
-
-        brushcolor.h = (brushcolor.h - e) % 360
+        brushcolor.h = (brushcolor.h - step_size) % 360
         brushcolor.cachedrgb = None
         r, g, b = brushcolor.get_rgb()
-        if ((self.app.preferences['color.splash_before_stroke'] is True
-             and self.in_input_stroke is False)
-            or
-            (self.app.preferences['color.splash_during_stroke'] is True
-             and self.in_input_stroke is True)):
-                self._place_overlay(x, y, r, g, b)
+
+        if self._overlay_is_enabled():
+            self._place_overlay(x, y, r, g, b)
 
         self.last_decrease_hue = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1686,34 +1687,25 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if t <= self.last_purer:
             t = (time.time() * 1000)
 
+        # throttling
         if self.last_purer:
             elapsed = t - self.last_purer
             if elapsed < 100:
                 return
+
         cm = self.app.brush_color_manager
+
         brushcolor = self._get_app_brush_color()
+        step_size = self._get_step_size(t, self.last_purer, 2000, 25)
 
-        if self.app.preferences['color.dynamic_step_size']:
-            # pressing faster=bigger jump (max 25)
-            if not self.last_purer:
-                e = 0.1
-            else:
-                e = min(2000 * self.app.preferences['color.tune_step_size'] /
-                        (t - self.last_purer), 25)
-        else:
-            e = 1 * self.app.preferences['color.tune_step_size']
-
-        brushcolor.s = brushcolor.s + e
+        brushcolor.s = brushcolor.s + step_size
         brushcolor.cachedrgb = None
         r, g, b = brushcolor.get_rgb()
         if brushcolor.gamutexceeded:
             return
-        if ((self.app.preferences['color.splash_before_stroke'] is True
-             and self.in_input_stroke is False)
-            or
-            (self.app.preferences['color.splash_during_stroke'] is True
-             and self.in_input_stroke is True)):
-                self._place_overlay(x, y, r, g, b)
+
+        if self._overlay_is_enabled():
+            self._place_overlay(x, y, r, g, b)
 
         self.last_purer = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1727,6 +1719,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if t <= self.last_grayer:
             t = (time.time() * 1000)
 
+        # throttling
         if self.last_grayer:
             elapsed = t - self.last_grayer
 
@@ -1734,26 +1727,15 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 return
 
         brushcolor = self._get_app_brush_color()
+        step_size = self._get_step_size(t, self.last_grayer, 2000, 25)
 
-        if self.app.preferences['color.dynamic_step_size']:
-            # pressing faster=bigger jump (max 25)
-            if not self.last_grayer:
-                e = 0.1
-            else:
-                e = min(2000 * self.app.preferences['color.tune_step_size'] /
-                        (t - self.last_grayer), 25)
-        else:
-            e = 1 * self.app.preferences['color.tune_step_size']
-        brushcolor.s = max(brushcolor.s - e, 0.0)
+        brushcolor.s = max(brushcolor.s - step_size, 0.0)
         brushcolor.cachedrgb = None
 
         r, g, b = brushcolor.get_rgb()
-        if ((self.app.preferences['color.splash_before_stroke'] is True
-             and self.in_input_stroke is False)
-            or
-            (self.app.preferences['color.splash_during_stroke'] is True
-             and self.in_input_stroke is True)):
-                self._place_overlay(x, y, r, g, b)
+
+        if self._overlay_is_enabled():
+            self._place_overlay(x, y, r, g, b)
 
         self.last_grayer = t
         self.app.brush.set_color_hsv(lib.color.RGBColor(
@@ -1806,6 +1788,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 reset_action.set_sensitive(False)
 
     def _get_app_brush_color(self):
+
+        # TODO: use the picked color tune model
+
         app = self.app
         # if brush doesn't have ciecam values, revert to hsv
         if app.brush.get_setting('cie_v') == '':
@@ -1826,6 +1811,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 )
             )
         return color
+
+    # TODO: method for updating needed color (also based on picked color tune model)
+    # "_apply_tuned_color()" ?
 
     ## Brushkey callbacks
 
