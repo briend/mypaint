@@ -963,14 +963,19 @@ class SliderColorAdjuster (ColorAdjusterWidget):
 
         """
         ColorAdjusterWidget.__init__(self)
+        from gui.application import get_app
+        self.app = get_app()
+        self.p = self.app.preferences
         self.connect("realize", self.__realize_cb)
         self.connect("scroll-event", self.__scroll_cb)
         self.add_events(Gdk.EventMask.SCROLL_MASK)
 
+
     def __realize_cb(self, widget):
         """Realize handler; establishes sizes based on `vertical` etc.
         """
-        bw = uimisc.SLIDER_MIN_WIDTH
+        alloc = self.app.doc.tdw.get_allocation()
+        bw = alloc.height * self.p['color.slider_bar_size']
         bl = uimisc.SLIDER_MIN_LENGTH
         if self.vertical:
             self.set_size_request(bw, bl)
@@ -978,6 +983,13 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             self.set_size_request(bl, bw)
 
     def render_background_cb(self, cr, wd, ht):
+        alloc = self.app.doc.tdw.get_allocation()
+        bw = alloc.height * self.p['color.slider_bar_size']
+        bl = uimisc.SLIDER_MIN_LENGTH
+        if self.vertical:
+            self.set_size_request(bw, bl)
+        else:
+            self.set_size_request(bl, bw)
         b = self.BORDER_WIDTH
         bar_length = (self.vertical and ht or wd) - b - b
         b_x = b + 0.5

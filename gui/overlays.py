@@ -368,7 +368,7 @@ class ColorAdjustOverlay (FadingOverlay):
     def _get_area(self):
         # Returns the drawing area for the square
         alloc = self._tdw.get_allocation()
-        size = self.preview_size * .01 * alloc.height * 2
+        size = int(self.preview_size * .01 * alloc.height * 2)
         # Start with the pointer location
         x = self._x
         y = self._y
