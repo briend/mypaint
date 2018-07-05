@@ -1542,6 +1542,7 @@ def CIECAM_to_RGB(self):
 
 # weighted geometric mean must avoid absolute zero
 _WGM_EPSILON = 0.0001
+# _WGM_EPSILON = 0.000030517
 
 
 def RGB_to_Spectral(rgb):
