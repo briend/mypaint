@@ -414,10 +414,10 @@ class ColorPickPreviewOverlay (Overlay):
     hotkey held down, to avoid flashing and distraction.
 
     """
-
+    # make relative sizes
     # PREVIEW_SIZE = 70
     OUTLINE_WIDTH = 3
-    CORNER_RADIUS = 10
+    #CORNER_RADIUS = 10
 
     def __init__(self, doc, tdw, x, y, pickmode,
                  blending_color=None, blending_ratio=None):
@@ -441,6 +441,7 @@ class ColorPickPreviewOverlay (Overlay):
         alloc = tdw.get_allocation()
         self._tdw_w = alloc.width
         self._tdw_h = alloc.height
+        self.corner_radius = None
         self._color = self._get_app_brush_color()
         app = doc.app
         app.brush.observers.append(self._brush_color_changed_cb)
@@ -492,7 +493,7 @@ class ColorPickPreviewOverlay (Overlay):
             size = int(self.preview_size * .01 * alloc.height * 2)
         else:
             size = int(self.preview_size * .01 * alloc.height)
-
+        self.corner_radius = size * 0.1
         # Start with the pointer location
         x = self._x
         y = self._y
@@ -554,10 +555,10 @@ class ColorPickPreviewOverlay (Overlay):
             h -= self.OUTLINE_WIDTH + 3
             
             if self._pickmode == "PickandBlend":
-                rounded_box_hole(cr, x, y, w, h, self.CORNER_RADIUS)
+                rounded_box_hole(cr, x, y, w, h, self.corner_radius)
                 cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
             else:
-                rounded_box(cr, x, y, w, h, self.CORNER_RADIUS)
+                rounded_box(cr, x, y, w, h, self.corner_radius)
             cr.fill_preserve()
             # don't outline when blending, will detract from
             # color comparisons

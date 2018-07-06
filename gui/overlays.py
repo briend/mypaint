@@ -307,7 +307,7 @@ class ColorAdjustOverlay (FadingOverlay):
     fade_fps = 30  #: Nominal frames per second
     fade_duration = 5 #: Time for fading entirely to zero, in seconds
     # PREVIEW_SIZE = 70
-    CORNER_RADIUS = 10
+    # CORNER_RADIUS = 10
 
     def __init__(self, doc, x, y, r, g, b):
         FadingOverlay.__init__(self, doc)
@@ -324,6 +324,7 @@ class ColorAdjustOverlay (FadingOverlay):
         self._b = b
         self._x = int(x)+0.5
         self._y = int(y)+0.5
+        self.corner_radius=None
         alloc = doc.tdw.get_allocation()
         self._tdw_w = alloc.width
         self._tdw_h = alloc.height
@@ -369,6 +370,7 @@ class ColorAdjustOverlay (FadingOverlay):
         # Returns the drawing area for the square
         alloc = self._tdw.get_allocation()
         size = int(self.preview_size * .01 * alloc.height * 2)
+        self.corner_radius = size * 0.1
         # Start with the pointer location
         x = self._x
         y = self._y
@@ -396,7 +398,7 @@ class ColorAdjustOverlay (FadingOverlay):
             else:
                 actual_alpha = pow(self.alpha, 2)
             cr.set_source_rgba(self._r, self._g, self._b, actual_alpha)
-            rounded_box_hole(cr, x, y, w, h, self.CORNER_RADIUS)
+            rounded_box_hole(cr, x, y, w, h, self.corner_radius)
             cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
             cr.fill()
         self._previous_area = area
