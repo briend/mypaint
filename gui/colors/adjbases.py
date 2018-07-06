@@ -975,7 +975,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         """Realize handler; establishes sizes based on `vertical` etc.
         """
         alloc = self.app.doc.tdw.get_allocation()
-        bw = alloc.height * self.p['color.slider_bar_size']
+        bw = max(alloc.height * self.p['color.slider_bar_size'],
+                                uimisc.SLIDER_MIN_WIDTH)
         bl = uimisc.SLIDER_MIN_LENGTH
         if self.vertical:
             self.set_size_request(bw, bl)
@@ -984,7 +985,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
 
     def render_background_cb(self, cr, wd, ht):
         alloc = self.app.doc.tdw.get_allocation()
-        bw = alloc.height * self.p['color.slider_bar_size']
+        bw = max(alloc.height * self.p['color.slider_bar_size'],
+                                uimisc.SLIDER_MIN_WIDTH)
         bl = uimisc.SLIDER_MIN_LENGTH
         if self.vertical:
             self.set_size_request(bw, bl)
