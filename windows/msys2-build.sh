@@ -60,7 +60,7 @@ export MINGW_INSTALLS
 SRC_ROOT="${SRC_ROOT:-/tmp/src}"
 SRC_PROJECT="mingw"
 SRC_DIR="${SRC_ROOT}/${SRC_PROJECT}"
-SRC_CLONEURI="https://github.com/Alexpux/MINGW-packages.git"
+SRC_CLONEURI="https://github.com/briend/MINGW-packages.git"
 
 # Output location for build artefacts.
 OUTPUT_ROOT="${OUTPUT_ROOT:-$TOPDIR/out}"
@@ -88,8 +88,8 @@ install_dependencies() {
         ${PKG_PREFIX}-pygobject-devel \
         ${PKG_PREFIX}-python2-gobject \
         ${PKG_PREFIX}-python2-numpy \
-        ${PKG_PREFIX}-python2-colorspacious \
         ${PKG_PREFIX}-python2-scipy \
+        ${PKG_PREFIX}-python2-six \
         ${PKG_PREFIX}-hicolor-icon-theme \
         ${PKG_PREFIX}-librsvg \
         ${PKG_PREFIX}-gobject-introspection \
@@ -313,6 +313,7 @@ case "$1" in
         install_dependencies
         update_mingw_src
         build_pkg "libmypaint-git" true
+        build_pkg "python-colour-science-git" true
         ;;
     build)
         build_for_testing
