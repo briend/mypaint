@@ -267,10 +267,13 @@ class ColorPickMode (gui.mode.OneshotDragMode):
 
     def _get_app_brush_color(self):
         app = self.app
-        cm = self.app.brush_color_manager
-        brushcolor = cm.get_color()
-        if not isinstance(brushcolor, lib.color.CIECAMColor):
-            return lib.color.CIECAMColor(
+        # if brush doesn't have ciecam values, revert to hsv
+        if app.brush.get_setting('cie_v') == '':
+            color = lib.color.CIECAMColor(
+                color=lib.color.HSVColor(*app.brush.get_color_hsv())
+            )
+        else:
+            color = lib.color.CIECAMColor(
                 vsh=(
                     app.brush.get_setting('cie_v'),
                     app.brush.get_setting('cie_s'),
@@ -282,7 +285,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                     app.brush.get_setting('lightsource_Z')
                 )
             )
-        return brushcolor
+        return color
 
 
 class ColorPickModeH(ColorPickMode):

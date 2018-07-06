@@ -1805,10 +1805,13 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
     def _get_app_brush_color(self):
         app = self.app
-        cm = self.app.brush_color_manager
-        brushcolor = cm.get_color()
-        if not isinstance(brushcolor, CIECAMColor):
-            return lib.color.CIECAMColor(
+        # if brush doesn't have ciecam values, revert to hsv
+        if app.brush.get_setting('cie_v') == '':
+            color = lib.color.CIECAMColor(
+                color=lib.color.HSVColor(*app.brush.get_color_hsv())
+            )
+        else:
+            color = lib.color.CIECAMColor(
                 vsh=(
                     app.brush.get_setting('cie_v'),
                     app.brush.get_setting('cie_s'),
@@ -1820,7 +1823,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                     app.brush.get_setting('lightsource_Z')
                 )
             )
-        return brushcolor
+        return color
 
     ## Brushkey callbacks
 
