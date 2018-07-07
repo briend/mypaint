@@ -547,7 +547,7 @@ class PigmentColor (UIColor):
         self.r, self.g, self.b = np.clip(Spectral_to_RGB(self.spd), 0.0, 1.0)
         if self.gamma is not None:
             self.cachedrgb = (self.r**(1/self.gamma), self.g**(1/self.gamma),
-                    self.b**(1/self.gamma))
+                              self.b**(1/self.gamma))
             return self.cachedrgb
         else:
             self.cachedrgb = (self.r, self.g, self.b)
@@ -1399,10 +1399,11 @@ def CIECAM_to_RGB(self):
     axes = list(self.cieaxes)
     v, s, h = max(0.00001, self.v), max(0.00001, self.s), self.h
     # max colorfulness is optional limiter to help enforce limited palette
+    # treat this like exceeding the gamut
     if maxcolorfulness:
         if self.gamutmapping == "highlight" and self.s > maxcolorfulness:
-            rand = random.uniform(0.25, 0.90)
-            return rand, rand, rand
+            self.gamutexceeded = True
+            return 0, 0, 0, 0
         s = min(s, maxcolorfulness)
 
     zipped = zip(axes, (v, s, h))
@@ -1419,14 +1420,15 @@ def CIECAM_to_RGB(self):
     if (result == x).all() or self.gamutmapping is False:
         r, g, b = x
         self.cachedrgb = (r, g, b)
-        return r, g, b
+        if self.gamutmapping == "highlight":
+            return r, g, b, 1.0
+        else:
+            return r, g, b
     self.gamutexceeded = True
 
-    # return special rgb value to indicate out of gamut to sliders and guis
-    # TODO switch to stripes, return alpha channel of 0
+    # return zero alpha for guis and sliders to know this is out of gamut
     if self.gamutmapping == "highlight":
-        rand = random.uniform(0.25, 0.90)
-        return rand, rand, rand
+        return 0, 0, 0, 0
     if self.gamutmapping == "relativeColorimetric":
 
         def loss(sat_):
