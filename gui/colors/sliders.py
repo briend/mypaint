@@ -366,7 +366,6 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
             color=self.get_managed_color(),
             cieaxes=cieaxes,
             lightsource=lightsource,
-            gamutmapping="highlight",
             discount_in=False,
             discount_out=False
         )
@@ -606,7 +605,7 @@ class CIECAMLumaSlider (SliderColorAdjuster):
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
-        
+
         try:
             vsh = (
                 app.brush.get_setting('cie_v'),

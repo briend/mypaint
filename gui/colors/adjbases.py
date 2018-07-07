@@ -970,12 +970,12 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         self.connect("scroll-event", self.__scroll_cb)
         self.add_events(Gdk.EventMask.SCROLL_MASK)
 
-
     def __realize_cb(self, widget):
         """Realize handler; establishes sizes based on `vertical` etc.
         """
         alloc = self.app.doc.tdw.get_allocation()
-        bw = alloc.height * self.p['color.slider_bar_size']
+        bw = max(alloc.height * self.p['color.slider_bar_size'],
+                 uimisc.SLIDER_MIN_WIDTH)
         bl = uimisc.SLIDER_MIN_LENGTH
         if self.vertical:
             self.set_size_request(bw, bl)
@@ -984,7 +984,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
 
     def render_background_cb(self, cr, wd, ht):
         alloc = self.app.doc.tdw.get_allocation()
-        bw = alloc.height * self.p['color.slider_bar_size']
+        bw = max(alloc.height * self.p['color.slider_bar_size'],
+                 uimisc.SLIDER_MIN_WIDTH)
         bl = uimisc.SLIDER_MIN_LENGTH
         if self.vertical:
             self.set_size_request(bw, bl)
@@ -997,6 +998,30 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         b_w = wd - b - b - 1
         b_h = ht - b - b - 1
 
+        # Build a background (wip and very hacky!!!)
+        # temporarly check type to only show in these sliders...
+        from gui.colors.sliders import (CIECAMLumaSlider, CIECAMChromaSlider,
+                                        CIECAMHueSlider)
+        if isinstance(self, (CIECAMLumaSlider, CIECAMChromaSlider,
+                             CIECAMHueSlider)):
+            if self.vertical:
+                stripes_gradient = cairo.LinearGradient(0, b, bar_length / 4,
+                                                        b + bar_length)
+            else:
+                stripes_gradient = cairo.LinearGradient(b, 0, b + bar_length,
+                                                        bar_length / 4)
+            # 2px per line, high dpi scaling? :)
+            num_stripes = int(bar_length / 2)
+            for s in xrange(num_stripes):
+                p = s / num_stripes
+                r = g = b = 1  # white lines
+                if s % 2 == 0:
+                    r = g = b = 0  # black lines
+                stripes_gradient.add_color_stop_rgba(p, r, g, b, 0.4)
+            cr.set_source(stripes_gradient)
+            cr.rectangle(b_x - 0.5, b_y - 0.5, b_w + 1, b_h + 1)
+            cr.fill()
+
         # Build the gradient
         if self.vertical:
             bar_gradient = cairo.LinearGradient(0, b, 0, b + bar_length)
@@ -1006,10 +1031,22 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         for s in xrange(samples + 1):
             p = s / samples
             col = self.get_color_for_bar_amount(p)
-            r, g, b = col.get_rgb()
+            if (isinstance(self, (CIECAMLumaSlider, CIECAMChromaSlider,
+                                  CIECAMHueSlider))
+                    and col.gamutmapping == "highlight"):
+                r, g, b, a = col.get_rgb()
+                # TODO: "position" is inaccurate, more samples?
+                # Allow fade to transparent until we add more samples?
+                # bar_gradient.add_color_stop_rgba(p - (1 / samples - 0.0001),
+                #                                  r, g, b, a)
+                # bar_gradient.add_color_stop_rgba(p + (1 / samples - 0.0001),
+                #                                  r, g, b, a)
+            else:
+                r, g, b = col.get_rgb()
+                a = 1
             if self.vertical:
                 p = 1 - p
-            bar_gradient.add_color_stop_rgb(p, r, g, b)
+            bar_gradient.add_color_stop_rgba(p, r, g, b, a)
 
         # Paint bar with Tango-like edges
         cr.set_line_join(cairo.LINE_JOIN_ROUND)
