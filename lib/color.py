@@ -848,8 +848,9 @@ class CIECAMColor (UIColor):
         return CIECAM_to_RGB(self)
 
     def __repr__(self):
-        return "<CIECAM , v=%0.4f, s=%0.4f, h=%0.4f>" \
-            % (self.v, self.s, self.h)
+        return "<CIECAM , v=%0.4f, s=%0.4f, h=%0.4f, lightsource=%0.4f, %0.4f, %0.4f>" \
+            % (self.v, self.s, self.h, self.lightsource[0],self.lightsource[1], 
+               self.lightsource[2])
 
     def interpolate(self, other, steps):
         """CIECAM interpolation, sometimes nicer looking than anything else.
@@ -1628,6 +1629,20 @@ def Spectral_Mix_WGM(spd_a, spd_b, ratio):
     Based on work by Scott Allen Burns.
     """
     return spd_a**(1.0 - ratio) * spd_b**ratio
+
+
+def CCT_to_RGB(CCT):
+    """Accepts a color temperature 4000-25000.  Returns RGB 0-1"""
+    linearRGB = colour.XYZ_to_sRGB(colour.xy_to_XYZ(
+        colour.temperature.CCT_to_xy(CCT)), apply_encoding_cctf=False)
+    sRGB = colour.oetf_sRGB(linearRGB/max(linearRGB))
+    return sRGB
+
+
+def RGB_to_CCT(RGB):
+    """Accepts an RGB and returns CCT 4000-25000 """
+    CCT = colour.xy_to_CCT(colour.XYZ_to_xy(colour.sRGB_to_XYZ(RGB)))
+    return CCT
 
 ## Module testing
 
