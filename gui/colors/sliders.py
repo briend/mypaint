@@ -19,7 +19,7 @@ import numpy as np
 from lib.color import RGBColor
 from lib.color import HSVColor
 from lib.color import HCYColor
-from lib.color import CIECAMColor
+from lib.color import CIECAMColor, CCT_to_RGB, RGB_to_CCT
 from .bases import IconRenderable
 from .adjbases import ColorAdjuster
 from .adjbases import SliderColorAdjuster
@@ -100,6 +100,10 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
             ), (
                 C_("color sliders panel: hue/chroma/luma: slider label", "cV"),
                 CIECAMLumaSlider,
+                0,
+            ), (
+                C_("color sliders panel: Temperature: slider label", "cT"),
+                CIECAMTempSlider,
                 0,
             ),
         ]
@@ -620,6 +624,47 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         except KeyError:
             return True
         return vsh, cieaxes, lightsource
+
+
+class CIECAMTempSlider (SliderColorAdjuster):
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
+                             "CIECAM Color Temperature")
+
+    @property
+    def samples(self):
+        alloc = self.get_allocation()
+        len = self.vertical and alloc.height or alloc.width
+        len -= self.BORDER_WIDTH * 2
+        return min(int(len // 3), 16)
+
+    def get_color_for_bar_amount(self, amt):
+        # CCT range from 4000-25000
+        # power function to put 6500k near middle
+        cct = amt**3*21000 + 4000
+        rgb = CCT_to_RGB(cct)
+        col = color=RGBColor(rgb=rgb)
+        return col
+
+    def get_bar_amount_for_color(self, col):
+        # pull in CIECAM config
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        lightsource = prefs['color.dimension_lightsource']
+
+        if lightsource == "custom_XYZ":
+            lightsource = prefs['color.dimension_lightsource_XYZ']
+        else:
+            lightsource = colour.xy_to_XYZ(
+                colour.ILLUMINANTS['cie_2_1931'][lightsource])
+        # return CCT in domain of 0-1
+        xy = colour.XYZ_to_xy(np.array(lightsource))
+        cct = colour.xy_to_CCT(xy)
+        amt = ((cct - 4000) / 21000)**(1/3)
+        return max(0.0, amt)
+
+    def get_background_validity(self):
+        # This bg should never change
+        return True
 
 
 if __name__ == '__main__':

@@ -38,6 +38,7 @@ from lib.observable import event
 import gui.dialogs
 import gui.uicolor
 from lib.pycompat import xrange
+import colour
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +213,9 @@ class ColorManager (GObject.GObject):
         ColorManager itself.
 
         """
-        if color == self._color:
+        # CIECAM color can appear to be the same but different
+        # settings that we want to trigger a redraw (illuminant, etc)
+        if color == self._color and not isinstance(color, CIECAMColor):
             return
         self._color = copy(color)
         self._prefs[PREFS_KEY_CURRENT_COLOR] = color.to_hex_str()
@@ -1092,6 +1095,27 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             if col.gamutexceeded and col.gamutmapping == "highlight":
                 col.gamutmapping = "relativeColorimetric"
                 col.cachedrgb = None
+        # if we are clicking the colour temperature slider, don't
+        # change the color but rather change the illuminant and then
+        # return the brush color as a CIECAMColor
+        from gui.colors.sliders import CIECAMTempSlider
+        if isinstance(self, (CIECAMTempSlider)):
+            # pull in CIECAM config
+            cieaxes = self.p['color.dimension_value'] + \
+                self.p['color.dimension_purity'] + "h"
+            illuminant = colour.sRGB_to_XYZ(col.get_rgb())
+            fac = 1/illuminant[1]*100
+            illuminant *= fac
+            self.p['color.dimension_lightsource'] = "custom_XYZ"
+            self.p['color.dimension_lightsource_XYZ'] = (illuminant[0],
+                                                    illuminant[1],
+                                                    illuminant[2])
+            # update pref ui
+            self.app.preferences_window.update_ui()
+            col = CIECAMColor(color=self.get_managed_color(),
+                               lightsource=illuminant, cieaxes=cieaxes,
+                               discount_in=True, discount_out=True)
+            col.cachedrgb = None
         return col
 
     def paint_foreground_cb(self, cr, wd, ht):
@@ -1149,10 +1173,35 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         amt = self.get_bar_amount_for_color(col)
         amt = clamp(amt + d, 0.0, 1.0)
         col = self.get_color_for_bar_amount(amt)
+        # if we're attempting to get an impossible color
+        # from the striped out-of-bounds zones
+        # we should perform gamut mapping and return it
         if isinstance(col, CIECAMColor):
-            check = col.get_rgb()
+            col.get_rgb()
             if col.gamutexceeded and col.gamutmapping == "highlight":
-                return False
+                col.gamutmapping = "relativeColorimetric"
+                col.cachedrgb = None
+        # if we are clicking the colour temperature slider, don't
+        # change the color but rather change the illuminant and then
+        # return the brush color as a CIECAMColor
+        from gui.colors.sliders import CIECAMTempSlider
+        if isinstance(self, (CIECAMTempSlider)):
+            # pull in CIECAM config
+            cieaxes = self.p['color.dimension_value'] + \
+                self.p['color.dimension_purity'] + "h"
+            illuminant = colour.sRGB_to_XYZ(col.get_rgb())
+            fac = 1/illuminant[1]*100
+            illuminant *= fac
+            self.p['color.dimension_lightsource'] = "custom_XYZ"
+            self.p['color.dimension_lightsource_XYZ'] = (illuminant[0],
+                                                    illuminant[1],
+                                                    illuminant[2])
+            # update pref ui
+            self.app.preferences_window.update_ui()
+            col = CIECAMColor(color=self.get_managed_color(),
+                               lightsource=illuminant, cieaxes=cieaxes,
+                               discount_in=True, discount_out=True)
+            col.cachedrgb = None
         self.set_managed_color(col)
         return True
 
