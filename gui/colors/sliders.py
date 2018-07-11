@@ -661,7 +661,7 @@ class CIECAMTempSlider (SliderColorAdjuster):
                 colour.ILLUMINANTS['cie_2_1931'][lightsource])
         # return CCT in domain of 0-1
         xy = colour.XYZ_to_xy(np.array(lightsource))
-        cct = colour.xy_to_CCT(xy)
+        cct = colour.temperature.xy_to_CCT_Hernandez1999(xy)
         amt = ((cct - 1667) / 23333)**(1/2)
         return max(0.0, amt)
 
