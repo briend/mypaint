@@ -401,6 +401,7 @@ class CIECAMHueNormSlider (SliderColorAdjuster):
 
 class CIECAMHueSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip", "CIECAM Hue")
+    draw_background = True
 
     @property
     def samples(self):
@@ -476,6 +477,7 @@ class CIECAMHueSlider (SliderColorAdjuster):
 class CIECAMChromaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
                              "CIECAM Colorfulness/Chroma/Saturation")
+    draw_background = True
 
     @property
     def samples(self):
@@ -552,6 +554,7 @@ class CIECAMChromaSlider (SliderColorAdjuster):
 class CIECAMLumaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
                              "CIECAM Lightness/Brightness")
+    draw_background = True
 
     @property
     def samples(self):
