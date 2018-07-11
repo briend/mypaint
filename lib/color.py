@@ -1429,7 +1429,7 @@ def CIECAM_to_RGB(self):
 
     # return zero alpha for guis and sliders to know this is out of gamut
     if self.gamutmapping == "highlight":
-        return 0, 0, 0, 0
+        return 0.5, 0.5, 0.5, 0
     if self.gamutmapping == "relativeColorimetric":
 
         def loss(sat_):
