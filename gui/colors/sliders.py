@@ -641,9 +641,9 @@ class CIECAMTempSlider (SliderColorAdjuster):
         return min(int(len // 3), 16)
 
     def get_color_for_bar_amount(self, amt):
-        # CCT range from 4000-25000
+        # CCT range from 1667-25000
         # power function to put 6500k near middle
-        cct = amt**3*21000 + 4000
+        cct = amt**2 * 23333 + 1667
         rgb = CCT_to_RGB(cct)
         col = color=RGBColor(rgb=rgb)
         return col
@@ -662,7 +662,7 @@ class CIECAMTempSlider (SliderColorAdjuster):
         # return CCT in domain of 0-1
         xy = colour.XYZ_to_xy(np.array(lightsource))
         cct = colour.xy_to_CCT(xy)
-        amt = ((cct - 4000) / 21000)**(1/3)
+        amt = ((cct - 1667) / 23333)**(1/2)
         return max(0.0, amt)
 
     def get_background_validity(self):
