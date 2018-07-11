@@ -1642,6 +1642,8 @@ def CCT_to_RGB(CCT):
 def RGB_to_CCT(RGB):
     """Accepts an RGB and returns CCT 4000-25000 """
     CCT = colour.temperature.xy_to_CCT_Hernandez1999(colour.XYZ_to_xy(colour.sRGB_to_XYZ(RGB)))
+    if CCT < 6500:
+        CCT = colour.temperature.xy_to_CCT(colour.XYZ_to_xy(colour.sRGB_to_XYZ(RGB)))
     return CCT
 
 ## Module testing
