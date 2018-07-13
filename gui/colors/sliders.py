@@ -411,48 +411,14 @@ class CIECAMHueSlider (SliderColorAdjuster):
         return min(int(len // 3), 16)
 
     def get_color_for_bar_amount(self, amt):
-        # pull in CIECAM config
-        cm = self.get_color_manager()
-        prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
-
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(
-                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
-        # standard sRGB view environment except adjustable illuminant
-        cieaxes = prefs['color.dimension_value'] + \
-            prefs['color.dimension_purity'] + "h"
-        col = self.get_managed_color()
-        if not isinstance(col, CIECAMColor):
-            col = CIECAMColor(
-                color = self.get_managed_color(),
-                cieaxes = cieaxes,
-                lightsource = lightsource,
-                gamutmapping = "highlight")
-        col.lightsource = lightsource
-        col.cieaxes = cieaxes
+        col = self._get_app_brush_color()
         col.h = max(0.0, amt) * 360
         col.cachedrgb = None
         col.gamutmapping = "highlight"
         return col
 
     def get_bar_amount_for_color(self, col):
-        # pull in CIECAM config
-        cm = self.get_color_manager()
-        prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
-
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(
-                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
-        # standard sRGB view environment except adjustable illuminant
-        cieaxes = prefs['color.dimension_value'] + \
-            prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        col = self._get_app_brush_color()
         return max(0.0, col.h) / 360
 
     def get_background_validity(self):
@@ -487,49 +453,14 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         return min(int(len // 3), 16)
 
     def get_color_for_bar_amount(self, amt):
-        # pull in CIECAM config
-        cm = self.get_color_manager()
-        prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
-
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(
-                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
-        # standard sRGB view environment except adjustable illuminant
-        cieaxes = prefs['color.dimension_value'] + \
-            prefs['color.dimension_purity'] + "h"
-        col = self.get_managed_color()
-        if not isinstance(col, CIECAMColor):
-            col = CIECAMColor(
-                color = self.get_managed_color(),
-                cieaxes = cieaxes,
-                lightsource = lightsource,
-                gamutmapping = "highlight"
-            )
-        col.lightsource = lightsource
-        col.cieaxes = cieaxes
+        col = self._get_app_brush_color()
         col.s = max(0.0, amt) * 120
         col.gamutmapping = "highlight"
         col.cachedrgb = None
         return col
 
     def get_bar_amount_for_color(self, col):
-        # pull in CIECAM config
-        cm = self.get_color_manager()
-        prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
-
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(
-                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
-        # standard sRGB view environment except adjustable illuminant
-        cieaxes = prefs['color.dimension_value'] + \
-            prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        col = self._get_app_brush_color()
         return max(0.0, col.s) / 120
 
     def get_background_validity(self):
@@ -564,49 +495,14 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         return min(int(len // 3), 16)
 
     def get_color_for_bar_amount(self, amt):
-        # pull in CIECAM config
-        cm = self.get_color_manager()
-        prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
-
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(
-                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
-        # standard sRGB view environment except adjustable illuminant
-        cieaxes = prefs['color.dimension_value'] + \
-            prefs['color.dimension_purity'] + "h"
-        col = self.get_managed_color()
-        if not isinstance(col, CIECAMColor):
-            col = CIECAMColor(
-                color=self.get_managed_color(),
-                cieaxes=cieaxes,
-                lightsource=lightsource,
-                gamutmapping="highlight"
-            )
-        col.lightsource = lightsource
-        col.cieaxes = cieaxes
+        col = self._get_app_brush_color()
         col.v = max(0.0, amt) * 100
         col.cachedrgb = None
         col.gamutmapping = "highlight"
         return col
 
     def get_bar_amount_for_color(self, col):
-        # pull in CIECAM config
-        cm = self.get_color_manager()
-        prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
-
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(
-                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
-        # standard sRGB view environment except adjustable illuminant
-        cieaxes = prefs['color.dimension_value'] + \
-            prefs['color.dimension_purity'] + "h"
-        col = CIECAMColor(color=col, cieaxes=cieaxes, lightsource=lightsource)
+        col = self._get_app_brush_color()
         return max(0.0, col.v) / 100
 
     def get_background_validity(self):
@@ -650,18 +546,9 @@ class CIECAMTempSlider (SliderColorAdjuster):
         return col
 
     def get_bar_amount_for_color(self, col):
-        # pull in CIECAM config
-        cm = self.get_color_manager()
-        prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
-
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(
-                colour.ILLUMINANTS['cie_2_1931'][lightsource])
+        col = self._get_app_brush_color()
         # return CCT in domain of 0-1
-        xy = colour.XYZ_to_xy(np.array(lightsource))
+        xy = colour.XYZ_to_xy(np.array(col.lightsource))
         cct = colour.temperature.xy_to_CCT_Hernandez1999(xy)
         if cct < 6500:
             cct = colour.temperature.xy_to_CCT(xy)
@@ -672,6 +559,28 @@ class CIECAMTempSlider (SliderColorAdjuster):
         # This bg should never change
         return True
 
+
+    def _get_app_brush_color(self):
+        app = self.app
+        # if brush doesn't have ciecam values, revert to hsv
+        if app.brush.get_setting('cie_v') == '':
+            color = CIECAMColor(
+                color=HSVColor(*app.brush.get_color_hsv())
+            )
+        else:
+            color = CIECAMColor(
+                vsh=(
+                    app.brush.get_setting('cie_v'),
+                    app.brush.get_setting('cie_s'),
+                    app.brush.get_setting('cie_h')),
+                cieaxes=app.brush.get_setting('cieaxes'),
+                lightsource=(
+                    app.brush.get_setting('lightsource_X'),
+                    app.brush.get_setting('lightsource_Y'),
+                    app.brush.get_setting('lightsource_Z')
+                )
+            )
+        return color
 
 if __name__ == '__main__':
     import os

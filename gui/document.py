@@ -1546,6 +1546,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         brushcolor.v = brushcolor.v + e
         brushcolor.cachedrgb = None
         r, g, b = brushcolor.get_rgb()
+        if brushcolor.displayexceeded:
+            return
 
         if ((self.app.preferences['color.splash_before_stroke'] is True
              and self.in_input_stroke is False)
