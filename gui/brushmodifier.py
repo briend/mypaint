@@ -223,25 +223,10 @@ class BrushModifier (object):
         b = self.app.brush
         prev_lock_alpha = b.is_alpha_locked()
 
-        cm = self.app.brush_color_manager
-        prefs = cm.get_prefs()
-        lightsource = prefs['color.dimension_lightsource']
-
-        if lightsource == "custom_XYZ":
-            lightsource = prefs['color.dimension_lightsource_XYZ']
-        else:
-            lightsource = colour.xy_to_XYZ(
-                colour.ILLUMINANTS['cie_2_1931'][lightsource]) * 100.0
-        # standard sRGB view environment except adjustable illuminant
-        cieaxes = prefs['color.dimension_value'] + \
-            prefs['color.dimension_purity'] + "h"
-
         # Changing the effective brush
         b.begin_atomic()
         color = lib.color.CIECAMColor(
-            color=lib.color.HSVColor(*b.get_color_hsv()),
-            cieaxes=cieaxes,
-            lightsource=lightsource
+            color=lib.color.HSVColor(*b.get_color_hsv())
         )
 
         mix_old = b.get_base_value('restore_color')
@@ -254,17 +239,13 @@ class BrushModifier (object):
             c2 = self._get_app_brush_color()
             steps = [(c.v, c.s, c.h) for c in color.interpolate(c2, 100)]
             color = lib.color.CIECAMColor(
-                vsh=steps[int(round(mix*100) - 1)],
-                cieaxes=cieaxes,
-                lightsource=lightsource
+                vsh=steps[int(round(mix*100) - 1)]
             )
 
         elif mix_old and self._last_selected_color:
             # switching from a brush with fixed color back to a normal one
             color = lib.color.CIECAMColor(
-                color=lib.color.HSVColor(*self._last_selected_color),
-                cieaxes=cieaxes,
-                lightsource=lightsource
+                color=lib.color.HSVColor(*self._last_selected_color)
             )
 
         b.set_color_hsv(color.get_hsv())

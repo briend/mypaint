@@ -1409,8 +1409,6 @@ def CIECAM_to_RGB(self):
 
     zipped = zip(axes, (v, s, h))
 
-    self.gamutexceeded = False
-    self.displayexceeded = False
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped),
                                          colour.CAM16_Specification)
     xyz = colour.CAM16_to_XYZ(cam, self.lightsource,
@@ -1423,6 +1421,8 @@ def CIECAM_to_RGB(self):
     rgbloss = (np.sum(result[np.where(result - 1 >= 0)]-1)
            + np.sum(abs((result[np.where(result < 0.0)]))))
     if rgbloss < 0.001 or self.gamutmapping is False:
+        self.gamutexceeded = False
+        self.displayexceeded = False
         r, g, b = x
         self.cachedrgb = (r, g, b)
         if self.gamutmapping == "highlight":
@@ -1486,10 +1486,10 @@ def CIECAM_to_RGB(self):
                 loss = float('Inf')
             return loss
 
-        opt = {'maxiter': 100}
+        opt = {'maxiter': 20}
 
         x_opt = spo.minimize_scalar(loss,
-                                    tol=0.001,
+                                    tol=0.1,
                                     method='Brent',
                                     bounds=(0.00001, s),
                                     options=opt
@@ -1510,7 +1510,7 @@ def CIECAM_to_RGB(self):
                 self.displayexceeded = True
 
                 x_opt_val = spo.minimize_scalar(loss_value,
-                                                tol=0.001,
+                                                tol=0.1,
                                                 method='Brent',
                                                 bounds=(0.00001, v),
                                                 options=opt

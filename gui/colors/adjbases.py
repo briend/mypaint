@@ -1088,7 +1088,12 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         # we should perform gamut mapping and return it
         if isinstance(col, CIECAMColor):
             col.get_rgb()
-            if col.gamutexceeded and col.gamutmapping == "highlight":
+            # don't set the color if we had to reduce brightness
+            # to avoid nasty jump to 0% saturation
+            # return the original ciecam color
+            if col.displayexceeded:
+                col = self._get_app_brush_color()
+            elif col.gamutexceeded and col.gamutmapping == "highlight":
                 col.gamutmapping = "relativeColorimetric"
                 col.cachedrgb = None
         # if we are clicking the colour temperature slider, don't
@@ -1113,6 +1118,28 @@ class SliderColorAdjuster (ColorAdjusterWidget):
                                discount_in=True, discount_out=True)
             col.cachedrgb = None
         return col
+
+    def _get_app_brush_color(self):
+        app = self.app
+        # if brush doesn't have ciecam values, revert to hsv
+        if app.brush.get_setting('cie_v') == '':
+            color = CIECAMColor(
+                color=HSVColor(*app.brush.get_color_hsv())
+            )
+        else:
+            color = CIECAMColor(
+                vsh=(
+                    app.brush.get_setting('cie_v'),
+                    app.brush.get_setting('cie_s'),
+                    app.brush.get_setting('cie_h')),
+                cieaxes=app.brush.get_setting('cieaxes'),
+                lightsource=(
+                    app.brush.get_setting('lightsource_X'),
+                    app.brush.get_setting('lightsource_Y'),
+                    app.brush.get_setting('lightsource_Z')
+                )
+            )
+        return color
 
     def paint_foreground_cb(self, cr, wd, ht):
         b = int(self.BORDER_WIDTH)
@@ -1169,12 +1196,18 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         amt = self.get_bar_amount_for_color(col)
         amt = clamp(amt + d, 0.0, 1.0)
         col = self.get_color_for_bar_amount(amt)
+        # TODO code duplication ^
         # if we're attempting to get an impossible color
         # from the striped out-of-bounds zones
         # we should perform gamut mapping and return it
         if isinstance(col, CIECAMColor):
             col.get_rgb()
-            if col.gamutexceeded and col.gamutmapping == "highlight":
+            # don't set the color if we had to reduce brightness
+            # to avoid nasty jump to 0% saturation
+            # return the original ciecam color
+            if col.displayexceeded:
+                col = self._get_app_brush_color()
+            elif col.gamutexceeded and col.gamutmapping == "highlight":
                 col.gamutmapping = "relativeColorimetric"
                 col.cachedrgb = None
         # if we are clicking the colour temperature slider, don't
