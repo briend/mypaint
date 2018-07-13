@@ -1533,21 +1533,31 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             if not last_action_time:
                 return 0.1
             else:
-                return min(multiplier * step_size
+                return min(1000 * multiplier * step_size
                            / (action_time - last_action_time), max_value)
         else:
-            return 1 * step_size
+            return 1 * step_size * multiplier
 
     def _apply_tuned_colors(self, brush_color):
         """applies needed colors (hsv, ciecam) to the brush"""
         rgb = brush_color.get_rgb()
         hsv = colorsys.rgb_to_hsv(*rgb)
-        ciecam_color = brush_color if isinstance(brush_color, CIECAMColor) \
-            else CIECAMColor(color=HSVColor(hsv=hsv))
+        if isinstance(brush_color, CIECAMColor):
+            ciecam_color = brush_color
+        else:
+            ciecam_color = CIECAMColor(color=HSVColor(hsv=hsv))
 
         # apply needed colors
         self.app.brush.set_ciecam_color(ciecam_color)
         self.app.brush.set_color_hsv(hsv)
+
+    def _should_throttle(self, action_time, last_action_time):
+        # NOTE: remove after debouncing/throttling implemented
+        if last_action_time:
+            elapsed = action_time - last_action_time
+            if elapsed < 100:
+                return True
+        return False
 
     def brighter_cb(self, action):
         """``Brighter`` GtkAction callback: lighten the brush color"""
@@ -1557,16 +1567,14 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             t = (time.time() * 1000)
 
         # throttling
-        if self.last_brighter:
-            elapsed = t - self.last_brighter
-            if elapsed < 100:
-                return
+        if self._should_throttle(t, self.last_brighter):
+            return
 
         if self.app.brush.displayexceeded:
             return
 
-        # TODO maybe have step_size always between [0..1]?
-        step_size = self._get_step_size(t, self.last_brighter, 1000, 25)
+        # TODO maybe have step_size between [0..1] and scale below as needed?
+        step_size = self._get_step_size(t, self.last_brighter, 1, 25)
         tune_model = self.app.preferences['color.tune_model']
 
         if tune_model == 'HSV':
@@ -1581,10 +1589,10 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor = HCYColor(h, c, y)
 
         elif tune_model == 'CIECAM':
-            brushcolor = self._get_app_brush_color()
+            brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.v = brushcolor.v + step_size
             brushcolor.cachedrgb = None
-            brushcolor.get_rgb() # for exceeded check below
+            brushcolor.get_rgb()  # for exceeded check below
             if brushcolor.displayexceeded:
                 return
 
@@ -1607,12 +1615,10 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             t = (time.time() * 1000)
 
         # throttling
-        if self.last_darker:
-            elapsed = t - self.last_darker
-            if elapsed < 100:
-                return
+        if self._should_throttle(t, self.last_darker):
+            return
 
-        step_size = self._get_step_size(t, self.last_darker, 1000, 25)
+        step_size = self._get_step_size(t, self.last_darker, 1, 25)
         tune_model = self.app.preferences['color.tune_model']
 
         if tune_model == 'HSV':
@@ -1627,7 +1633,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor = HCYColor(h, c, y)
 
         elif tune_model == 'CIECAM':
-            brushcolor = self._get_app_brush_color()
+            brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.v = max(brushcolor.v - step_size, 0.0)
             brushcolor.cachedrgb = None
 
@@ -1650,27 +1656,38 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             t = (time.time() * 1000)
 
         # throttling
-        if self.last_increase_hue:
-            elapsed = t - self.last_increase_hue
+        if self._should_throttle(t, self.last_increase_hue):
+            return
 
-            if elapsed < 100:
-                return
+        step_size = self._get_step_size(t, self.last_increase_hue, 2.0, 90)
+        tune_model = self.app.preferences['color.tune_model']
 
-        brushcolor = self._get_app_brush_color()
-        step_size = self._get_step_size(t, self.last_increase_hue, 1500, 90)
+        if tune_model == 'HSV':
+            h, s, v = self.app.brush.get_color_hsv()
+            h = (h + step_size / 360) % 1.0
+            brushcolor = HSVColor(h, s, v)
 
+        elif tune_model == 'HCY':
+            hsv = self.app.brush.get_color_hsv()
+            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            h = (h + step_size / 360) % 1.0
+            brushcolor = HCYColor(h, c, y)
 
-        brushcolor.h = (brushcolor.h + step_size) % 360
-        brushcolor.cachedrgb = None
-        r, g, b = brushcolor.get_rgb()
+        elif tune_model == 'CIECAM':
+            brushcolor = self._get_app_brush_ciecam_color()
+            brushcolor.h = (brushcolor.h + step_size) % 360
+            brushcolor.cachedrgb = None
+
+        else:
+            logger.error('Incorrect color model "%s"' % tune_model)
+            return
+
+        self._apply_tuned_colors(brushcolor)
 
         if self._overlay_is_enabled():
-            self._place_overlay(x, y, r, g, b)
+            self._place_overlay(x, y, *brushcolor.get_rgb())
 
         self.last_increase_hue = t
-        self.app.brush.set_color_hsv(lib.color.RGBColor(
-                                     r=r, g=g, b=b).get_hsv())
-        self.app.brush.set_ciecam_color(brushcolor)
 
     def decrease_hue_cb(self, action):
         """Anticlockwise hue rotation ("DecreaseHue" action)."""
@@ -1680,25 +1697,38 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             t = (time.time() * 1000)
 
         # throttling
-        if self.last_decrease_hue:
-            elapsed = t - self.last_decrease_hue
-            if elapsed < 100:
-                return
+        if self._should_throttle(t, self.last_decrease_hue):
+            return
 
-        brushcolor = self._get_app_brush_color()
-        step_size = self._get_step_size(t, self.last_decrease_hue, 1500, 90)
+        step_size = self._get_step_size(t, self.last_decrease_hue, 2.0, 90)
+        tune_model = self.app.preferences['color.tune_model']
 
-        brushcolor.h = (brushcolor.h - step_size) % 360
-        brushcolor.cachedrgb = None
-        r, g, b = brushcolor.get_rgb()
+        if tune_model == 'HSV':
+            h, s, v = self.app.brush.get_color_hsv()
+            h = (h - step_size / 360) % 1.0
+            brushcolor = HSVColor(h, s, v)
+
+        elif tune_model == 'HCY':
+            hsv = self.app.brush.get_color_hsv()
+            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            h = (h - step_size / 360) % 1.0
+            brushcolor = HCYColor(h, c, y)
+
+        elif tune_model == 'CIECAM':
+            brushcolor = self._get_app_brush_ciecam_color()
+            brushcolor.h = (brushcolor.h - step_size) % 360
+            brushcolor.cachedrgb = None
+
+        else:
+            logger.error('Incorrect color model "%s"' % tune_model)
+            return
+
+        self._apply_tuned_colors(brushcolor)
 
         if self._overlay_is_enabled():
-            self._place_overlay(x, y, r, g, b)
+            self._place_overlay(x, y, *brushcolor.get_rgb())
 
         self.last_decrease_hue = t
-        self.app.brush.set_color_hsv(lib.color.RGBColor(
-                                     r=r, g=g, b=b).get_hsv())
-        self.app.brush.set_ciecam_color(brushcolor)
 
     def purer_cb(self, action):
         """``Purer`` GtkAction callback: make the brush color less grey"""
@@ -1708,29 +1738,41 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             t = (time.time() * 1000)
 
         # throttling
-        if self.last_purer:
-            elapsed = t - self.last_purer
-            if elapsed < 100:
-                return
-
-        cm = self.app.brush_color_manager
-
-        brushcolor = self._get_app_brush_color()
-        step_size = self._get_step_size(t, self.last_purer, 2000, 25)
-
-        brushcolor.s = brushcolor.s + step_size
-        brushcolor.cachedrgb = None
-        r, g, b = brushcolor.get_rgb()
-        if brushcolor.gamutexceeded:
+        if self._should_throttle(t, self.last_purer):
             return
 
+        step_size = self._get_step_size(t, self.last_purer, 1.5, 25)
+        tune_model = self.app.preferences['color.tune_model']
+
+        if tune_model == 'HSV':
+            h, s, v = self.app.brush.get_color_hsv()
+            s = min(s + step_size / 100, 1.0)
+            brushcolor = HSVColor(h, s, v)
+
+        elif tune_model == 'HCY':
+            hsv = self.app.brush.get_color_hsv()
+            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            c = min(c + step_size / 100, 1.0)
+            brushcolor = HCYColor(h, c, y)
+
+        elif tune_model == 'CIECAM':
+            brushcolor = self._get_app_brush_ciecam_color()
+            brushcolor.s = brushcolor.s + step_size
+            brushcolor.cachedrgb = None
+            brushcolor.get_rgb()  # for exceeded check below
+            if brushcolor.gamutexceeded:
+                return
+
+        else:
+            logger.error('Incorrect color model "%s"' % tune_model)
+            return
+
+        self._apply_tuned_colors(brushcolor)
+
         if self._overlay_is_enabled():
-            self._place_overlay(x, y, r, g, b)
+            self._place_overlay(x, y, *brushcolor.get_rgb())
 
         self.last_purer = t
-        self.app.brush.set_color_hsv(lib.color.RGBColor(
-                                     r=r, g=g, b=b).get_hsv())
-        self.app.brush.set_ciecam_color(brushcolor)
 
     def grayer_cb(self, action):
         """``Grayer`` GtkAction callback: make the brush color more grey"""
@@ -1740,27 +1782,38 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             t = (time.time() * 1000)
 
         # throttling
-        if self.last_grayer:
-            elapsed = t - self.last_grayer
+        if self._should_throttle(t, self.last_grayer):
+            return
 
-            if elapsed < 100:
-                return
+        step_size = self._get_step_size(t, self.last_grayer, 1.5, 25)
+        tune_model = self.app.preferences['color.tune_model']
 
-        brushcolor = self._get_app_brush_color()
-        step_size = self._get_step_size(t, self.last_grayer, 2000, 25)
+        if tune_model == 'HSV':
+            h, s, v = self.app.brush.get_color_hsv()
+            s = max(s - step_size / 100, 0.005)
+            brushcolor = HSVColor(h, s, v)
 
-        brushcolor.s = max(brushcolor.s - step_size, 0.0)
-        brushcolor.cachedrgb = None
+        elif tune_model == 'HCY':
+            hsv = self.app.brush.get_color_hsv()
+            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            c = max(c - step_size / 100, 0.005)
+            brushcolor = HCYColor(h, c, y)
 
-        r, g, b = brushcolor.get_rgb()
+        elif tune_model == 'CIECAM':
+            brushcolor = self._get_app_brush_ciecam_color()
+            brushcolor.s = max(brushcolor.s - step_size, 0.0)
+            brushcolor.cachedrgb = None
+
+        else:
+            logger.error('Incorrect color model "%s"' % tune_model)
+            return
+
+        self._apply_tuned_colors(brushcolor)
 
         if self._overlay_is_enabled():
-            self._place_overlay(x, y, r, g, b)
+            self._place_overlay(x, y, *brushcolor.get_rgb())
 
         self.last_grayer = t
-        self.app.brush.set_color_hsv(lib.color.RGBColor(
-                                     r=r, g=g, b=b).get_hsv())
-        self.app.brush.set_ciecam_color(brushcolor)
 
     ## Brush settings
 
@@ -1807,9 +1860,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             if reset_action.get_sensitive():
                 reset_action.set_sensitive(False)
 
-    def _get_app_brush_color(self):
-
-        # TODO: use the picked color tune model
+    def _get_app_brush_ciecam_color(self):
 
         app = self.app
         # if brush doesn't have ciecam values, revert to hsv
