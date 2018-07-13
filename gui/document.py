@@ -18,6 +18,7 @@ i.e. they convert user input into updates to the document model.
 
 from __future__ import division, print_function
 
+import colorsys
 import os
 import os.path
 import math
@@ -49,7 +50,7 @@ from gui.widgets import with_wait_cursor
 from lib.gettext import gettext as _
 from lib.gettext import C_
 from lib.modes import PASS_THROUGH_MODE
-from lib.color import CIECAMColor
+from lib.color import CIECAMColor, HSVColor, HCYColor
 from overlays import ColorAdjustOverlay
 
 logger = logging.getLogger(__name__)
@@ -1537,6 +1538,17 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         else:
             return 1 * step_size
 
+    def _apply_tuned_colors(self, brush_color):
+        """applies needed colors (hsv, ciecam) to the brush"""
+        rgb = brush_color.get_rgb()
+        hsv = colorsys.rgb_to_hsv(*rgb)
+        ciecam_color = brush_color if isinstance(brush_color, CIECAMColor) \
+            else CIECAMColor(color=HSVColor(hsv=hsv))
+
+        # apply needed colors
+        self.app.brush.set_ciecam_color(ciecam_color)
+        self.app.brush.set_color_hsv(hsv)
+
     def brighter_cb(self, action):
         """``Brighter`` GtkAction callback: lighten the brush color"""
         t, x, y, p = self.get_last_event_info(self.tdw)
@@ -1550,25 +1562,42 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             if elapsed < 100:
                 return
 
-        brushcolor = self._get_app_brush_color()
         if self.app.brush.displayexceeded:
             return
 
+        # TODO maybe have step_size always between [0..1]?
         step_size = self._get_step_size(t, self.last_brighter, 1000, 25)
+        tune_model = self.app.preferences['color.tune_model']
 
-        brushcolor.v = brushcolor.v + step_size
-        brushcolor.cachedrgb = None
-        r, g, b = brushcolor.get_rgb()
-        if brushcolor.displayexceeded:
+        if tune_model == 'HSV':
+            h, s, v = self.app.brush.get_color_hsv()
+            v = min(v + step_size / 100, 0.995)
+            brushcolor = HSVColor(h, s, v)
+
+        elif tune_model == 'HCY':
+            hsv = self.app.brush.get_color_hsv()
+            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            y = min(y + step_size / 100, 0.995)
+            brushcolor = HCYColor(h, c, y)
+
+        elif tune_model == 'CIECAM':
+            brushcolor = self._get_app_brush_color()
+            brushcolor.v = brushcolor.v + step_size
+            brushcolor.cachedrgb = None
+            brushcolor.get_rgb() # for exceeded check below
+            if brushcolor.displayexceeded:
+                return
+
+        else:
+            logger.error('Incorrect color model "%s"' % tune_model)
             return
 
+        self._apply_tuned_colors(brushcolor)
+
         if self._overlay_is_enabled():
-            self._place_overlay(x, y, r, g, b)
+            self._place_overlay(x, y, *brushcolor.get_rgb())
 
         self.last_brighter = t
-        self.app.brush.set_color_hsv(lib.color.RGBColor(
-                                     r=r, g=g, b=b).get_hsv())
-        self.app.brush.set_ciecam_color(brushcolor)
 
     def darker_cb(self, action):
         """``Darker`` GtkAction callback: darken the brush color"""
@@ -1583,42 +1612,33 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             if elapsed < 100:
                 return
 
-        brushcolor = self._get_app_brush_color()
         step_size = self._get_step_size(t, self.last_darker, 1000, 25)
-
-        # TODO
-        # self.app.brush_color_manager.
-        # self.app.brush.get_color_hsv()
-
         tune_model = self.app.preferences['color.tune_model']
-        if tune_model == 'CIECAM':
-            print('TODO: darken using CIECAM...')
+
+        if tune_model == 'HSV':
+            h, s, v = self.app.brush.get_color_hsv()
+            v = max(v - step_size / 100, 0.005)
+            brushcolor = HSVColor(h, s, v)
 
         elif tune_model == 'HCY':
-            print('TODO: darken using HCY...')
+            hsv = self.app.brush.get_color_hsv()
+            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            y = max(y - step_size / 100, 0.005)
+            brushcolor = HCYColor(h, c, y)
 
-        elif tune_model == 'HSV':
-            print('TODO: darken using HSV...')
+        elif tune_model == 'CIECAM':
+            brushcolor = self._get_app_brush_color()
+            brushcolor.v = max(brushcolor.v - step_size, 0.0)
+            brushcolor.cachedrgb = None
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
             return
 
-        # darken color
-        brushcolor.v = max(brushcolor.v - step_size, 0.0)
-        brushcolor.cachedrgb = None
-
-        r, g, b = brushcolor.get_rgb()
+        self._apply_tuned_colors(brushcolor)
 
         if self._overlay_is_enabled():
-            self._place_overlay(x, y, r, g, b)
-
-        # update all needed color models
-        # TODO: private method for 6x
-
-        self.app.brush.set_color_hsv(lib.color.RGBColor(
-            r=r, g=g, b=b).get_hsv())
-        self.app.brush.set_ciecam_color(brushcolor)  # TODO: get ciecam from any of the 3 above without much conversion
+            self._place_overlay(x, y, *brushcolor.get_rgb())
 
         self.last_darker = t
 
@@ -1811,9 +1831,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 )
             )
         return color
-
-    # TODO: method for updating needed color (also based on picked color tune model)
-    # "_apply_tuned_color()" ?
 
     ## Brushkey callbacks
 
