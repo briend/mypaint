@@ -1404,7 +1404,7 @@ def CIECAM_to_RGB(self):
     if maxcolorfulness:
         if self.gamutmapping == "highlight" and self.s > maxcolorfulness:
             self.gamutexceeded = True
-            return 0, 0, 0, 0
+            return 0.5, 0.5, 0.5, 0
         s = min(s, maxcolorfulness)
 
     zipped = zip(axes, (v, s, h))
@@ -1418,7 +1418,11 @@ def CIECAM_to_RGB(self):
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(xyz/100.0)
     x = np.clip(result, 0, 1.0)
-    if (result == x).all() or self.gamutmapping is False:
+    # only trigger gamut mapping if at least 0.001 out of gamut/display
+    # improves performance quite a bit where we probably won't notice clipping
+    rgbloss = (np.sum(result[np.where(result - 1 >= 0)]-1)
+           + np.sum(abs((result[np.where(result < 0.0)]))))
+    if rgbloss < 0.001 or self.gamutmapping is False:
         r, g, b = x
         self.cachedrgb = (r, g, b)
         if self.gamutmapping == "highlight":
