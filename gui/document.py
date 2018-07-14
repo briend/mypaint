@@ -1741,6 +1741,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if self._should_throttle(t, self.last_purer):
             return
 
+        if self.app.brush.gamutexceeded:
+            return
+
         step_size = self._get_step_size(t, self.last_purer, 1.5, 25)
         tune_model = self.app.preferences['color.tune_model']
 
@@ -1759,9 +1762,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.s = brushcolor.s + step_size
             brushcolor.cachedrgb = None
-            brushcolor.get_rgb()  # for exceeded check below
-            if brushcolor.gamutexceeded:
-                return
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)

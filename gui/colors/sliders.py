@@ -105,6 +105,10 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
                 C_("color sliders panel: Temperature: slider label", "cT"),
                 CIECAMTempSlider,
                 0,
+            ), (
+                C_("color sliders panel: Limit Purity: slider label", "cLim"),
+                CIECAMLimitChromaSlider,
+                0,
             ),
         ]
         row = 0
@@ -414,7 +418,9 @@ class CIECAMHueSlider (SliderColorAdjuster):
         col = self._get_app_brush_color()
         col.h = max(0.0, amt) * 360
         col.cachedrgb = None
-        col.gamutmapping = "highlight"
+        col.gamutmapping = "highlightH"
+        col.maxiter = 2
+        col.tol = 5
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -424,11 +430,14 @@ class CIECAMHueSlider (SliderColorAdjuster):
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
         try:
+            limit_purity = prefs['color.limit_purity']
             vsh = (
-                app.brush.get_setting('cie_v'),
-                app.brush.get_setting('cie_s'),
-                app.brush.get_setting('cie_h'))
+                int(app.brush.get_setting('cie_v') * 100),
+                int(app.brush.get_setting('cie_s') * 100),
+                int(app.brush.get_setting('cie_h') * 100))
 
             cieaxes = app.brush.get_setting('cieaxes'),
             lightsource = (
@@ -437,7 +446,7 @@ class CIECAMHueSlider (SliderColorAdjuster):
                 app.brush.get_setting('lightsource_Z'))
         except KeyError:
             return True
-        return vsh, cieaxes, lightsource
+        return vsh, cieaxes, lightsource, limit_purity
 
 
 class CIECAMChromaSlider (SliderColorAdjuster):
@@ -455,22 +464,30 @@ class CIECAMChromaSlider (SliderColorAdjuster):
     def get_color_for_bar_amount(self, amt):
         col = self._get_app_brush_color()
         col.s = max(0.0, amt) * 120
-        col.gamutmapping = "highlight"
+        col.gamutmapping = "highlightC"
         col.cachedrgb = None
+        col.maxiter = 2
+        col.tol = 5
         return col
 
     def get_bar_amount_for_color(self, col):
         col = self._get_app_brush_color()
-        return max(0.0, col.s) / 120
+        if col.limit_purity is not None:
+            return min(col.s, col.limit_purity) / 120
+        else:
+            return max(0.0, col.s) / 120
 
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
         try:
+            limit_purity = prefs['color.limit_purity']
             vsh = (
-                app.brush.get_setting('cie_v'),
-                app.brush.get_setting('cie_s'),
-                app.brush.get_setting('cie_h'))
+                int(app.brush.get_setting('cie_v') * 100),
+                int(app.brush.get_setting('cie_s') * 100),
+                int(app.brush.get_setting('cie_h') * 100))
 
             cieaxes = app.brush.get_setting('cieaxes'),
             lightsource = (
@@ -479,7 +496,65 @@ class CIECAMChromaSlider (SliderColorAdjuster):
                 app.brush.get_setting('lightsource_Z'))
         except KeyError:
             return True
-        return vsh, cieaxes, lightsource
+        return vsh, cieaxes, lightsource, limit_purity
+
+
+class CIECAMLimitChromaSlider (SliderColorAdjuster):
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
+                             "CIECAM Limit Purity/Chroma")
+    draw_background = True
+
+    @property
+    def samples(self):
+        alloc = self.get_allocation()
+        len = self.vertical and alloc.height or alloc.width
+        len -= self.BORDER_WIDTH * 2
+        return min(int(len // 3), 16)
+
+    def get_color_for_bar_amount(self, amt):
+        col = self._get_app_brush_color()
+        if amt == 1.0:
+            col.limit_purity = None
+        else:
+            amt = max(0.0, amt)
+            col.s = amt * 120
+            col.limit_purity = amt * 120
+        col.gamutmapping = "highlight"
+        col.cachedrgb = None
+        col.maxiter = 2
+        col.tol = 5
+        return col
+
+    def get_bar_amount_for_color(self, col):
+        # pull in color purity preference
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        limit_purity = prefs['color.limit_purity']
+        if limit_purity >= 0.0:
+            return max(0.0, limit_purity) / 120
+        else:
+            return 1.0
+
+    def get_background_validity(self):
+        from gui.application import get_app
+        app = get_app()
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        try:
+            limit_purity = prefs['color.limit_purity']
+            vsh = (
+                int(app.brush.get_setting('cie_v') * 100),
+                int(app.brush.get_setting('cie_s') * 100),
+                int(app.brush.get_setting('cie_h') * 100))
+
+            cieaxes = app.brush.get_setting('cieaxes'),
+            lightsource = (
+                app.brush.get_setting('lightsource_X'),
+                app.brush.get_setting('lightsource_Y'),
+                app.brush.get_setting('lightsource_Z'))
+        except KeyError:
+            return True
+        return vsh, cieaxes, lightsource, limit_purity
 
 
 class CIECAMLumaSlider (SliderColorAdjuster):
@@ -497,8 +572,12 @@ class CIECAMLumaSlider (SliderColorAdjuster):
     def get_color_for_bar_amount(self, amt):
         col = self._get_app_brush_color()
         col.v = max(0.0, amt) * 100
+        if col.limit_purity is not None:
+            col.s = max(col.s, col.limit_purity)
         col.cachedrgb = None
-        col.gamutmapping = "highlight"
+        col.gamutmapping = "highlightL"
+        col.maxiter = 2
+        col.tol = 5
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -508,12 +587,14 @@ class CIECAMLumaSlider (SliderColorAdjuster):
     def get_background_validity(self):
         from gui.application import get_app
         app = get_app()
-
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
         try:
+            limit_purity = prefs['color.limit_purity']
             vsh = (
-                app.brush.get_setting('cie_v'),
-                app.brush.get_setting('cie_s'),
-                app.brush.get_setting('cie_h'))
+                int(app.brush.get_setting('cie_v') * 100),
+                int(app.brush.get_setting('cie_s') * 100),
+                int(app.brush.get_setting('cie_h') * 100))
 
             cieaxes = app.brush.get_setting('cieaxes'),
             lightsource = (
@@ -522,7 +603,8 @@ class CIECAMLumaSlider (SliderColorAdjuster):
                 app.brush.get_setting('lightsource_Z'))
         except KeyError:
             return True
-        return vsh, cieaxes, lightsource
+        return vsh, cieaxes, lightsource, limit_purity
+
 
 
 class CIECAMTempSlider (SliderColorAdjuster):
@@ -559,28 +641,6 @@ class CIECAMTempSlider (SliderColorAdjuster):
         # This bg should never change
         return True
 
-
-    def _get_app_brush_color(self):
-        app = self.app
-        # if brush doesn't have ciecam values, revert to hsv
-        if app.brush.get_setting('cie_v') == '':
-            color = CIECAMColor(
-                color=HSVColor(*app.brush.get_color_hsv())
-            )
-        else:
-            color = CIECAMColor(
-                vsh=(
-                    app.brush.get_setting('cie_v'),
-                    app.brush.get_setting('cie_s'),
-                    app.brush.get_setting('cie_h')),
-                cieaxes=app.brush.get_setting('cieaxes'),
-                lightsource=(
-                    app.brush.get_setting('lightsource_X'),
-                    app.brush.get_setting('lightsource_Y'),
-                    app.brush.get_setting('lightsource_Z')
-                )
-            )
-        return color
 
 if __name__ == '__main__':
     import os
