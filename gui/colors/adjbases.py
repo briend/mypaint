@@ -1041,7 +1041,7 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         for s in xrange(samples + 1):
             p = s / samples
             col = self.get_color_for_bar_amount(p)
-            if self.draw_background and col.gamutmapping == "highlight":
+            if self.draw_background and "highlight" in col.gamutmapping:
                 r, g, b, a = col.get_rgb()
                 # TODO: "position" is inaccurate, more samples?
                 # Allow fade to transparent until we add more samples?
@@ -1093,17 +1093,19 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             # return the original ciecam color
             if col.displayexceeded:
                 col = self._get_app_brush_color()
-            elif col.gamutexceeded and col.gamutmapping == "highlight":
+            elif col.gamutexceeded and "highlight" in col.gamutmapping:
                 col.gamutmapping = "relativeColorimetric"
+                col.tol = 0.1
+                col.maxiter = 20
                 col.cachedrgb = None
         # if we are clicking the colour temperature slider, don't
         # change the color but rather change the illuminant and then
         # return the brush color as a CIECAMColor
-        from gui.colors.sliders import CIECAMTempSlider
+        from gui.colors.sliders import (CIECAMTempSlider,
+                                        CIECAMLimitChromaSlider,
+                                        CIECAMHueNormSlider)
         if isinstance(self, (CIECAMTempSlider)):
-            # pull in CIECAM config
-            cieaxes = self.p['color.dimension_value'] + \
-                self.p['color.dimension_purity'] + "h"
+            # push illuminant to prefs and return new color
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
             fac = 1/illuminant[1]*100
             illuminant *= fac
@@ -1113,10 +1115,27 @@ class SliderColorAdjuster (ColorAdjusterWidget):
                                                     illuminant[2])
             # update pref ui
             self.app.preferences_window.update_ui()
-            col = CIECAMColor(color=self.get_managed_color(),
-                               lightsource=illuminant, cieaxes=cieaxes,
+            col = CIECAMColor(color=self._get_app_brush_color(),
+                               lightsource=illuminant,
                                discount_in=True, discount_out=True)
+        if isinstance(self, (CIECAMLimitChromaSlider)):
+            # push chroma limiter to prefs and return new color
+            # maximum replaced with -1 to indicate no limit
+            limit_purity = col.limit_purity
+            if limit_purity is None:
+                limit_purity = -1
+            self.p['color.limit_purity'] = limit_purity
+            # update pref ui
+            self.app.preferences_window.update_ui()
+            col = self._get_app_brush_color()
+            if limit_purity >= 0.0:
+                col.limit_purity = max(0.0, limit_purity)
             col.cachedrgb = None
+        if isinstance(self, (CIECAMHueNormSlider)):
+            # reset illuminant pref to D65
+            self.p['color.dimension_lightsource'] = 'D65'
+            # update pref ui
+            self.app.preferences_window.update_ui()
         return col
 
     def _get_app_brush_color(self):
@@ -1196,7 +1215,6 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         amt = self.get_bar_amount_for_color(col)
         amt = clamp(amt + d, 0.0, 1.0)
         col = self.get_color_for_bar_amount(amt)
-        # TODO code duplication ^
         # if we're attempting to get an impossible color
         # from the striped out-of-bounds zones
         # we should perform gamut mapping and return it
@@ -1207,17 +1225,19 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             # return the original ciecam color
             if col.displayexceeded:
                 col = self._get_app_brush_color()
-            elif col.gamutexceeded and col.gamutmapping == "highlight":
+            elif col.gamutexceeded and "highlight" in col.gamutmapping:
                 col.gamutmapping = "relativeColorimetric"
+                col.tol = 0.1
+                col.maxiter = 20
                 col.cachedrgb = None
         # if we are clicking the colour temperature slider, don't
         # change the color but rather change the illuminant and then
         # return the brush color as a CIECAMColor
-        from gui.colors.sliders import CIECAMTempSlider
+        from gui.colors.sliders import (CIECAMTempSlider,
+                                        CIECAMLimitChromaSlider,
+                                        CIECAMHueNormSlider)
         if isinstance(self, (CIECAMTempSlider)):
-            # pull in CIECAM config
-            cieaxes = self.p['color.dimension_value'] + \
-                self.p['color.dimension_purity'] + "h"
+            # push illuminant to prefs and return new color
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
             fac = 1/illuminant[1]*100
             illuminant *= fac
@@ -1227,10 +1247,27 @@ class SliderColorAdjuster (ColorAdjusterWidget):
                                                     illuminant[2])
             # update pref ui
             self.app.preferences_window.update_ui()
-            col = CIECAMColor(color=self.get_managed_color(),
-                               lightsource=illuminant, cieaxes=cieaxes,
+            col = CIECAMColor(color=self._get_app_brush_color(),
+                               lightsource=illuminant,
                                discount_in=True, discount_out=True)
+        if isinstance(self, (CIECAMLimitChromaSlider)):
+            # push chroma limiter to prefs and return new color
+            # maximum replaced with -1 to indicate no limit
+            limit_purity = col.limit_purity
+            if limit_purity is None:
+                limit_purity = -1
+            self.p['color.limit_purity'] = limit_purity
+            # update pref ui
+            self.app.preferences_window.update_ui()
+            col = self._get_app_brush_color()
+            if limit_purity >= 0.0:
+                col.limit_purity = max(0.0, limit_purity)
             col.cachedrgb = None
+        if isinstance(self, (CIECAMHueNormSlider)):
+            # reset illuminant pref to D65
+            self.p['color.dimension_lightsource'] = 'D65'
+            # update pref ui
+            self.app.preferences_window.update_ui()
         self.set_managed_color(col)
         return True
 

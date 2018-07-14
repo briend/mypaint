@@ -756,7 +756,8 @@ class CIECAMColor (UIColor):
     def __init__(self, v=None, s=None, h=None, vsh=None, color=None,
                  cieaxes=None, lightsource=None,
                  gamutmapping="relativeColorimetric",
-                 discount_in=True, discount_out=False):
+                 discount_in=True, discount_out=False,
+                 tol=0.1, maxiter=20):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
@@ -795,8 +796,13 @@ class CIECAMColor (UIColor):
         self.surround = colour.CAM16_VIEWING_CONDITIONS['Dim']
 
         # maybe we want to know if the gamut was constrained
+        # so we can halt sliders and adjusters from going farther
         self.gamutexceeded = None
         self.displayexceeded = None
+
+        # accuracy of gamut mapping:
+        self.tol = tol
+        self.maxiter = maxiter
 
         # limit color purity?
         self.limit_purity = None
@@ -1358,7 +1364,7 @@ def RGB_to_CIECAM(self, rgb):
     ciecam_vsh = np.array([getattr(cam16, axes[0]),
                           getattr(cam16, axes[1]), getattr(cam16, axes[2])])
 
-    if maxcolorfulness:
+    if maxcolorfulness is not None:
         ciecam_vsh[1] = min(ciecam_vsh[1], maxcolorfulness)
 
     return ciecam_vsh
@@ -1388,7 +1394,7 @@ def CIECAM_to_CIECAM(self, ciecam, discount_in=True, discount_out=False):
     s = getattr(ciecam_vsh, axes[1])
     h = getattr(ciecam_vsh, axes[2])
 
-    if maxcolorfulness:
+    if maxcolorfulness is not None:
         s = min(getattr(ciecam_vsh, axes[1]), maxcolorfulness)
 
     return np.array([v, s, h])
@@ -1399,16 +1405,21 @@ def CIECAM_to_RGB(self):
     maxcolorfulness = self.limit_purity
     axes = list(self.cieaxes)
     v, s, h = max(0.00001, self.v), max(0.00001, self.s), self.h
+    # reset gamut/display flags since we don't know yet
+    self.gamutexceeded = False
+    self.displayexceeded = False
     # max colorfulness is optional limiter to help enforce limited palette
     # treat this like exceeding the gamut
-    if maxcolorfulness:
-        if self.gamutmapping == "highlight" and self.s > maxcolorfulness:
+    if maxcolorfulness is not None:
+        # only return stripes for Chroma slider when limiting purity/chroma
+        if self.gamutmapping == "highlightC" and self.s > maxcolorfulness:
             self.gamutexceeded = True
             return 0.5, 0.5, 0.5, 0
-        s = min(s, maxcolorfulness)
-
+        if self.s > maxcolorfulness:
+            self.gamutexceeded = True
+            s = maxcolorfulness
+    # build CAM spec
     zipped = zip(axes, (v, s, h))
-
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped),
                                          colour.CAM16_Specification)
     xyz = colour.CAM16_to_XYZ(cam, self.lightsource,
@@ -1416,23 +1427,23 @@ def CIECAM_to_RGB(self):
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(xyz/100.0)
     x = np.clip(result, 0, 1.0)
-    # only trigger gamut mapping if at least 0.001 out of gamut/display
+    # only trigger gamut mapping if at least 0.01 out of gamut/display
     # improves performance quite a bit where we probably won't notice clipping
     rgbloss = (np.sum(result[np.where(result - 1 >= 0)]-1)
            + np.sum(abs((result[np.where(result < 0.0)]))))
-    if rgbloss < 0.001 or self.gamutmapping is False:
-        self.gamutexceeded = False
-        self.displayexceeded = False
+    if rgbloss < 0.01 or self.gamutmapping is False:
         r, g, b = x
         self.cachedrgb = (r, g, b)
-        if self.gamutmapping == "highlight":
+        if "highlight" in self.gamutmapping:
             return r, g, b, 1.0
         else:
             return r, g, b
-    self.gamutexceeded = True
+    # only flag if negative RGB
+    if any(x < 0.0 for x in result):
+        self.gamutexceeded = True
 
     # return zero alpha for guis and sliders to know this is out of gamut
-    if self.gamutmapping == "highlight":
+    if "highlight" in self.gamutmapping:
         return 0.5, 0.5, 0.5, 0
     if self.gamutmapping == "relativeColorimetric":
 
@@ -1486,10 +1497,10 @@ def CIECAM_to_RGB(self):
                 loss = float('Inf')
             return loss
 
-        opt = {'maxiter': 20}
+        opt = {'maxiter': self.maxiter}
 
         x_opt = spo.minimize_scalar(loss,
-                                    tol=0.1,
+                                    tol=self.tol,
                                     method='Brent',
                                     bounds=(0.00001, s),
                                     options=opt
@@ -1507,10 +1518,11 @@ def CIECAM_to_RGB(self):
 
             # if we're out of display-referred range, reduce value
             if any(x > 1.0 for x in final):
+                # flag as out-of-display range
                 self.displayexceeded = True
 
                 x_opt_val = spo.minimize_scalar(loss_value,
-                                                tol=0.1,
+                                                tol=self.tol,
                                                 method='Brent',
                                                 bounds=(0.00001, v),
                                                 options=opt
