@@ -306,7 +306,7 @@ class ColorAdjustOverlay (FadingOverlay):
     """
     fade_fps = 30  #: Nominal frames per second
     fade_duration = 5 #: Time for fading entirely to zero, in seconds
-    # PREVIEW_SIZE = 70
+    MIN_PREVIEW_SIZE = 140
     # CORNER_RADIUS = 10
 
     def __init__(self, doc, x, y, r, g, b):
@@ -369,7 +369,8 @@ class ColorAdjustOverlay (FadingOverlay):
     def _get_area(self):
         # Returns the drawing area for the square
         alloc = self._tdw.get_allocation()
-        size = int(self.preview_size * .01 * alloc.height * 2)
+        size = max(int(self.preview_size * .01 * alloc.height * 2),
+                   self.MIN_PREVIEW_SIZE)
         self.corner_radius = size * 0.1
         # Start with the pointer location
         x = self._x
