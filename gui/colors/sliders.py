@@ -572,8 +572,6 @@ class CIECAMLumaSlider (SliderColorAdjuster):
     def get_color_for_bar_amount(self, amt):
         col = self._get_app_brush_color()
         col.v = max(0.0, amt) * 100
-        if col.limit_purity is not None:
-            col.s = max(col.s, col.limit_purity)
         col.cachedrgb = None
         col.gamutmapping = "highlightL"
         col.maxiter = 2
