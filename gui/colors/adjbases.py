@@ -29,7 +29,7 @@ import cairo
 from .util import clamp
 from .util import add_distance_fade_stops
 from .util import draw_marker_circle
-from lib.color import RGBColor, HCYColor, CIECAMColor
+from lib.color import RGBColor, HCYColor, CIECAMColor, HSVColor
 from .bases import CachedBgDrawingArea
 from .bases import IconRenderable
 from . import uimisc
