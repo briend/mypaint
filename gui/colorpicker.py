@@ -415,7 +415,7 @@ class ColorPickPreviewOverlay (Overlay):
 
     """
     # make relative sizes
-    # PREVIEW_SIZE = 70
+    MIN_PREVIEW_SIZE = 70
     OUTLINE_WIDTH = 3
     #CORNER_RADIUS = 10
 
@@ -490,9 +490,11 @@ class ColorPickPreviewOverlay (Overlay):
         # Returns the drawing area for the square
         alloc = self._tdw.get_allocation()
         if self._pickmode == "PickandBlend":
-            size = int(self.preview_size * .01 * alloc.height * 2)
+            size = max(int(self.preview_size * .01 * alloc.height * 2),
+                       self.MIN_PREVIEW_SIZE * 2)
         else:
-            size = int(self.preview_size * .01 * alloc.height)
+            size = max(int(self.preview_size * .01 * alloc.height),
+                       self.MIN_PREVIEW_SIZE)
         self.corner_radius = size * 0.1
         # Start with the pointer location
         x = self._x
