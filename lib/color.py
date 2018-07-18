@@ -757,7 +757,7 @@ class CIECAMColor (UIColor):
                  cieaxes=None, lightsource=None,
                  gamutmapping="relativeColorimetric",
                  discount_in=True, discount_out=False,
-                 tol=0.1, maxiter=20):
+                 tol=0.001, maxiter=50):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
@@ -1402,6 +1402,72 @@ def CIECAM_to_CIECAM(self, ciecam, discount_in=True, discount_out=False):
 
 def CIECAM_to_RGB(self):
 
+    def loss_sat(sat_):
+        # set up loss function to penalize both out of gamut
+        # RGB as well as CIE values far off target
+        vsh_ = (v, sat_, h)
+        zipped = zip(axes, vsh_)
+        cam = colour.utilities.as_namedtuple(
+            dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+        loss_result = colour.XYZ_to_sRGB(
+            colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
+                                self.Y_b, self.surround,
+                                discount_illuminant=False)/100.0)
+        cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(loss_result,
+                                        0.0, maxRGB)) * 100.0,
+                                        self.lightsource, self.L_A,
+                                        self.Y_b, self.surround,
+                                        discount_illuminant=False)
+
+        #rgbloss = (loss_result > 1.0).any()
+        satloss = abs(s - getattr(cieresult, axes[1]))
+        loss = satloss
+
+        if math.isnan(loss) or np.isnan(loss_result).any() or (loss_result > maxRGB).any() or (loss_result < 0.0).any():
+            loss = float('Inf')
+        return loss
+
+    def loss_value(val_):
+        # set up loss function to penalize out-of-display range
+        vsh_ = (val_, s, h)
+        zipped = zip(axes, vsh_)
+        cam = colour.utilities.as_namedtuple(
+            dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+        loss_result = colour.XYZ_to_sRGB(
+            colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
+                                self.Y_b, self.surround,
+                                discount_illuminant=False)/100.0)
+        cieresult = colour.XYZ_to_CAM16(
+            colour.sRGB_to_XYZ(np.clip(loss_result, 0.0, maxRGB))*100.0,
+            self.lightsource, self.L_A, self.Y_b, self.surround,
+            discount_illuminant=False)
+
+        #rgbloss = np.sum(loss_result[np.where(loss_result - 1 >= 0)]-1)
+        val_loss = abs(v - getattr(cieresult, axes[0]))
+        loss = val_loss
+
+        if math.isnan(loss) or np.isnan(loss_result).any() or (loss_result > maxRGB).any():
+            loss = float('Inf')
+        return loss
+
+    def loss_illuminant(val_):
+        # find the brightest in-gamut RGB color for given illuminant
+        vsh_ = (val_, 0.0, h)
+        zipped = zip(axes, vsh_)
+        cam = colour.utilities.as_namedtuple(
+            dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+        loss_result = colour.XYZ_to_sRGB(
+            colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
+                                self.Y_b, self.surround,
+                                discount_illuminant=False)/100.0)
+        # we want the maximum, so flip it
+        val_loss = val_ * - 1
+        loss = val_loss
+
+        if math.isnan(loss) or np.isnan(loss_result).any() or (loss_result > 1.01).any() or (loss_result < -0.01).any():
+            loss = float('Inf')
+        return loss
+
     maxcolorfulness = self.limit_purity
     axes = list(self.cieaxes)
     v, s, h = max(0.00001, self.v), max(0.00001, self.s), self.h
@@ -1426,12 +1492,28 @@ def CIECAM_to_RGB(self):
                               self.L_A, self.Y_b, self.surround)
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(xyz/100.0)
-    x = np.clip(result, 0, 1.0)
-    # only trigger gamut mapping if at least 0.01 out of gamut/display
-    # improves performance quite a bit where we probably won't notice clipping
-    rgbloss = (np.sum(result[np.where(result - 1 >= 0)]-1)
-           + np.sum(abs((result[np.where(result < 0.0)]))))
-    if rgbloss < 0.01 or self.gamutmapping is False:
+    
+    # find maximum RGB for given illuminant (achromatic)
+
+    
+    x_opt_illuminant = spo.minimize_scalar(loss_illuminant,
+                                            tol=0.00001,
+                                            method='Brent',
+                                            #options=opt
+                                            )
+    maxRGB = np.array([1.0, 1.0, 1.0])
+    if (x_opt_illuminant["success"]):
+        v = x_opt_illuminant["x"]
+        resultvsh = (v, 0.0, h)
+        zipped = zip(axes, resultvsh)
+        cam = colour.utilities.as_namedtuple(
+            dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+        maxRGB = colour.XYZ_to_sRGB(
+            colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
+                                self.Y_b, self.surround,
+                                discount_illuminant=False)/100.0)
+    x = np.clip(result, 0, maxRGB)
+    if ((result <= maxRGB).all() and (result > -0.01).all()) or self.gamutmapping is False:
         r, g, b = x
         self.cachedrgb = (r, g, b)
         if "highlight" in self.gamutmapping:
@@ -1439,120 +1521,76 @@ def CIECAM_to_RGB(self):
         else:
             return r, g, b
     # only flag if negative RGB
-    if any(x < 0.0 for x in result):
+    if (result < 0).any():
         self.gamutexceeded = True
 
     # return zero alpha for guis and sliders to know this is out of gamut
     if "highlight" in self.gamutmapping:
         return 0.5, 0.5, 0.5, 0
 
-    if self.gamutmapping == "relativeColorimetric":
-        while np.any(result > 1.01) or np.any(result < -0.01):
-            def loss(sat_):
-                # set up loss function to penalize both out of gamut
-                # RGB as well as CIE values far off target
-                vsh_ = (v, sat_, h)
-                zipped = zip(axes, vsh_)
+    opt = {'maxiter': self.maxiter}
+        
+    print("max rgb is", maxRGB)
+    sys.stdout.flush()
+    loop_count = 0
+    while ((result > maxRGB).any() or (result < -0.01).any()) and loop_count < 5:
+    
+        loop_count += 1
+
+        x_opt = spo.minimize_scalar(loss_sat,
+                                    tol=self.tol,
+                                    method='Brent',
+                                    options=opt
+                                    )
+        if (x_opt["success"]):
+            s = x_opt["x"]
+            resultvsh = (v, s, h)
+            zipped = zip(axes, resultvsh)
+            cam = colour.utilities.as_namedtuple(
+                dict((x, y) for x, y in zipped), colour.CAM16_Specification)
+            result = colour.XYZ_to_sRGB(
+                colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
+                                    self.Y_b, self.surround,
+                                    discount_illuminant=False)/100.0)
+
+            # if we're out of display-referred range, reduce value
+        if (result > maxRGB).any():
+            # flag as out-of-display range
+            # only if saturation already low
+            if s < 0.1:
+                self.displayexceeded = True
+
+            x_opt_val = spo.minimize(loss_value,
+                                    (v),
+                                    tol=self.tol,
+                                    method='L-BFGS-B',
+                                    bounds=[(10, self.v)],
+                                    options=opt
+                                    )
+            if (x_opt_val["success"]):
+                v = x_opt_val["x"]
+                resultvsh = (v, s, h)
+                zipped = zip(axes, resultvsh)
                 cam = colour.utilities.as_namedtuple(
-                    dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-                loss_result = colour.XYZ_to_sRGB(
-                    colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
-                                        self.Y_b, self.surround,
-                                        discount_illuminant=False)/100.0)
-                cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(loss_result,
-                                                0.0, 1.0)) * 100.0,
-                                                self.lightsource, self.L_A,
-                                                self.Y_b, self.surround,
-                                                discount_illuminant=False)
+                    dict((x, y) for x, y in zipped),
+                    colour.CAM16_Specification)
+                result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(
+                    cam, self.lightsource, np.array(self.L_A),
+                    self.Y_b, self.surround,
+                    discount_illuminant=False)/100.0)
+    print("result is", result)
+    sys.stdout.flush()
 
-                rgbloss = (np.sum(loss_result[np.where(loss_result - 1 >= 0)]-1)
-                           + np.sum(abs((loss_result[np.where(loss_result < 0.0)]))))
-                satloss = abs(s - getattr(cieresult, axes[1]))
-                loss = satloss
+    r, g, b = np.clip(result, 0.0, maxRGB)
 
-                if math.isnan(loss) or np.isnan(loss_result).any() or rgbloss:
-                    loss = float('Inf')
-                return loss
+    if self.reset_intent:
+        self.v = v
+        self.s = s
+        self.h = h
+    self.cachedrgb = (r, g, b)
+    return r, g, b
 
-            def loss_value(val_):
-                # set up loss function to penalize out-of-display range
-                vsh_ = (val_, s, h)
-                zipped = zip(axes, vsh_)
-                cam = colour.utilities.as_namedtuple(
-                    dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-                loss_result = colour.XYZ_to_sRGB(
-                    colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
-                                        self.Y_b, self.surround,
-                                        discount_illuminant=False)/100.0)
-                cieresult = colour.XYZ_to_CAM16(
-                    colour.sRGB_to_XYZ(np.clip(loss_result, 0.0, 1.0))*100.0,
-                    self.lightsource, self.L_A, self.Y_b, self.surround,
-                    discount_illuminant=False)
 
-                rgbloss = np.sum(loss_result[np.where(loss_result - 1 >= 0)]-1)
-                val_loss = abs(v - getattr(cieresult, axes[0]))
-                loss = val_loss
-
-                if math.isnan(loss) or np.isnan(loss_result).any() or rgbloss:
-                    loss = float('Inf')
-                return loss
-
-            opt = {'maxiter': self.maxiter}
-
-            x_opt = spo.minimize_scalar(loss,
-                                        tol=self.tol,
-                                        method='Brent',
-                                        bounds=(0.00001, s),
-                                        options=opt
-                                        )
-            if (x_opt["success"]):
-                s = x_opt["x"]
-                result = (v, s, h)
-                zipped = zip(axes, result)
-                cam = colour.utilities.as_namedtuple(
-                    dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-                result = colour.XYZ_to_sRGB(
-                    colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
-                                        self.Y_b, self.surround,
-                                        discount_illuminant=False)/100.0)
-
-                # if we're out of display-referred range, reduce value
-                if any(x > 1.0 for x in result):
-                    # flag as out-of-display range
-                    # only if saturation already low
-                    if s < 0.1:
-                        self.displayexceeded = True
-
-                    x_opt_val = spo.minimize(loss_value,
-                                            (self.v),
-                                            tol=self.tol,
-                                            method='L-BFGS-B',
-                                            bounds=[(20, v)],
-                                            options=opt
-                                            )
-                    if (x_opt_val["success"]):
-                        v = x_opt_val["x"]
-                        result = (v, s, h)
-                        zipped = zip(axes, result)
-                        cam = colour.utilities.as_namedtuple(
-                            dict((x, y) for x, y in zipped),
-                            colour.CAM16_Specification)
-                        result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(
-                            cam, self.lightsource, np.array(self.L_A),
-                            self.Y_b, self.surround,
-                            discount_illuminant=False)/100.0)
-
-                r, g, b = np.clip(result, 0.0, 1.0)
-
-                if self.reset_intent:
-                    self.v = v
-                    self.s = s
-                    self.h = h
-                self.cachedrgb = (r, g, b)
-                return r, g, b
-            else:
-                print("failing back to black")
-                return 0.0, 0.0, 0.0
 
 
 # weighted geometric mean must avoid absolute zero
