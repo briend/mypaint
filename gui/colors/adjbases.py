@@ -1088,12 +1088,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         # we should perform gamut mapping and return it
         if isinstance(col, CIECAMColor):
             col.get_rgb()
-            # don't set the color if we had to reduce brightness
-            # to avoid nasty jump to 0% saturation
-            # return the original ciecam color
-            if col.displayexceeded:
-                col = self._get_app_brush_color()
-            elif col.gamutexceeded and "highlight" in col.gamutmapping:
+            if ((col.gamutexceeded or col.displayexceeded) and 
+                "highlight" in col.gamutmapping):
                 col.gamutmapping = "relativeColorimetric"
                 col.tol = 0.1
                 col.maxiter = 20
@@ -1220,12 +1216,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         # we should perform gamut mapping and return it
         if isinstance(col, CIECAMColor):
             col.get_rgb()
-            # don't set the color if we had to reduce brightness
-            # to avoid nasty jump to 0% saturation
-            # return the original ciecam color
-            if col.displayexceeded:
-                col = self._get_app_brush_color()
-            elif col.gamutexceeded and "highlight" in col.gamutmapping:
+            if ((col.gamutexceeded or col.displayexceeded) and 
+                "highlight" in col.gamutmapping):
                 col.gamutmapping = "relativeColorimetric"
                 col.tol = 0.1
                 col.maxiter = 20
