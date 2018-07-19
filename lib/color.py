@@ -1450,23 +1450,6 @@ def CIECAM_to_RGB(self):
             loss = float('Inf')
         return loss
 
-    def loss_illuminant(val_):
-        # find the brightest in-gamut RGB color for given illuminant
-        vsh_ = (val_, 0.0, h)
-        zipped = zip(axes, vsh_)
-        cam = colour.utilities.as_namedtuple(
-            dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-        loss_result = colour.XYZ_to_sRGB(
-            colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
-                                self.Y_b, self.surround,
-                                discount_illuminant=False)/100.0)
-        # we want the maximum, so flip it
-        val_loss = val_ * - 1
-        loss = val_loss
-
-        if math.isnan(loss) or np.isnan(loss_result).any() or (loss_result > 1.01).any() or (loss_result < -0.01).any():
-            loss = float('Inf')
-        return loss
 
     maxcolorfulness = self.limit_purity
     axes = list(self.cieaxes)
@@ -1493,25 +1476,8 @@ def CIECAM_to_RGB(self):
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(xyz/100.0)
     
-    # find maximum RGB for given illuminant (achromatic)
+    maxRGB = colour.XYZ_to_sRGB(self.lightsource/100.0)
 
-    
-    x_opt_illuminant = spo.minimize_scalar(loss_illuminant,
-                                            tol=0.00001,
-                                            method='Brent',
-                                            #options=opt
-                                            )
-    maxRGB = np.array([1.0, 1.0, 1.0])
-    if (x_opt_illuminant["success"]):
-        v = x_opt_illuminant["x"]
-        resultvsh = (v, 0.0, h)
-        zipped = zip(axes, resultvsh)
-        cam = colour.utilities.as_namedtuple(
-            dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-        maxRGB = colour.XYZ_to_sRGB(
-            colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
-                                self.Y_b, self.surround,
-                                discount_illuminant=False)/100.0)
     x = np.clip(result, 0, maxRGB)
     if ((result <= maxRGB).all() and (result > -0.01).all()) or self.gamutmapping is False:
         r, g, b = x
@@ -1530,8 +1496,6 @@ def CIECAM_to_RGB(self):
 
     opt = {'maxiter': self.maxiter}
         
-    print("max rgb is", maxRGB)
-    sys.stdout.flush()
     loop_count = 0
     while ((result > maxRGB).any() or (result < -0.01).any()) and loop_count < 5:
     
@@ -1578,8 +1542,6 @@ def CIECAM_to_RGB(self):
                     cam, self.lightsource, np.array(self.L_A),
                     self.Y_b, self.surround,
                     discount_illuminant=False)/100.0)
-    print("result is", result)
-    sys.stdout.flush()
 
     r, g, b = np.clip(result, 0.0, maxRGB)
 
