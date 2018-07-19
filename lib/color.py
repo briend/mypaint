@@ -1476,7 +1476,9 @@ def CIECAM_to_RGB(self):
     # convert CIECAM to sRGB, but it may be out of gamut
     result = colour.XYZ_to_sRGB(xyz/100.0)
     
-    maxRGB = colour.XYZ_to_sRGB(self.lightsource/100.0)
+    # max RGB of the illuminant scale to 0-1
+    linearRGB = colour.XYZ_to_sRGB(self.lightsource/100.0, apply_encoding_cctf=False)
+    maxRGB = colour.models.oetf_sRGB(linearRGB/max(linearRGB))
 
     x = np.clip(result, 0, maxRGB)
     if ((result <= maxRGB).all() and (result > -0.01).all()) or self.gamutmapping is False:
