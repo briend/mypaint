@@ -1492,6 +1492,9 @@ def CIECAM_to_RGB(self):
     if (result < 0).any():
         self.gamutexceeded = True
 
+    if (result > maxRGB).any():
+        self.displayexceeded = True
+
     # return zero alpha for guis and sliders to know this is out of gamut
     if "highlight" in self.gamutmapping:
         return 0.5, 0.5, 0.5, 0
@@ -1521,10 +1524,6 @@ def CIECAM_to_RGB(self):
 
             # if we're out of display-referred range, reduce value
         if (result > maxRGB).any():
-            # flag as out-of-display range
-            # only if saturation already low
-            if s < 0.1:
-                self.displayexceeded = True
 
             x_opt_val = spo.minimize(loss_value,
                                     (v),
@@ -1545,6 +1544,9 @@ def CIECAM_to_RGB(self):
                     self.Y_b, self.surround,
                     discount_illuminant=False)/100.0)
 
+    # if we still have color we are not at the max display
+    if s > 0.1:
+        self.displayexceeded = False
     r, g, b = np.clip(result, 0.0, maxRGB)
 
     if self.reset_intent:
