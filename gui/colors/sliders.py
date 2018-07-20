@@ -419,8 +419,8 @@ class CIECAMHueSlider (SliderColorAdjuster):
         col.h = max(0.0, amt) * 360
         col.cachedrgb = None
         col.gamutmapping = "highlightH"
-        col.maxiter = 2
-        col.tol = 5
+        col.maxiter = 5
+        col.tol = .5
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -466,8 +466,8 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         col.s = max(0.0, amt) * 120
         col.gamutmapping = "highlightC"
         col.cachedrgb = None
-        col.maxiter = 2
-        col.tol = 5
+        col.maxiter = 5
+        col.tol = .5
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -521,8 +521,8 @@ class CIECAMLimitChromaSlider (SliderColorAdjuster):
             col.limit_purity = amt * 120
         col.gamutmapping = "highlight"
         col.cachedrgb = None
-        col.maxiter = 2
-        col.tol = 5
+        col.maxiter = 5
+        col.tol = .5
         return col
 
     def get_bar_amount_for_color(self, col):
@@ -574,8 +574,8 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         col.v = max(0.0, amt) * 100
         col.cachedrgb = None
         col.gamutmapping = "highlightL"
-        col.maxiter = 2
-        col.tol = 5
+        col.maxiter = 5
+        col.tol = .5
         return col
 
     def get_bar_amount_for_color(self, col):

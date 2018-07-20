@@ -757,7 +757,7 @@ class CIECAMColor (UIColor):
                  cieaxes=None, lightsource=None,
                  gamutmapping="relativeColorimetric",
                  discount_in=True, discount_out=False,
-                 tol=0.001, maxiter=50):
+                 tol=0.0001, maxiter=50):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
@@ -1429,6 +1429,7 @@ def CIECAM_to_RGB(self):
 
     def loss_value(val_):
         # set up loss function to penalize out-of-display range
+        # for the given illuminant
         vsh_ = (val_, s, h)
         zipped = zip(axes, vsh_)
         cam = colour.utilities.as_namedtuple(
@@ -1473,22 +1474,30 @@ def CIECAM_to_RGB(self):
                                          colour.CAM16_Specification)
     xyz = colour.CAM16_to_XYZ(cam, self.lightsource,
                               self.L_A, self.Y_b, self.surround)
-    # convert CIECAM to sRGB, but it may be out of gamut
+    # convert CIECAM to sRGB, but it may be out of gamut which
+    # we'll handle by either gamut mapping or highlighting (stripes)
     result = colour.XYZ_to_sRGB(xyz/100.0)
     
     # max RGB of the illuminant scale to 0-1
+    # for D65 this is 1.0, 1.0, 1.0
+    # other illuminants will be different, example 1.0, 0.9, 0.75
     linearRGB = colour.XYZ_to_sRGB(self.lightsource/100.0, apply_encoding_cctf=False)
     maxRGB = colour.models.oetf_sRGB(linearRGB/max(linearRGB))
 
+    # clip to our gamut and see if should gamut map or return 
     x = np.clip(result, 0, maxRGB)
     if ((result <= maxRGB).all() and (result > -0.01).all()) or self.gamutmapping is False:
         r, g, b = x
         self.cachedrgb = (r, g, b)
         if "highlight" in self.gamutmapping:
+            # we are in gamut and should return the color w/ alpha 1.0
+            # for the slider to render w/ transparency
             return r, g, b, 1.0
         else:
+            # if we're not on a slider, just return r, g, b w/o alpha
             return r, g, b
     # only flag if negative RGB
+    # this is to halt adjusters from going father for no reason
     if (result < 0).any():
         self.gamutexceeded = True
 
@@ -1496,11 +1505,14 @@ def CIECAM_to_RGB(self):
         self.displayexceeded = True
 
     # return zero alpha for guis and sliders to know this is out of gamut
+    # this lets the "stripes" show through for these areas
     if "highlight" in self.gamutmapping:
         return 0.5, 0.5, 0.5, 0
 
     opt = {'maxiter': self.maxiter}
-        
+
+    # gamut mapping loop. We should loop because reducing lightness can
+    # push the color out of gamut again.
     loop_count = 0
     while ((result > maxRGB).any() or (result < -0.01).any()) and loop_count < 5:
     
@@ -1545,7 +1557,9 @@ def CIECAM_to_RGB(self):
                     discount_illuminant=False)/100.0)
 
     # if we still have color we are not at the max display
-    if s > 0.1:
+    # this will release the adjuster to allow brighter
+    # oddly, ~2.2 seems to be achromatic in CIECAM
+    if s > 2.5:
         self.displayexceeded = False
     r, g, b = np.clip(result, 0.0, maxRGB)
 
