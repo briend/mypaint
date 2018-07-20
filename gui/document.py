@@ -1585,9 +1585,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
         elif tune_model == 'HCY':
             hsv = self.app.brush.get_color_hsv()
-            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
-            y = min(y + step_size / 100, 0.995)
-            brushcolor = HCYColor(h, c, y)
+            h, c, yy = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            yy = min(yy + step_size / 100, 0.995)
+            brushcolor = HCYColor(h, c, yy)
 
         elif tune_model == 'CIECAM':
             brushcolor = self._get_app_brush_ciecam_color()
@@ -1626,9 +1626,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
         elif tune_model == 'HCY':
             hsv = self.app.brush.get_color_hsv()
-            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
-            y = max(y - step_size / 100, 0.005)
-            brushcolor = HCYColor(h, c, y)
+            h, c, yy = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            yy = max(yy - step_size / 100, 0.005)
+            brushcolor = HCYColor(h, c, yy)
 
         elif tune_model == 'CIECAM':
             brushcolor = self._get_app_brush_ciecam_color()
@@ -1667,9 +1667,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
         elif tune_model == 'HCY':
             hsv = self.app.brush.get_color_hsv()
-            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            h, c, yy = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
             h = (h + step_size / 360) % 1.0
-            brushcolor = HCYColor(h, c, y)
+            brushcolor = HCYColor(h, c, yy)
 
         elif tune_model == 'CIECAM':
             brushcolor = self._get_app_brush_ciecam_color()
@@ -1708,9 +1708,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
         elif tune_model == 'HCY':
             hsv = self.app.brush.get_color_hsv()
-            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            h, c, yy = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
             h = (h - step_size / 360) % 1.0
-            brushcolor = HCYColor(h, c, y)
+            brushcolor = HCYColor(h, c, yy)
 
         elif tune_model == 'CIECAM':
             brushcolor = self._get_app_brush_ciecam_color()
@@ -1739,6 +1739,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if self._should_throttle(t, self.last_purer):
             return
 
+        if self.app.brush.gamutexceeded:
+            return
+
         step_size = self._get_step_size(t, self.last_purer, 1.5, 25)
         tune_model = self.app.preferences['color.tune_model']
 
@@ -1749,16 +1752,14 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
         elif tune_model == 'HCY':
             hsv = self.app.brush.get_color_hsv()
-            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            h, c, yy = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
             c = min(c + step_size / 100, 1.0)
-            brushcolor = HCYColor(h, c, y)
+            brushcolor = HCYColor(h, c, yy)
 
         elif tune_model == 'CIECAM':
             brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.s = brushcolor.s + step_size
-            brushcolor.get_rgb()  # for exceeded check below
-            if brushcolor.gamutexceeded:
-                return
+            brushcolor.cachedrgb = None
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
@@ -1792,9 +1793,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
 
         elif tune_model == 'HCY':
             hsv = self.app.brush.get_color_hsv()
-            h, c, y = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
+            h, c, yy = lib.color.RGB_to_HCY(HSVColor(hsv=hsv).get_rgb())
             c = max(c - step_size / 100, 0.005)
-            brushcolor = HCYColor(h, c, y)
+            brushcolor = HCYColor(h, c, yy)
 
         elif tune_model == 'CIECAM':
             brushcolor = self._get_app_brush_ciecam_color()

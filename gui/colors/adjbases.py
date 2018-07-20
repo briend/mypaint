@@ -1091,8 +1091,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             if ((col.gamutexceeded or col.displayexceeded) and 
                 "highlight" in col.gamutmapping):
                 col.gamutmapping = "relativeColorimetric"
-                col.tol = 0.1
-                col.maxiter = 20
+                col.tol = 0.0001
+                col.maxiter = 50
                 col.cachedrgb = None
         # if we are clicking the colour temperature slider, don't
         # change the color but rather change the illuminant and then
@@ -1219,8 +1219,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             if ((col.gamutexceeded or col.displayexceeded) and 
                 "highlight" in col.gamutmapping):
                 col.gamutmapping = "relativeColorimetric"
-                col.tol = 0.1
-                col.maxiter = 20
+                col.tol = 0.0001
+                col.maxiter = 50
                 col.cachedrgb = None
         # if we are clicking the colour temperature slider, don't
         # change the color but rather change the illuminant and then
