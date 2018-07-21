@@ -757,7 +757,7 @@ class CIECAMColor (UIColor):
                  cieaxes=None, lightsource=None,
                  gamutmapping="relativeColorimetric",
                  discount_in=True, discount_out=False,
-                 tol=0.0001, maxiter=50):
+                 tol=0.01, maxiter=10):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
@@ -1514,7 +1514,7 @@ def CIECAM_to_RGB(self):
     # gamut mapping loop. We should loop because reducing lightness can
     # push the color out of gamut again.
     loop_count = 0
-    while ((result > maxRGB).any() or (result < -0.01).any()) and loop_count < 5:
+    while ((result > maxRGB).any() or (result < -0.01).any()) and loop_count < 3:
     
         loop_count += 1
 
