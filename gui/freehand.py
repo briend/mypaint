@@ -11,7 +11,6 @@
 ## Imports
 
 from __future__ import division, print_function
-import math
 import logging
 from collections import deque
 from gettext import gettext as _
@@ -374,11 +373,11 @@ class FreehandMode (gui.mode.BrushworkModeMixin,
         viewrotation = tdw.rotation
         barrel_rotation = event.get_axis(Gdk.AxisUse.WHEEL)
         state = event.state
-        
+
         #If WHEEL is missing (barrel_rotation)
         #send -1 to tell libmypaint not to deal with barrel_rotation
         #we can't just send 0.0 because barrel-rotation is affected by ascension
-	if barrel_rotation is None:
+        if barrel_rotation is None:
             barrel_rotation = -1.0
 
         # Workaround for buggy evdev behaviour.

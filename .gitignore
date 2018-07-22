@@ -34,3 +34,4 @@ build
 flatpak/.flatpak-builder/
 MyPaint.egg-info
 .idea/
+.vscode/

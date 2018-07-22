@@ -47,11 +47,11 @@ import gui.externalapp
 import gui.device
 import gui.backgroundwindow
 from gui.widgets import with_wait_cursor
+from gui.overlays import ColorAdjustOverlay
 from lib.gettext import gettext as _
 from lib.gettext import C_
 from lib.modes import PASS_THROUGH_MODE
 from lib.color import CIECAMColor, HSVColor, HCYColor
-from overlays import ColorAdjustOverlay
 
 logger = logging.getLogger(__name__)
 
@@ -335,14 +335,14 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         self.input_stroke_started += self._input_stroke_started_cb
 
         # Color Adjuster data
-        self.last_brighter = None
-        self.last_darker = None
-        self.last_purer = None
-        self.last_grayer = None
-        self.last_increase_hue = None
-        self.last_decrease_hue = None
+        self.last_brighter = 0
+        self.last_darker = 0
+        self.last_purer = 0
+        self.last_grayer = 0
+        self.last_increase_hue = 0
+        self.last_decrease_hue = 0
         self.in_input_stroke = False
-        self.last_colorpick_time = None
+        self.last_colorpick_time = 0
         self._color_overlay = None
 
         self._init_stategroups()
