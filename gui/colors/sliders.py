@@ -174,7 +174,7 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
         # Strategy: construct tmp R,G,B sliders with a color that shows off
         # their primary a bit. Render carefully (might need special handling
         # for the 16px size).
-        from adjbases import ColorManager
+        from .adjbases import ColorManager
         mgr = ColorManager(prefs={}, datapath=".")
         mgr.set_color(RGBColor(0.3, 0.3, 0.4))
         adjs = [RGBRedSlider(), RGBGreenSlider(), RGBBlueSlider()]
@@ -431,6 +431,8 @@ class CIECAMHueSlider (SliderColorAdjuster):
         cm = self.get_color_manager()
         prefs = cm.get_prefs()
         try:
+            if app.brush.get_setting('cie_v') == '':
+                return True
             limit_purity = prefs['color.limit_purity']
             vsh = (
                 int(app.brush.get_setting('cie_v') * 100),
@@ -479,6 +481,8 @@ class CIECAMChromaSlider (SliderColorAdjuster):
         cm = self.get_color_manager()
         prefs = cm.get_prefs()
         try:
+            if app.brush.get_setting('cie_v') == '':
+                return True
             limit_purity = prefs['color.limit_purity']
             vsh = (
                 int(app.brush.get_setting('cie_v') * 100),
@@ -535,6 +539,8 @@ class CIECAMLimitChromaSlider (SliderColorAdjuster):
         cm = self.get_color_manager()
         prefs = cm.get_prefs()
         try:
+            if app.brush.get_setting('cie_v') == '':
+                return True
             limit_purity = prefs['color.limit_purity']
             vsh = (
                 int(app.brush.get_setting('cie_v') * 100),
@@ -580,6 +586,8 @@ class CIECAMLumaSlider (SliderColorAdjuster):
         cm = self.get_color_manager()
         prefs = cm.get_prefs()
         try:
+            if app.brush.get_setting('cie_v') == '':
+                return True
             limit_purity = prefs['color.limit_purity']
             vsh = (
                 int(app.brush.get_setting('cie_v') * 100),
@@ -635,7 +643,7 @@ class CIECAMTempSlider (SliderColorAdjuster):
 if __name__ == '__main__':
     import os
     import sys
-    from adjbases import ColorManager
+    from .adjbases import ColorManager
     mgr = ColorManager(prefs={}, datapath=".")
     cs_adj = ComponentSlidersAdjusterPage()
     cs_adj.set_color_manager(mgr)

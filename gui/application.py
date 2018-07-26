@@ -599,7 +599,7 @@ class Application (object):
             # to assign panning to this button by default.
             linux_mapping = default_config["input.button_mapping"]
             default_config["input.button_mapping"] = {}
-            for bp, actname in linux_mapping.iteritems():
+            for bp, actname in linux_mapping.items():
                 bp = bp.replace("Button2", "ButtonTMP")
                 bp = bp.replace("Button3", "Button2")
                 bp = bp.replace("ButtonTMP", "Button3")
