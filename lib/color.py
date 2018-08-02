@@ -1514,7 +1514,7 @@ def CIECAM_to_RGB(self):
     # gamut mapping loop. We should loop because reducing lightness can
     # push the color out of gamut again.
     loop_count = 0
-    while ((result > maxRGB).any() or (result < -0.01).any()) and loop_count < 3:
+    while ((result > maxRGB).any() or (result < -0.01).any()) and loop_count < 1:
     
         loop_count += 1
 
@@ -1535,26 +1535,26 @@ def CIECAM_to_RGB(self):
                                     discount_illuminant=False)/100.0)
 
             # if we're out of display-referred range, reduce value
-        if (result > maxRGB).any():
+#        if (result > maxRGB).any():
 
-            x_opt_val = spo.minimize(loss_value,
-                                    (v),
-                                    tol=self.tol,
-                                    method='L-BFGS-B',
-                                    bounds=[(10, self.v)],
-                                    options=opt
-                                    )
-            if (x_opt_val["success"]):
-                v = x_opt_val["x"]
-                resultvsh = (v, s, h)
-                zipped = zip(axes, resultvsh)
-                cam = colour.utilities.as_namedtuple(
-                    dict((x, y) for x, y in zipped),
-                    colour.CAM16_Specification)
-                result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(
-                    cam, self.lightsource, np.array(self.L_A),
-                    self.Y_b, self.surround,
-                    discount_illuminant=False)/100.0)
+#            x_opt_val = spo.minimize(loss_value,
+#                                    (v),
+#                                    tol=self.tol,
+#                                    method='L-BFGS-B',
+#                                    bounds=[(10, self.v)],
+#                                    options=opt
+#                                    )
+#            if (x_opt_val["success"]):
+#                v = x_opt_val["x"]
+#                resultvsh = (v, s, h)
+#                zipped = zip(axes, resultvsh)
+#                cam = colour.utilities.as_namedtuple(
+#                    dict((x, y) for x, y in zipped),
+#                    colour.CAM16_Specification)
+#                result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(
+#                    cam, self.lightsource, np.array(self.L_A),
+#                    self.Y_b, self.surround,
+#                    discount_illuminant=False)/100.0)
 
     # if we still have color we are not at the max display
     # this will release the adjuster to allow brighter
