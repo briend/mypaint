@@ -757,7 +757,7 @@ class CIECAMColor (UIColor):
                  cieaxes=None, lightsource=None,
                  gamutmapping="relativeColorimetric",
                  discount_in=True, discount_out=False,
-                 tol=0.01, maxiter=10):
+                 tol=0.001, maxiter=10):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
