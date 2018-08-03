@@ -757,7 +757,7 @@ class CIECAMColor (UIColor):
                  cieaxes=None, lightsource=None,
                  gamutmapping="relativeColorimetric",
                  discount_in=True, discount_out=False,
-                 tol=0.001, maxiter=10):
+                 tol=0.001, maxiter=100):
         """Initializes from individual values, or another UIColor
 
           >>> col1 = CIECAMColor(95.67306142,   58.26474923,  106.14599451)
@@ -1427,31 +1427,6 @@ def CIECAM_to_RGB(self):
             loss = float('Inf')
         return loss
 
-    def loss_value(val_):
-        # set up loss function to penalize out-of-display range
-        # for the given illuminant
-        vsh_ = (val_, s, h)
-        zipped = zip(axes, vsh_)
-        cam = colour.utilities.as_namedtuple(
-            dict((x, y) for x, y in zipped), colour.CAM16_Specification)
-        loss_result = colour.XYZ_to_sRGB(
-            colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
-                                self.Y_b, self.surround,
-                                discount_illuminant=False)/100.0)
-        cieresult = colour.XYZ_to_CAM16(
-            colour.sRGB_to_XYZ(np.clip(loss_result, 0.0, maxRGB))*100.0,
-            self.lightsource, self.L_A, self.Y_b, self.surround,
-            discount_illuminant=False)
-
-        #rgbloss = np.sum(loss_result[np.where(loss_result - 1 >= 0)]-1)
-        val_loss = abs(v - getattr(cieresult, axes[0]))
-        loss = val_loss
-
-        if math.isnan(loss) or np.isnan(loss_result).any() or (loss_result > maxRGB).any():
-            loss = float('Inf')
-        return loss
-
-
     maxcolorfulness = self.limit_purity
     axes = list(self.cieaxes)
     v, s, h = max(0.00001, self.v), max(0.00001, self.s), self.h
@@ -1511,12 +1486,7 @@ def CIECAM_to_RGB(self):
 
     opt = {'maxiter': self.maxiter}
 
-    # gamut mapping loop. We should loop because reducing lightness can
-    # push the color out of gamut again.
-    loop_count = 0
-    while ((result > maxRGB).any() or (result < -0.01).any()) and loop_count < 1:
-    
-        loop_count += 1
+    if ((result > maxRGB).any() or (result < -0.01).any()):
 
         x_opt = spo.minimize_scalar(loss_sat,
                                     tol=self.tol,
@@ -1534,32 +1504,10 @@ def CIECAM_to_RGB(self):
                                     self.Y_b, self.surround,
                                     discount_illuminant=False)/100.0)
 
-            # if we're out of display-referred range, reduce value
-#        if (result > maxRGB).any():
-
-#            x_opt_val = spo.minimize(loss_value,
-#                                    (v),
-#                                    tol=self.tol,
-#                                    method='L-BFGS-B',
-#                                    bounds=[(10, self.v)],
-#                                    options=opt
-#                                    )
-#            if (x_opt_val["success"]):
-#                v = x_opt_val["x"]
-#                resultvsh = (v, s, h)
-#                zipped = zip(axes, resultvsh)
-#                cam = colour.utilities.as_namedtuple(
-#                    dict((x, y) for x, y in zipped),
-#                    colour.CAM16_Specification)
-#                result = colour.XYZ_to_sRGB(colour.CAM16_to_XYZ(
-#                    cam, self.lightsource, np.array(self.L_A),
-#                    self.Y_b, self.surround,
-#                    discount_illuminant=False)/100.0)
-
     # if we still have color we are not at the max display
     # this will release the adjuster to allow brighter
     # oddly, ~2.2 seems to be achromatic in CIECAM
-    if s > 2.5:
+    if s > 2.7:
         self.displayexceeded = False
     r, g, b = np.clip(result, 0.0, maxRGB)
 
