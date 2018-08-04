@@ -225,9 +225,7 @@ class BrushModifier (object):
 
         # Changing the effective brush
         b.begin_atomic()
-        color = lib.color.CIECAMColor(
-            color=lib.color.HSVColor(*b.get_color_hsv())
-        )
+        color = self._get_app_brush_color()
 
         mix_old = b.get_base_value('restore_color')
         b.load_from_brushinfo(brushinfo)
@@ -309,7 +307,11 @@ class BrushModifier (object):
     def _get_app_brush_color(self):
         app = self.app
         # if brush doesn't have ciecam values, revert to hsv
-        if app.brush.get_setting('cie_v') == '':
+        try:
+            cie_v = app.brush.get_setting('cie_v')
+        except KeyError:
+            cie_v = ''
+        if cie_v == '':
             color = lib.color.CIECAMColor(
                 color=lib.color.HSVColor(*app.brush.get_color_hsv())
             )
