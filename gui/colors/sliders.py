@@ -15,6 +15,7 @@ from __future__ import division, print_function
 from gi.repository import Gtk
 import colour
 import numpy as np
+import importlib
 
 from lib.color import RGBColor
 from lib.color import HSVColor
@@ -33,6 +34,8 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
     """
 
     def __init__(self):
+        from gui.application import get_app
+        self.app = get_app()
         CombinedAdjusterPage.__init__(self)
         grid = Gtk.Grid()
         grid.set_size_request(150, -1)
@@ -47,94 +50,98 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
         row_defs = [
             (
                 C_("color sliders panel: red/green/blue: slider label", "R"),
-                RGBRedSlider,
+                'RGBRedSlider',
                 0,
             ), (
                 C_("color sliders panel: red/green/blue: slider label", "G"),
-                RGBGreenSlider,
+                'RGBGreenSlider',
                 0,
             ), (
                 C_("color sliders panel: red/green/blue: slider label", "B"),
-                RGBBlueSlider,
+                'RGBBlueSlider',
                 0,
             ), (
                 C_("color sliders panel: hue/saturation/value: slider label",
                    "H"),
-                HSVHueSlider,
+                'HSVHueSlider',
                 12,
             ), (
                 C_("color sliders panel: hue/saturation/value: slider label",
                    "S"),
-                HSVSaturationSlider,
+                'HSVSaturationSlider',
                 0,
             ), (
                 C_("color sliders panel: hue/saturation/value: slider label",
                    "V"),
-                HSVValueSlider,
+                'HSVValueSlider',
                 0,
             ), (
                 C_("color sliders panel: hue/chroma/luma: slider label", "H"),
-                HCYHueSlider,
+                'HCYHueSlider',
                 12,
             ), (
                 C_("color sliders panel: hue/chroma/luma: slider label", "C"),
-                HCYChromaSlider,
+                'HCYChromaSlider',
                 0,
             ), (
                 C_("color sliders panel: hue/chroma/luma: slider label", "Y'"),
-                HCYLumaSlider,
+                'HCYLumaSlider',
                 0,
             ), (
                 C_("color sliders panel: hue/chroma/luma: slider label",
                    "cHue"),
-                CIECAMHueNormSlider,
+                'CIECAMHueNormSlider',
                 12,
             ), (
                 C_("color sliders panel: hue/chroma/luma: slider label", "cH"),
-                CIECAMHueSlider,
+                'CIECAMHueSlider',
                 0,
             ), (
                 C_("color sliders panel: hue/chroma/luma: slider label", "cS"),
-                CIECAMChromaSlider,
+                'CIECAMChromaSlider',
                 0,
             ), (
                 C_("color sliders panel: hue/chroma/luma: slider label", "cV"),
-                CIECAMLumaSlider,
+                'CIECAMLumaSlider',
                 0,
             ), (
                 C_("color sliders panel: Temperature: slider label", "cT"),
-                CIECAMTempSlider,
+                'CIECAMTempSlider',
                 0,
             ), (
                 C_("color sliders panel: Limit Purity: slider label", "cLim"),
-                CIECAMLimitChromaSlider,
+                'CIECAMLimitChromaSlider',
                 0,
             ),
         ]
         row = 0
         for row_def in row_defs:
             label_text, adj_class, margin_top = row_def
-            label = Gtk.Label()
-            label.set_text(label_text)
-            label.set_tooltip_text(adj_class.STATIC_TOOLTIP_TEXT)
-            label.set_vexpand(True)
-            label.set_hexpand(False)
-            label.set_valign(0.0)
-            label.set_margin_top(margin_top)
-            label.set_margin_left(3)
-            label.set_margin_right(3)
-            adj = adj_class()
-            adj.set_size_request(100, 22)
-            adj.set_vexpand(False)
-            adj.set_hexpand(True)
-            adj.set_margin_top(margin_top)
-            adj.set_margin_left(3)
-            adj.set_margin_right(3)
-            adj.set_valign(0.0)
-            self._sliders.append(adj)
-            grid.attach(label, 0, row, 1, 1)
-            grid.attach(adj, 1, row, 1, 1)
-            row += 1
+            active = self.app.preferences["ui.sliders_enabled"].get(adj_class, True)
+            if active:
+                self.app.preferences["ui.sliders_enabled"][adj_class] = True
+                adj_class = globals()[adj_class]
+                label = Gtk.Label()
+                label.set_text(label_text)
+                label.set_tooltip_text(adj_class.STATIC_TOOLTIP_TEXT)
+                label.set_vexpand(True)
+                label.set_hexpand(False)
+                label.set_valign(0.0)
+                label.set_margin_top(margin_top)
+                label.set_margin_left(3)
+                label.set_margin_right(3)
+                adj = adj_class()
+                adj.set_size_request(100, 22)
+                adj.set_vexpand(False)
+                adj.set_hexpand(True)
+                adj.set_margin_top(margin_top)
+                adj.set_margin_left(3)
+                adj.set_margin_right(3)
+                adj.set_valign(0.0)
+                self._sliders.append(adj)
+                grid.attach(label, 0, row, 1, 1)
+                grid.attach(adj, 1, row, 1, 1)
+                row += 1
         align = Gtk.Alignment(
             xalign=0.5, yalign=0.5,
             xscale=1.0, yscale=0.0,
