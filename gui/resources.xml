@@ -267,6 +267,22 @@ Vocabulary
       </child>
       <!-- Brush painting color -->
       <child>
+        <object class="GtkAction" id="Cooler">
+          <property name="label" translatable="yes" context="Menu→Color→Adjust Color (labels), Accel Editor (labels)">Cool Painting Color</property>
+          <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Decrease the warmth of the current painting color.</property>
+          <signal name="activate" handler="cooler_cb"/>
+        </object>
+        <accelerator key= "x" modifiers="GDK_SHIFT_MASK"/>
+      </child>
+      <child>
+        <object class="GtkAction" id="Warmer">
+          <property name="label" translatable="yes" context="Menu→Color→Adjust Color (labels), Accel Editor (labels)">Warm Painting Color</property>
+          <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Increase the warmth of the current painting color.</property>
+          <signal name="activate" handler="warmer_cb"/>
+        </object>
+        <accelerator key= "z" modifiers="GDK_SHIFT_MASK"/>
+      </child>
+      <child>
         <object class="GtkAction" id="Brighter">
           <property name="label" translatable="yes" context="Menu→Color→Adjust Color (labels), Accel Editor (labels)">Lighten Painting Color</property>
           <property name="tooltip" translatable="yes" context="Accel Editor (descriptions)">Increase the lightness of the current painting color.</property>

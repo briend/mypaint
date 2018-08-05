@@ -1109,9 +1109,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
                                                     illuminant[2])
             # update pref ui
             self.app.preferences_window.update_ui()
-            col = CIECAMColor(color=self._get_app_brush_color(),
-                               lightsource=illuminant,
-                               discount_in=True, discount_out=True)
+            col = self._get_app_brush_color()
+            col.lightsource = illuminant
         if isinstance(self, (CIECAMLimitChromaSlider)):
             # push chroma limiter to prefs and return new color
             # maximum replaced with -1 to indicate no limit
@@ -1239,9 +1238,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
                                                     illuminant[2])
             # update pref ui
             self.app.preferences_window.update_ui()
-            col = CIECAMColor(color=self._get_app_brush_color(),
-                               lightsource=illuminant,
-                               discount_in=True, discount_out=True)
+            col = self._get_app_brush_color()
+            col.lightsource = illuminant
         if isinstance(self, (CIECAMLimitChromaSlider)):
             # push chroma limiter to prefs and return new color
             # maximum replaced with -1 to indicate no limit

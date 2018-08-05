@@ -756,7 +756,7 @@ class CIECAMColor (UIColor):
     def __init__(self, v=None, s=None, h=None, vsh=None, color=None,
                  cieaxes=None, lightsource=None,
                  gamutmapping="relativeColorimetric",
-                 discount_in=True, discount_out=False,
+                 discount_in=False, discount_out=False,
                  tol=0.001, maxiter=100):
         """Initializes from individual values, or another UIColor
 
@@ -776,6 +776,10 @@ class CIECAMColor (UIColor):
         # highlight will flag out of gamut colors as magenta similar to GIMP
         # False will simply clip the RGB values
         self.gamutmapping = gamutmapping
+        # should we discount the illuminant when coming into CIECAM from RGB
+        # and/or when going out from CIECAM to RGB
+        self.discount_in = discount_in
+        self.discount_out = discount_out
 
         # The entire ciecam config needs to follow around the color
         if cieaxes is not None:
@@ -825,9 +829,7 @@ class CIECAMColor (UIColor):
         if color is not None:
             if isinstance(color, CIECAMColor):
                 # convert from one to another (handle whitepoint changes)
-                v, s, h = CIECAM_to_CIECAM(self, color,
-                                           discount_in=discount_in,
-                                           discount_out=discount_out)
+                v, s, h = CIECAM_to_CIECAM(self, color)
             else:
                 # any other UIColor is assumed to be sRGB
                 rgb = color.get_rgb()
@@ -1359,7 +1361,7 @@ def RGB_to_CIECAM(self, rgb):
 
     cam16 = colour.XYZ_to_CAM16(xyz*100.0, self.lightsource, self.L_A,
                                 self.Y_b, self.surround,
-                                discount_illuminant=False)
+                                discount_illuminant=self.discount_in)
     axes = list(self.cieaxes)
     ciecam_vsh = np.array([getattr(cam16, axes[0]),
                           getattr(cam16, axes[1]), getattr(cam16, axes[2])])
@@ -1370,7 +1372,7 @@ def RGB_to_CIECAM(self, rgb):
     return ciecam_vsh
 
 
-def CIECAM_to_CIECAM(self, ciecam, discount_in=True, discount_out=False):
+def CIECAM_to_CIECAM(self, ciecam):
     maxcolorfulness = self.limit_purity
     axes = list(ciecam.cieaxes)
     v, s, h = ciecam.v, ciecam.s, ciecam.h
@@ -1381,14 +1383,14 @@ def CIECAM_to_CIECAM(self, ciecam, discount_in=True, discount_out=False):
 
     oldXYZ = colour.CAM16_to_XYZ(cam, ciecam.lightsource, np.array(self.L_A),
                                  self.Y_b, self.surround,
-                                 discount_illuminant=discount_in)
+                                 discount_illuminant=self.discount_in)
 
     axes = list(self.cieaxes)
     v, s, h = self.v, self.s, self.h
 
     ciecam_vsh = colour.XYZ_to_CAM16(oldXYZ, self.lightsource, self.L_A,
                                      self.Y_b, self.surround,
-                                     discount_illuminant=discount_out)
+                                     discount_illuminant=self.discount_out)
 
     v = getattr(ciecam_vsh, axes[0])
     s = getattr(ciecam_vsh, axes[1])
@@ -1412,12 +1414,12 @@ def CIECAM_to_RGB(self):
         loss_result = colour.XYZ_to_sRGB(
             colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
                                 self.Y_b, self.surround,
-                                discount_illuminant=False)/100.0)
+                                discount_illuminant=self.discount_out)/100.0)
         cieresult = colour.XYZ_to_CAM16(colour.sRGB_to_XYZ(np.clip(loss_result,
                                         0.0, maxRGB)) * 100.0,
                                         self.lightsource, self.L_A,
                                         self.Y_b, self.surround,
-                                        discount_illuminant=False)
+                                        discount_illuminant=self.discount_in)
 
         #rgbloss = (loss_result > 1.0).any()
         satloss = abs(s - getattr(cieresult, axes[1]))
@@ -1502,7 +1504,7 @@ def CIECAM_to_RGB(self):
             result = colour.XYZ_to_sRGB(
                 colour.CAM16_to_XYZ(cam, self.lightsource, np.array(self.L_A),
                                     self.Y_b, self.surround,
-                                    discount_illuminant=False)/100.0)
+                                    discount_illuminant=self.discount_out)/100.0)
 
     # if we still have color we are not at the max display
     # this will release the adjuster to allow brighter
@@ -1618,7 +1620,7 @@ def Spectral_Mix_WGM(spd_a, spd_b, ratio):
 
 
 def CCT_to_RGB(CCT):
-    """Accepts a color temperature 4000-25000.  Returns RGB 0-1"""
+    """Accepts a color temperature 0-25000.  Returns RGB 0-1"""
     linearRGB = colour.XYZ_to_sRGB(colour.xy_to_XYZ(
         colour.temperature.CCT_to_xy(CCT)), apply_encoding_cctf=False)
     sRGB = colour.models.oetf_sRGB(linearRGB/max(linearRGB))
@@ -1626,7 +1628,7 @@ def CCT_to_RGB(CCT):
 
 
 def RGB_to_CCT(RGB):
-    """Accepts an RGB and returns CCT 4000-25000 """
+    """Accepts an RGB and returns CCT 0-25000 """
     CCT = colour.temperature.xy_to_CCT_Hernandez1999(colour.XYZ_to_xy(colour.sRGB_to_XYZ(RGB)))
     if CCT < 6500:
         CCT = colour.temperature.xy_to_CCT(colour.XYZ_to_xy(colour.sRGB_to_XYZ(RGB)))

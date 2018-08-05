@@ -227,15 +227,10 @@ class ColorPickMode (gui.mode.OneshotDragMode):
 
                 # reset the brush color with the same color
                 # under the new illuminant
-                brushcolornew = lib.color.CIECAMColor(
-                    color=brushcolor,
-                    cieaxes=brushcolor.cieaxes,
-                    lightsource=ill,
-                    discount_in=True,
-                    discount_out=True
-                )
-                app.brush.set_color_hsv(brushcolornew.get_hsv())
-                app.brush.set_ciecam_color(brushcolornew)
+                brushcolor.lightsource = ill
+
+                app.brush.set_color_hsv(brushcolor.get_hsv())
+                app.brush.set_ciecam_color(brushcolor)
             elif mode == "PickandBlend":
                 if self.starting_color is None:
                     self.starting_color = pickcolor

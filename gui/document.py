@@ -26,6 +26,7 @@ from warnings import warn
 import weakref
 import logging
 import time
+import colour
 
 from gi.repository import Gtk
 from gi.repository import Gdk
@@ -51,7 +52,8 @@ from gui.overlays import ColorAdjustOverlay
 from lib.gettext import gettext as _
 from lib.gettext import C_
 from lib.modes import PASS_THROUGH_MODE
-from lib.color import CIECAMColor, HSVColor, HCYColor
+from lib.color import CIECAMColor, HSVColor, HCYColor, RGB_to_CCT, CCT_to_RGB
+from overlays import ColorAdjustOverlay
 
 logger = logging.getLogger(__name__)
 
@@ -335,6 +337,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         self.input_stroke_started += self._input_stroke_started_cb
 
         # Color Adjuster data
+        self.last_warmer = 0
+        self.last_cooler = 0
         self.last_brighter = 0
         self.last_darker = 0
         self.last_purer = 0
@@ -1558,6 +1562,88 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             if elapsed < 100:
                 return True
         return False
+
+    def warmer_cb(self, action):
+        """``Warmer`` GtkAction callback: warm the brush color"""
+        t, x, y, p = self.get_last_event_info(self.tdw)
+
+        if t <= self.last_warmer:
+            t = (time.time() * 1000)
+
+        # throttling
+        if self._should_throttle(t, self.last_warmer):
+            return
+
+        # TODO maybe have step_size between [0..1] and scale below as needed?
+        step_size = self._get_step_size(t, self.last_warmer, 100, 250)
+
+        # make color warmer.
+        # 1. get current brush color illuminant's CCT
+        # 2  Increment CCT by some amount
+        # 3. Apply new CCT as illumiant to brushcolor
+
+        brushcolor = self._get_app_brush_ciecam_color()
+        cct = RGB_to_CCT(colour.XYZ_to_sRGB(brushcolor.lightsource))
+        # values below 1904 are outside sRGB gamut
+        cct = max(cct - step_size, 2200)
+        illuminant = colour.sRGB_to_XYZ(CCT_to_RGB(cct))*100
+
+        self.app.preferences['color.dimension_lightsource'] = "custom_XYZ"
+        self.app.preferences['color.dimension_lightsource_XYZ'] = (
+                                                              illuminant[0],
+                                                              illuminant[1],
+                                                              illuminant[2])
+        # update pref ui
+        self.app.preferences_window.update_ui()
+        brushcolor.lightsource = illuminant
+
+        self._apply_tuned_colors(brushcolor)
+
+        if self._overlay_is_enabled():
+            self._place_overlay(x, y, *brushcolor.get_rgb())
+
+        self.last_warmer = t
+
+    def cooler_cb(self, action):
+        """``Warmer`` GtkAction callback: warm the brush color"""
+        t, x, y, p = self.get_last_event_info(self.tdw)
+
+        if t <= self.last_cooler:
+            t = (time.time() * 1000)
+
+        # throttling
+        if self._should_throttle(t, self.last_cooler):
+            return
+
+        # TODO maybe have step_size between [0..1] and scale below as needed?
+        step_size = self._get_step_size(t, self.last_cooler, 100, 250)
+
+        # make color warmer.
+        # 1. get current brush color illuminant's CCT
+        # 2  Increment CCT by some amount
+        # 3. Apply new CCT as illumiant to brushcolor
+
+        brushcolor = self._get_app_brush_ciecam_color()
+        cct = RGB_to_CCT(colour.XYZ_to_sRGB(brushcolor.lightsource))
+        # values below 1904 are outside sRGB gamut
+        cct = min(cct + step_size, 25000)
+        illuminant = colour.sRGB_to_XYZ(CCT_to_RGB(cct))*100
+
+        self.app.preferences['color.dimension_lightsource'] = "custom_XYZ"
+        self.app.preferences['color.dimension_lightsource_XYZ'] = (
+                                                              illuminant[0],
+                                                              illuminant[1],
+                                                              illuminant[2])
+        # update pref ui
+        self.app.preferences_window.update_ui()
+        brushcolor.lightsource = illuminant
+
+        self._apply_tuned_colors(brushcolor)
+
+        if self._overlay_is_enabled():
+            self._place_overlay(x, y, *brushcolor.get_rgb())
+
+        self.last_cooler = t
 
     def brighter_cb(self, action):
         """``Brighter`` GtkAction callback: lighten the brush color"""
