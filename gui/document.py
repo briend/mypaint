@@ -1585,7 +1585,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         brushcolor = self._get_app_brush_ciecam_color()
         cct = RGB_to_CCT(colour.XYZ_to_sRGB(brushcolor.lightsource))
         # values below 1904 are outside sRGB gamut
-        cct = max(cct - step_size, 2200)
+        cct = max(cct - step_size, 1904)
         illuminant = colour.sRGB_to_XYZ(CCT_to_RGB(cct))*100
 
         self.app.preferences['color.dimension_lightsource'] = "custom_XYZ"
