@@ -227,7 +227,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
 
                 # reset the brush color with the same color
                 # under the new illuminant
-                brushcolor.lightsource = ill
+                brushcolor.lightsource = ill * fac
 
                 app.brush.set_color_hsv(brushcolor.get_hsv())
                 app.brush.set_ciecam_color(brushcolor)

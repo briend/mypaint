@@ -1101,8 +1101,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         if isinstance(self, (CIECAMTempSlider)):
             # push illuminant to prefs and return new color
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
-            fac = 1/illuminant[1]*100
-            illuminant *= fac
+#            fac = 1/illuminant[1]*100
+            illuminant *= 100
             self.p['color.dimension_lightsource'] = "custom_XYZ"
             self.p['color.dimension_lightsource_XYZ'] = (illuminant[0],
                                                     illuminant[1],
@@ -1230,8 +1230,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         if isinstance(self, (CIECAMTempSlider)):
             # push illuminant to prefs and return new color
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
-            fac = 1/illuminant[1]*100
-            illuminant *= fac
+#            fac = 1/illuminant[1]*100
+            illuminant *= 100
             self.p['color.dimension_lightsource'] = "custom_XYZ"
             self.p['color.dimension_lightsource_XYZ'] = (illuminant[0],
                                                     illuminant[1],
