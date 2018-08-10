@@ -53,7 +53,6 @@ from lib.gettext import gettext as _
 from lib.gettext import C_
 from lib.modes import PASS_THROUGH_MODE
 from lib.color import CIECAMColor, HSVColor, HCYColor, RGB_to_CCT, CCT_to_RGB
-from overlays import ColorAdjustOverlay
 
 logger = logging.getLogger(__name__)
 
