@@ -572,7 +572,9 @@ class PigmentColor (UIColor):
         other = PigmentColor(color=other, gamma=self.gamma)
         for step in xrange(steps):
             p = step / (steps - 1)
-            spd = Spectral_Mix_WGM(self.spd, other.spd, p)
+            spd_wgm = Spectral_Mix_WGM(self.spd, other.spd, p)
+            spd_mult = Spectral_Mix_MULT(self.spd, other.spd, p)
+            spd = spd_wgm * 0.75 + spd_mult * 0.25
             yield PigmentColor(spd=spd, gamma=self.gamma)
 
     def mix(self, other, ratio):
@@ -1618,6 +1620,11 @@ def Spectral_Mix_WGM(spd_a, spd_b, ratio):
     """
     return spd_a**(1.0 - ratio) * spd_b**ratio
 
+def Spectral_Mix_MULT(spd_a, spd_b, ratio):
+    """Multiplies two SPDs and returns an SPD.
+    Based on work by Scott Allen Burns.
+    """
+    return spd_a * spd_b
 
 def CCT_to_RGB(CCT):
     """Accepts a color temperature 0-25000.  Returns RGB 0-1"""
