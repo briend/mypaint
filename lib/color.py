@@ -321,7 +321,7 @@ class UIColor (object):
             b = b / n_pixels
             return RGBColor(r/255, g/255, b/255)
 
-    def interpolate(self, other, steps):
+    def interpolate(self, other, steps, modifier=None):
         """Generator: interpolate between this color and another."""
         raise NotImplementedError
 
@@ -363,7 +363,7 @@ class RGBColor (UIColor):
         return "<RGBColor r=%0.4f, g=%0.4f, b=%0.4f>" \
             % (self.r, self.g, self.b)
 
-    def interpolate(self, other, steps):
+    def interpolate(self, other, steps, modifier=None):
         """RGB interpolation.
 
         >>> white = RGBColor(r=1, g=1, b=1)
@@ -456,7 +456,7 @@ class LinearRGBColor (UIColor):
         return "<LinearRGBColor r=%0.4f, g=%0.4f, b=%0.4f>" \
             % (self.r, self.g, self.b)
 
-    def interpolate(self, other, steps):
+    def interpolate(self, other, steps, modifier=None):
         """Linear RGB interpolation.
 
         >>> white = LinearRGBColor(r=1, g=1, b=1)
@@ -557,7 +557,7 @@ class PigmentColor (UIColor):
         return "<PigmentColor spd=%s>" \
             % (np.array2string(self.spd))
 
-    def interpolate(self, other, steps):
+    def interpolate(self, other, steps, modifier=1.0):
         """WGM Spectral interpolation.
 
         >>> white = PigmentColor(color=RGBColor(r=1, g=1, b=1))
@@ -568,14 +568,20 @@ class PigmentColor (UIColor):
         ['#050505', '#252525', '#ffffff']
 
         """
+        wgm_ratio = modifier
         assert steps >= 3
         other = PigmentColor(color=other, gamma=self.gamma)
         for step in xrange(steps):
             p = step / (steps - 1)
             spd_wgm = Spectral_Mix_WGM(self.spd, other.spd, p)
-            spd_mult = Spectral_Mix_MULT(self.spd, other.spd, p)
-            spd = spd_wgm * 0.75 + spd_mult * 0.25
-            yield PigmentColor(spd=spd, gamma=self.gamma)
+            if wgm_ratio < 1.0:
+                spd_mult = Spectral_Mix_MULT(self.spd, other.spd, p)
+                p = -0.5 * (math.cos(2 * math.pi * p) - 1)
+                spd = spd_wgm * wgm_ratio**p + spd_mult * (1 - wgm_ratio)**(1 - p)
+                yield PigmentColor(spd=spd, gamma=self.gamma)
+            else:
+                yield PigmentColor(spd=spd_wgm, gamma=self.gamma)
+            
 
     def mix(self, other, ratio):
         """WGM Spectral mix 0-1 ratio.
@@ -661,7 +667,7 @@ class HSVColor (UIColor):
         return "<HSVColor h=%0.4f, s=%0.4f, v=%0.4f>" \
             % (self.h, self.s, self.v)
 
-    def interpolate(self, other, steps):
+    def interpolate(self, other, steps, modifier=None):
         """HSV interpolation, sometimes nicer looking than RGB.
 
         >>> red_hsv = HSVColor(h=0, s=1, v=1)
@@ -862,7 +868,7 @@ class CIECAMColor (UIColor):
             % (self.v, self.s, self.h, self.lightsource[0],self.lightsource[1], 
                self.lightsource[2])
 
-    def interpolate(self, other, steps):
+    def interpolate(self, other, steps, modifier=None):
         """CIECAM interpolation, sometimes nicer looking than anything else.
 
         >>> red_hsv = CIECAMColor(h=32.1526953,s=80.46644073,v=46.9250674 )
@@ -1001,7 +1007,7 @@ class HCYColor (UIColor):
         return "<HCYColor h=%0.4f, c=%0.4f, y=%0.4f>" \
             % (self.h, self.c, self.y)
 
-    def interpolate(self, other, steps):
+    def interpolate(self, other, steps, modifier=None):
         """HCY interpolation.
 
         >>> red = HCYColor(0, 0.8, 0.5)
@@ -1127,7 +1133,7 @@ class YCbCrColor (UIColor):
         return "<YCbCrColor Y=%0.4f, Cb=%0.4f, Cr=%0.4f>" \
             % (self.Y, self.Cb, self.Cr)
 
-    def interpolate(self, other, steps):
+    def interpolate(self, other, steps, modifier=None):
         """YCbCr interpolation.
 
         >>> yellow = YCbCrColor(color=RGBColor(1,1,0))

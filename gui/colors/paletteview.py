@@ -809,37 +809,49 @@ class _PaletteGridLayout (ColorAdjusterWidget):
                 C_("palette view: context menu", "Fill Gap (RGB)"),
                 self._interpolate_empty_range_cb,
                 bool(empty_range),
-                [RGBColor, empty_range],
+                [RGBColor, empty_range, None],
             ),
             (
                 C_("palette view: context menu", "Fill Gap (Linear RGB)"),
                 self._interpolate_empty_range_cb,
                 bool(empty_range),
-                [LinearRGBColor, empty_range],
+                [LinearRGBColor, empty_range, None],
             ),
             (
                 C_("palette view: context menu", "Fill Gap (HCY)"),
                 self._interpolate_empty_range_cb,
                 bool(empty_range),
-                [HCYColor, empty_range],
+                [HCYColor, empty_range, None],
             ),
             (
                 C_("palette view: context menu", "Fill Gap (HSV)"),
                 self._interpolate_empty_range_cb,
                 bool(empty_range),
-                [HSVColor, empty_range],
+                [HSVColor, empty_range, None],
             ),
             (
                 C_("palette view: context menu", "Fill Gap (CIECAM)"),
                 self._interpolate_empty_range_cb,
                 bool(empty_range),
-                [CIECAMColor, empty_range],
+                [CIECAMColor, empty_range, None],
             ),
             (
-                C_("palette view: context menu", "Fill Gap (Pigment)"),
+                C_("palette view: context menu", "Fill Gap (Opaque Paint)"),
                 self._interpolate_empty_range_cb,
                 bool(empty_range),
-                [PigmentColor, empty_range],
+                [PigmentColor, empty_range, 1.0],
+            ),
+            (
+                C_("palette view: context menu", "Fill Gap (Crayon)"),
+                self._interpolate_empty_range_cb,
+                bool(empty_range),
+                [PigmentColor, empty_range, 0.50],
+            ),
+            (
+                C_("palette view: context menu", "Fill Gap (Watercolor Glaze)"),
+                self._interpolate_empty_range_cb,
+                bool(empty_range),
+                [PigmentColor, empty_range, 0.25],
             ),
         ]
         for item_def in item_defs:
@@ -891,7 +903,7 @@ class _PaletteGridLayout (ColorAdjusterWidget):
             r += 1
         palette.set_columns(columns_new)
 
-    def _interpolate_empty_range_cb(self, menuitem, color_class, range):
+    def _interpolate_empty_range_cb(self, menuitem, color_class, range, modifier):
 
         # pull in CIECAM config
         app = gui.application.get_app()
@@ -933,7 +945,7 @@ class _PaletteGridLayout (ColorAdjusterWidget):
         nsteps = ix - i0 + 1
         if nsteps < 3:
             return
-        interpolated = list(c0.interpolate(cx, nsteps))
+        interpolated = list(c0.interpolate(cx, nsteps, modifier))
         assert len(interpolated) == nsteps
         interpolated.pop(0)
         interpolated.pop(-1)
