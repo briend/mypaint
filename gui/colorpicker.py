@@ -52,6 +52,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
     # Class configuration
     ACTION_NAME = 'ColorPickMode'
     PICK_SIZE = 6
+    MIN_PREVIEW_SIZE = 70
 
     # Keyboard activation behaviour (instance defaults)
     # See keyboard.py and doc.mode_flip_action_activated_cb()
@@ -232,11 +233,14 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 app.brush.set_color_hsv(brushcolor.get_hsv())
                 app.brush.set_ciecam_color(brushcolor)
             elif mode == "PickandBlend":
+                alloc = self.doc.tdw.get_allocation()
+                size = max(int(p['color.preview_size'] * .01 * alloc.height),
+                           self.MIN_PREVIEW_SIZE)
                 if self.starting_color is None:
                     self.starting_color = pickcolor
                 dist = np.linalg.norm(
                     np.array(self.starting_position) - np.array((x, y)))
-                dist = np.clip(dist / 200 + pressure, 0, 1)
+                dist = np.clip(dist / size + pressure, 0, 1)
                 if p['color.pick_blend_reverse'] is True:
                     dist = 1 - dist
                 self.blending_ratio = dist
