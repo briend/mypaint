@@ -569,7 +569,7 @@ class Application (object):
             'color.dynamic_step_size': True,
 
             # Options: CIECAM, HCY, HSV, Pigment...
-            'color.tune_model': 'Pigment',
+            'color.tune_model': 'CIECAM',
 
             'color.dimension_purity': u'M',
             'color.dimension_value': u'J',

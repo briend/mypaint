@@ -347,6 +347,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         self.in_input_stroke = False
         self.last_colorpick_time = 0
         self._color_overlay = None
+        self.last_color_target = None
 
         self._init_stategroups()
 
@@ -1775,6 +1776,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor = HCYColor(h, c, yy)
 
         elif tune_model == 'CIECAM' or tune_model == 'Pigment':
+            self.last_color_target = None
             brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.h = (brushcolor.h + step_size) % 360
             brushcolor.cachedrgb = None
@@ -1816,6 +1818,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor = HCYColor(h, c, yy)
 
         elif tune_model == 'CIECAM' or tune_model == 'Pigment':
+            self.last_color_target = None
             brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.h = (brushcolor.h - step_size) % 360
             brushcolor.cachedrgb = None
@@ -1865,11 +1868,13 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor.cachedrgb = None
 
         elif tune_model == 'Pigment':
+            if self.last_color_target is None:
+                self.last_color_target = self._get_app_brush_ciecam_color()
             brushcolor_start = self._get_app_brush_ciecam_color()
             brushcolor_start_pig = PigmentColor(color=brushcolor_start)
-            brushcolor_start.s = 200
-            brushcolor_start.cachedrgb = None
-            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
+            #brushcolor_start.s = 200
+            #brushcolor_start.cachedrgb = None
+            brushcolor_end_pig = PigmentColor(color=self.last_color_target)
             brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 100, 1.0))
 
         else:
@@ -1914,6 +1919,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor.cachedrgb = None
 
         elif tune_model == 'Pigment':
+            if self.last_color_target is None:
+                self.last_color_target = self._get_app_brush_ciecam_color()
             brushcolor_start = self._get_app_brush_ciecam_color()
             brushcolor_start_pig = PigmentColor(color=brushcolor_start)
             brushcolor_start.s = 0

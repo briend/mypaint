@@ -54,6 +54,9 @@ class BrushColorManager (colors.ColorManager):
                     prefs['color.dimension_purity'] + "h"
                 color = lib.color.CIECAMColor(color=color, cieaxes=cieaxes,
                                               lightsource=lightsource)
+                #from gui.application import get_app
+                #app = get_app()
+                self._app.doc.last_color_target = None
             self.__brush.set_ciecam_color(color)
             self.__brush.set_color_hsv(color.get_hsv())
 
