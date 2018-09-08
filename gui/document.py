@@ -52,7 +52,7 @@ from gui.overlays import ColorAdjustOverlay
 from lib.gettext import gettext as _
 from lib.gettext import C_
 from lib.modes import PASS_THROUGH_MODE
-from lib.color import CIECAMColor, HSVColor, HCYColor, RGB_to_CCT, CCT_to_RGB
+from lib.color import CIECAMColor, HSVColor, HCYColor, RGB_to_CCT, CCT_to_RGB, PigmentColor, RGBColor
 
 logger = logging.getLogger(__name__)
 
@@ -1679,6 +1679,12 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor.v = brushcolor.v + step_size
             brushcolor.cachedrgb = None
 
+        elif tune_model == 'Pigment':
+            brushcolor_start = self._get_app_brush_ciecam_color()
+            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+            brushcolor_end_pig = PigmentColor(color=RGBColor(rgb=colour.XYZ_to_sRGB(brushcolor_start.lightsource)))
+            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 50, 1.0))
+
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
             return
@@ -1720,6 +1726,12 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor.v = max(brushcolor.v - step_size, 0.0)
             brushcolor.cachedrgb = None
 
+        elif tune_model == 'Pigment':
+            brushcolor_start = self._get_app_brush_ciecam_color()
+            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+            brushcolor_end_pig = PigmentColor(color=RGBColor(rgb=0.01 * colour.XYZ_to_sRGB(brushcolor_start.lightsource)))
+            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 50, 1.0))
+
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
             return
@@ -1756,7 +1768,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             h = (h + step_size / 360) % 1.0
             brushcolor = HCYColor(h, c, yy)
 
-        elif tune_model == 'CIECAM':
+        elif tune_model == 'CIECAM' or tune_model == 'Pigment':
             brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.h = (brushcolor.h + step_size) % 360
             brushcolor.cachedrgb = None
@@ -1797,7 +1809,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             h = (h - step_size / 360) % 1.0
             brushcolor = HCYColor(h, c, yy)
 
-        elif tune_model == 'CIECAM':
+        elif tune_model == 'CIECAM' or tune_model == 'Pigment':
             brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.h = (brushcolor.h - step_size) % 360
             brushcolor.cachedrgb = None
@@ -1846,6 +1858,14 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor.s = brushcolor.s + step_size
             brushcolor.cachedrgb = None
 
+        elif tune_model == 'Pigment':
+            brushcolor_start = self._get_app_brush_ciecam_color()
+            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+            brushcolor_start.s = 200
+            brushcolor_start.cachedrgb = None
+            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
+            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 100, 1.0))
+
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
             return
@@ -1886,6 +1906,14 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.s = max(brushcolor.s - step_size, 0.0)
             brushcolor.cachedrgb = None
+
+        elif tune_model == 'Pigment':
+            brushcolor_start = self._get_app_brush_ciecam_color()
+            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+            brushcolor_start.s = 0
+            brushcolor_start.cachedrgb = None
+            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
+            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 100, 1.0))
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
