@@ -1682,8 +1682,11 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         elif tune_model == 'Pigment':
             brushcolor_start = self._get_app_brush_ciecam_color()
             brushcolor_start_pig = PigmentColor(color=brushcolor_start)
-            brushcolor_end_pig = PigmentColor(color=RGBColor(rgb=colour.XYZ_to_sRGB(brushcolor_start.lightsource)))
+            whitelinearRGB = colour.XYZ_to_sRGB(brushcolor_start.lightsource/100, apply_encoding_cctf=False)
+            whitesRGB = colour.models.oetf_sRGB(whitelinearRGB/max(whitelinearRGB))
+            brushcolor_end_pig = PigmentColor(color=RGBColor(rgb=whitesRGB))
             brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 50, 1.0))
+            brushcolor = CIECAMColor(color=brushcolor, lightsource=brushcolor_start.lightsource, discount_in=False, discount_out=True)
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
@@ -1729,8 +1732,11 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         elif tune_model == 'Pigment':
             brushcolor_start = self._get_app_brush_ciecam_color()
             brushcolor_start_pig = PigmentColor(color=brushcolor_start)
-            brushcolor_end_pig = PigmentColor(color=RGBColor(rgb=0.01 * colour.XYZ_to_sRGB(brushcolor_start.lightsource)))
+            whitelinearRGB = colour.XYZ_to_sRGB(brushcolor_start.lightsource/100, apply_encoding_cctf=False)
+            blacksRGB = colour.models.oetf_sRGB(0.01 * whitelinearRGB / max(whitelinearRGB))
+            brushcolor_end_pig = PigmentColor(color=RGBColor(rgb=blacksRGB))
             brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 50, 1.0))
+            brushcolor = CIECAMColor(color=brushcolor, lightsource=brushcolor_start.lightsource, discount_in=False, discount_out=True)
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
