@@ -1681,6 +1681,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor.cachedrgb = None
 
         elif tune_model == 'Pigment':
+            if self.last_color_target is None:
+                self.last_color_target = self._get_app_brush_ciecam_color()
             brushcolor_start = self._get_app_brush_ciecam_color()
             brushcolor_start_pig = PigmentColor(color=brushcolor_start)
             whitelinearRGB = colour.XYZ_to_sRGB(brushcolor_start.lightsource/100, apply_encoding_cctf=False)
@@ -1731,6 +1733,8 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor.cachedrgb = None
 
         elif tune_model == 'Pigment':
+            if self.last_color_target is None:
+                self.last_color_target = self._get_app_brush_ciecam_color()
             brushcolor_start = self._get_app_brush_ciecam_color()
             brushcolor_start_pig = PigmentColor(color=brushcolor_start)
             whitelinearRGB = colour.XYZ_to_sRGB(brushcolor_start.lightsource/100, apply_encoding_cctf=False)
