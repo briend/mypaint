@@ -1880,6 +1880,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             #brushcolor_start.cachedrgb = None
             brushcolor_end_pig = PigmentColor(color=self.last_color_target)
             brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 100, 1.0))
+            brushcolor = CIECAMColor(color=brushcolor, lightsource=brushcolor_start.lightsource, discount_in=False, discount_out=True)
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
@@ -1931,6 +1932,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             brushcolor_start.cachedrgb = None
             brushcolor_end_pig = PigmentColor(color=brushcolor_start)
             brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 100, 1.0))
+            brushcolor = CIECAMColor(color=brushcolor, lightsource=brushcolor_start.lightsource, discount_in=False, discount_out=True)
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
