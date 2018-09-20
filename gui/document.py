@@ -1779,11 +1779,22 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             h = (h + step_size / 360) % 1.0
             brushcolor = HCYColor(h, c, yy)
 
-        elif tune_model == 'CIECAM' or tune_model == 'Pigment':
+        elif tune_model == 'CIECAM':
             self.last_color_target = None
             brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.h = (brushcolor.h + step_size) % 360
             brushcolor.cachedrgb = None
+
+        elif tune_model == 'Pigment':
+            if self.last_color_target is None:
+                self.last_color_target = self._get_app_brush_ciecam_color()
+            brushcolor_start = self._get_app_brush_ciecam_color()
+            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+            brushcolor_start.h = (brushcolor_start.h + 30) % 360
+            brushcolor_start.cachedrgb = None
+            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
+            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 100, 1.0))
+            brushcolor = CIECAMColor(color=brushcolor, lightsource=brushcolor_start.lightsource, discount_in=False, discount_out=True)
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
@@ -1821,11 +1832,22 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             h = (h - step_size / 360) % 1.0
             brushcolor = HCYColor(h, c, yy)
 
-        elif tune_model == 'CIECAM' or tune_model == 'Pigment':
+        elif tune_model == 'CIECAM':
             self.last_color_target = None
             brushcolor = self._get_app_brush_ciecam_color()
             brushcolor.h = (brushcolor.h - step_size) % 360
             brushcolor.cachedrgb = None
+
+        elif tune_model == 'Pigment':
+            if self.last_color_target is None:
+                self.last_color_target = self._get_app_brush_ciecam_color()
+            brushcolor_start = self._get_app_brush_ciecam_color()
+            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+            brushcolor_start.h = (brushcolor_start.h - 30) % 360
+            brushcolor_start.cachedrgb = None
+            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
+            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 100, 1.0))
+            brushcolor = CIECAMColor(color=brushcolor, lightsource=brushcolor_start.lightsource, discount_in=False, discount_out=True)
 
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
