@@ -1790,7 +1790,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 self.last_color_target = self._get_app_brush_ciecam_color()
             brushcolor_start = self._get_app_brush_ciecam_color()
             brushcolor_start_pig = PigmentColor(color=brushcolor_start)
-            brushcolor_start.h = (brushcolor_start.h + 30) % 360
+            brushcolor_start.h = (brushcolor_start.h + 60) % 360
             brushcolor_start.cachedrgb = None
             brushcolor_end_pig = PigmentColor(color=brushcolor_start)
             brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 100, 1.0))
@@ -1843,7 +1843,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
                 self.last_color_target = self._get_app_brush_ciecam_color()
             brushcolor_start = self._get_app_brush_ciecam_color()
             brushcolor_start_pig = PigmentColor(color=brushcolor_start)
-            brushcolor_start.h = (brushcolor_start.h - 30) % 360
+            brushcolor_start.h = (brushcolor_start.h - 60) % 360
             brushcolor_start.cachedrgb = None
             brushcolor_end_pig = PigmentColor(color=brushcolor_start)
             brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig, min(step_size / 100, 1.0))
