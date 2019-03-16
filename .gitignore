@@ -35,6 +35,6 @@ build
 flatpak/.flatpak-builder/
 MyPaint.egg-info
 config.log
-config.py
+lib/config.py
 .idea/
 .vscode/

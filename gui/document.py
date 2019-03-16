@@ -499,7 +499,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         sg = stategroup.StateGroup()
         self.strokeblink_state = sg.create_state(self.strokeblink_state_enter,
                                                  self.strokeblink_state_leave)
-        self.strokeblink_state.autoleave_timeout = 0.3
+        self.strokeblink_state.autoleave_timeout = 1.0
 
     def _init_extra_keys(self):
         """Internal: initializes secondary keyboard shortcuts

@@ -880,6 +880,7 @@ class CAM16Color (UIColor):
         assert self.h is not None
         assert self.s is not None
         assert self.v is not None
+        assert self.illuminant is not None
 
     def get_hsv(self):
         rgb = self.get_rgb()

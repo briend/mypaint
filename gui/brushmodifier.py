@@ -85,35 +85,24 @@ class BrushModifier (object):
         after selecting a brush by picking a stroke from the canvas.
         """
         c = self.unmodified_brushinfo.get_color_hsv()
+        vsh = (
+            self.unmodified_brushinfo.get_setting('cie_v'),
+            self.unmodified_brushinfo.get_setting('cie_s'),
+            self.unmodified_brushinfo.get_setting('cie_h'))
+        cieaxes = self.unmodified_brushinfo.get_setting('cieaxes')
+        illuminant = (
+            self.unmodified_brushinfo.get_setting('illuminant_X'),
+            self.unmodified_brushinfo.get_setting('illuminant_Y'),
+            self.unmodified_brushinfo.get_setting('illuminant_Z'))
+        if '' not in [vsh, cieaxes, illuminant]:
+            camcolor = lib.color.CAM16Color(
+                vsh=vsh,
+                cieaxes=cieaxes,
+                illuminant=illuminant)
+        else:
+            camcolor = lib.color.CAM16Color(color=lib.color.HSVColor(hsv=c))
+        self.app.brush.set_cam16_color(camcolor)
         self.app.brush.set_color_hsv(c)
-        self.app.brush.set_setting(
-            'cieaxes',
-            self.unmodified_brushinfo.get_setting('cieaxes')
-        )
-        self.app.brush.set_setting(
-            'illuminant_X',
-            self.unmodified_brushinfo.get_setting('illuminant_X')
-        )
-        self.app.brush.set_setting(
-            'illuminant_Y',
-            self.unmodified_brushinfo.get_setting('illuminant_Y')
-        )
-        self.app.brush.set_setting(
-            'illuminant_Z',
-            self.unmodified_brushinfo.get_setting('illuminant_Z')
-        )
-        self.app.brush.set_setting(
-            'cie_v',
-            self.unmodified_brushinfo.get_setting('cie_v')
-        )
-        self.app.brush.set_setting(
-            'cie_s',
-            self.unmodified_brushinfo.get_setting('cie_s')
-        )
-        self.app.brush.set_setting(
-            'cie_h',
-            self.unmodified_brushinfo.get_setting('cie_h')
-        )
 
     def brush_selected_cb(self, bm, managed_brush, brushinfo):
         """Responds to the user changing their brush.
@@ -199,26 +188,24 @@ class BrushModifier (object):
 
     def _get_app_brush_color(self):
         app = self.app
-        # if brush doesn't have cam16 values, revert to hsv
         try:
-            cie_v = app.brush.get_setting('cie_v')
+            vsh = (
+                app.brush.get_setting('cie_v'),
+                app.brush.get_setting('cie_s'),
+                app.brush.get_setting('cie_h'))
+            cieaxes = app.brush.get_setting('cieaxes')
+            illuminant = (
+                app.brush.get_setting('illuminant_X'),
+                app.brush.get_setting('illuminant_Y'),
+                app.brush.get_setting('illuminant_Z'))
         except KeyError:
-            cie_v = ''
-        if cie_v == '':
+            vsh = cieaxes = illuminant = ''
+        if '' not in [vsh, cieaxes, illuminant]:
             color = lib.color.CAM16Color(
-                color=lib.color.HSVColor(*app.brush.get_color_hsv())
-            )
+                vsh=vsh,
+                cieaxes=cieaxes,
+                illuminant=illuminant)
         else:
-            color = lib.color.CAM16Color(
-                vsh=(
-                    app.brush.get_setting('cie_v'),
-                    app.brush.get_setting('cie_s'),
-                    app.brush.get_setting('cie_h')),
-                cieaxes=app.brush.get_setting('cieaxes'),
-                illuminant=(
-                    app.brush.get_setting('illuminant_X'),
-                    app.brush.get_setting('illuminant_Y'),
-                    app.brush.get_setting('illuminant_Z')
-                )
-            )
+            color = lib.color.CAM16Color(color=lib.color.HSVColor(
+                                         *app.brush.get_color_hsv()))
         return color
