@@ -40,7 +40,7 @@ class BrushModifier (object):
         app.brush.observers.append(self.brush_modified_cb)
         self.unmodified_brushinfo = app.brush.clone()
         self._in_brush_selected_cb = False
-        self._last_selected_color = app.brush.get_color_hsv()
+        self._last_selected_color = app.brush.CAM16Color
         self.bm = gui.blendmodehandler.BlendModes()
         self.bm.mode_changed += self.update_blendmodes
 
@@ -84,24 +84,29 @@ class BrushModifier (object):
         currently just color - from `unmodified_brushinfo`. This is called
         after selecting a brush by picking a stroke from the canvas.
         """
+        app = self.app
         c = self.unmodified_brushinfo.get_color_hsv()
-        vsh = (
-            self.unmodified_brushinfo.get_setting('cie_v'),
-            self.unmodified_brushinfo.get_setting('cie_s'),
-            self.unmodified_brushinfo.get_setting('cie_h'))
-        cieaxes = self.unmodified_brushinfo.get_setting('cieaxes')
-        illuminant = (
-            self.unmodified_brushinfo.get_setting('illuminant_X'),
-            self.unmodified_brushinfo.get_setting('illuminant_Y'),
-            self.unmodified_brushinfo.get_setting('illuminant_Z'))
+        try:
+            vsh = (
+                app.brush.get_setting('cie_v'),
+                app.brush.get_setting('cie_s'),
+                app.brush.get_setting('cie_h'))
+            cieaxes = app.brush.get_setting('cieaxes')
+            illuminant = (
+                app.brush.get_setting('illuminant_X'),
+                app.brush.get_setting('illuminant_Y'),
+                app.brush.get_setting('illuminant_Z'))
+        except KeyError:
+            vsh = cieaxes = illuminant = ''
         if '' not in [vsh, cieaxes, illuminant]:
-            camcolor = lib.color.CAM16Color(
+            color = lib.color.CAM16Color(
                 vsh=vsh,
                 cieaxes=cieaxes,
                 illuminant=illuminant)
         else:
-            camcolor = lib.color.CAM16Color(color=lib.color.HSVColor(hsv=c))
-        self.app.brush.set_cam16_color(camcolor)
+            color = lib.color.CAM16Color(color=lib.color.HSVColor(
+                                         *app.brush.get_color_hsv()))
+        self.app.brush.set_cam16_color(color)
         self.app.brush.set_color_hsv(c)
 
     def brush_selected_cb(self, bm, managed_brush, brushinfo):
@@ -127,17 +132,15 @@ class BrushModifier (object):
         # Preserve color
         mix = b.get_base_value('restore_color')
         if mix:
-            c2 = self._get_app_brush_color()
-            steps = [(c.v, c.s, c.h) for c in color.interpolate(c2, 100)]
+            tune_model = self.app.preferences.get("color.tune_model", "CAM16")
+            color_class = eval('lib.color.' + tune_model + 'Color')
+            c2 = color_class(color=self._get_app_brush_color())
             color = lib.color.CAM16Color(
-                vsh=steps[int(round(mix*100) - 1)]
-            )
+                color=color_class(color=color).mix(c2, mix))
 
         elif mix_old and self._last_selected_color:
             # switching from a brush with fixed color back to a normal one
-            color = lib.color.CAM16Color(
-                color=lib.color.HSVColor(*self._last_selected_color)
-            )
+            color = self._last_selected_color
 
         b.set_color_hsv(color.get_hsv())
         b.set_cam16_color(color)
@@ -184,7 +187,7 @@ class BrushModifier (object):
                 em.active = False
 
             if not self._in_brush_selected_cb:
-                self._last_selected_color = self.app.brush.get_color_hsv()
+                self._last_selected_color = self.app.brush.CAM16Color
 
     def _get_app_brush_color(self):
         app = self.app
