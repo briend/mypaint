@@ -84,18 +84,17 @@ class BrushModifier (object):
         currently just color - from `unmodified_brushinfo`. This is called
         after selecting a brush by picking a stroke from the canvas.
         """
-        app = self.app
         c = self.unmodified_brushinfo.get_color_hsv()
         try:
             vsh = (
-                app.brush.get_setting('cie_v'),
-                app.brush.get_setting('cie_s'),
-                app.brush.get_setting('cie_h'))
-            cieaxes = app.brush.get_setting('cieaxes')
+                self.unmodified_brushinfo.get_setting('cie_v'),
+                self.unmodified_brushinfo.get_setting('cie_s'),
+                self.unmodified_brushinfo.get_setting('cie_h'))
+            cieaxes = self.unmodified_brushinfo.get_setting('cieaxes')
             illuminant = (
-                app.brush.get_setting('illuminant_X'),
-                app.brush.get_setting('illuminant_Y'),
-                app.brush.get_setting('illuminant_Z'))
+                self.unmodified_brushinfo.get_setting('illuminant_X'),
+                self.unmodified_brushinfo.get_setting('illuminant_Y'),
+                self.unmodified_brushinfo.get_setting('illuminant_Z'))
         except KeyError:
             vsh = cieaxes = illuminant = ''
         if '' not in [vsh, cieaxes, illuminant]:
