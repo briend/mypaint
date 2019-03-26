@@ -104,7 +104,7 @@ class BrushModifier (object):
                 illuminant=illuminant)
         else:
             color = lib.color.CAM16Color(color=lib.color.HSVColor(
-                                         *app.brush.get_color_hsv()))
+                                         *self.app.brush.get_color_hsv()))
         self.app.brush.set_cam16_color(color)
         self.app.brush.set_color_hsv(c)
 

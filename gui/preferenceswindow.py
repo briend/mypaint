@@ -264,12 +264,12 @@ class PreferencesWindow (windowing.Dialog):
         )
         color_limit_purity_adj.set_value(color_limit_purity)
 
-        # Colorspace OETF
-        color_OETF = p["display.colorspace_OETF"]
-        color_OETF_adj = getobj(
-            "color_model_OETF"
+        # Colorspace EOTF
+        color_EOTF = p["display.colorspace_EOTF"]
+        color_EOTF_adj = getobj(
+            "color_model_EOTF"
         )
-        color_OETF_adj.set_value(color_OETF)
+        color_EOTF_adj.set_value(color_EOTF)
 
         # Autosave
         autosave = bool(p["document.autosave_backups"])
@@ -456,9 +456,9 @@ class PreferencesWindow (windowing.Dialog):
         limit_purity = adj.get_value()
         self.app.preferences['color.limit_purity'] = limit_purity
 
-    def color_model_OETF_adjustment_value_changed_cb(self, adj):
-        OETF = adj.get_value()
-        self.app.preferences['display.colorspace_OETF'] = OETF
+    def color_model_EOTF_adjustment_value_changed_cb(self, adj):
+        EOTF = adj.get_value()
+        self.app.preferences['display.colorspace_EOTF'] = EOTF
 
     def freehand_cursor_combobox_changed_cb(self, combobox):
         cname = combobox.get_active_id()

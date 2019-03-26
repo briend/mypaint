@@ -11,7 +11,7 @@
     <property name="page_increment">10</property>
     <signal name="value-changed" handler="autosave_interval_adjustment_value_changed_cb" swapped="no"/>
   </object>
-  <object class="GtkAdjustment" id="color_model_OETF_adjustment">
+  <object class="GtkAdjustment" id="color_model_EOTF_adjustment">
     <property name="lower">0.5</property>
     <property name="upper">10</property>
     <property name="value">2.2000000000000002</property>
@@ -1760,7 +1760,7 @@ dimensions of color from the CAM16 standard.</property>
                       <object class="GtkLabel">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">OETF/gamma (needs restart)</property>
+                        <property name="label" translatable="yes">EOTF/gamma (needs restart)</property>
                       </object>
                       <packing>
                         <property name="left_attach">2</property>
@@ -1768,7 +1768,7 @@ dimensions of color from the CAM16 standard.</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkSpinButton" id="color_model_OETF">
+                      <object class="GtkSpinButton" id="color_model_EOTF">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="halign">start</property>
@@ -1780,13 +1780,13 @@ dimensions of color from the CAM16 standard.</property>
                         <property name="text" translatable="yes">-1.0</property>
                         <property name="progress_pulse_step">1</property>
                         <property name="input_purpose">number</property>
-                        <property name="adjustment">color_model_OETF_adjustment</property>
+                        <property name="adjustment">color_model_EOTF_adjustment</property>
                         <property name="climb_rate">1</property>
                         <property name="digits">1</property>
                         <property name="snap_to_ticks">True</property>
                         <property name="numeric">True</property>
                         <property name="value">2.2000000000000002</property>
-                        <signal name="value-changed" handler="color_model_OETF_adjustment_value_changed_cb" swapped="no"/>
+                        <signal name="value-changed" handler="color_model_EOTF_adjustment_value_changed_cb" swapped="no"/>
                       </object>
                       <packing>
                         <property name="left_attach">2</property>
