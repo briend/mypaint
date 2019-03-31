@@ -223,20 +223,20 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 ill = colour.sRGB_to_XYZ(np.array(pickcolor_rgb))*100
                 if ill[1] <= 0:
                     return
-                fac = 1/ill[1]*100
+                # fac = 1/ill[1]*100
 
                 p['color.dimension_illuminant'] = "custom_XYZ"
                 p['color.dimension_illuminant_XYZ'] = (
-                    ill[0]*fac,
-                    ill[1]*fac,
-                    ill[2]*fac
+                    ill[0],
+                    ill[1],
+                    ill[2]
                 )
                 # update pref ui
                 app.preferences_window.update_ui()
 
                 # reset the brush color with the same color
                 # under the new illuminant
-                brushcolor.illuminant = ill * fac
+                brushcolor.illuminant = ill
 
                 app.brush.set_color_hsv(brushcolor.get_hsv())
                 app.brush.set_cam16_color(brushcolor)

@@ -1510,13 +1510,13 @@ def CAM16_to_RGB(self):
     if "highlight" in self.gamutmapping:
         return 0.5, 0.5, 0.5, 0
     print("before", result, maxRGB)
-    #if (result < 0).any():
-    #    amount_to_add = (abs(min(result)) / maxRGB[np.argmin(result)]) * maxRGB
-    #    result += amount_to_add
-    if (result > maxRGB + 0.01).any():
-        amount_to_add = (max(result) - maxRGB[np.argmax(result)]) * maxRGB
+    if (result < 0).any():
+        amount_to_add = (abs(min(result)) / maxRGB[np.argmin(result)]) * maxRGB
         result += amount_to_add
-        print("after", result, amount_to_add)
+    #if (result > maxRGB + 0.01).any():
+    #    amount_to_add = (max(result) - maxRGB[np.argmax(result)]) * maxRGB
+    #    result += amount_to_add
+    #    print("after", result, amount_to_add)
         # result /= result[np.argmax(result)] / maxRGB[np.argmax(result)]
     r, g, b = np.clip(result, 0.0, maxRGB)
     # cache the rgb for faster get_rgb calls
