@@ -1509,16 +1509,17 @@ def CAM16_to_RGB(self):
     # this lets the "stripes" show through for these areas
     if "highlight" in self.gamutmapping:
         return 0.5, 0.5, 0.5, 0
-    print("before", result, maxRGB)
-    if (result < 0).any():
-        amount_to_add = (abs(min(result)) / maxRGB[np.argmin(result)]) * maxRGB
-        result += amount_to_add
-    #if (result > maxRGB + 0.01).any():
-    #    amount_to_add = (max(result) - maxRGB[np.argmax(result)]) * maxRGB
-    #    result += amount_to_add
-    #    print("after", result, amount_to_add)
-        # result /= result[np.argmax(result)] / maxRGB[np.argmax(result)]
+    while (result > maxRGB + 0.01).any() or (result < -0.01).any():
+        v = v * 0.99
+        s = s * 0.95
+        zipped = zip(axes, (v, s, h))
+        cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped),
+                                             colour.CAM16_Specification)
+        xyz = colour.CAM16_to_XYZ(cam, self.illuminant,
+                                  self.L_A, self.Y_b, self.surround)
+        result = colour.XYZ_to_sRGB(xyz/100.0)
     r, g, b = np.clip(result, 0.0, maxRGB)
+    print("new color", r, g, b)
     # cache the rgb for faster get_rgb calls
     # must reset this to None if changing any properties
     self.cachedrgb = (r, g, b)
@@ -1528,7 +1529,7 @@ def CAM16_to_RGB(self):
 # weighted geometric mean must avoid absolute zero
 _WGM_EPSILON = 0.0001
 
-# These do not sum to 1.0.  No normalization,
+# These spectral reflection curves do not sum to 1.0.
 # but CMFs have been weighted w/ D65 SPD
 
 
@@ -1543,7 +1544,7 @@ def RGB_to_Spectral(rgb):
     g = max(g, _WGM_EPSILON)
     b = max(b, _WGM_EPSILON)
     # Spectral primaries derived by an optimization routine devised by
-    # Allen Burns. Smooth curves <= 1.0 to match XYZ
+    # Scott Allen Burns. Smooth curves <= 1.0 to match XYZ
 
     spectral_r = r * np.array([0.009281362787953, 0.009732627042016,
                                0.011254252737167, 0.015105578649573,

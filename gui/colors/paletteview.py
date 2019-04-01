@@ -919,10 +919,10 @@ class _PaletteGridLayout (ColorAdjusterWidget):
 
         i0, ix = range
         palette = self.get_color_manager().palette
-        palette[i0].illuminant = None
+        # palette[i0].illuminant = None
         palette[i0].limit_purity = None
         palette[i0].cachedrgb = None
-        palette[ix].illuminant = None
+        # palette[ix].illuminant = None
         palette[ix].limit_purity = None
         palette[ix].cachedrgb = None
         c0 = color_class(color=palette[i0])

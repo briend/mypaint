@@ -581,13 +581,13 @@ class CAM16TempSlider (SliderColorAdjuster):
         return min(int(len // 20), 2)
 
     def get_color_for_bar_amount(self, amt):
-        # CCT range from 2500-20000
+        # CCT range from 3000-20000
         # below 1904 is out of sRGB gamut
         # put 6500k near middle
         if amt <= 0.5:
-            cct = amt / 0.5 * 4000 + 2500
+            cct = amt / 0.5 * 3500 + 3000
         else:
-            cct = (amt - 0.5) * 27000 + 6500
+            cct = (amt - 0.5) * 20000 + 6500
         rgb = CCT_to_RGB(cct)
         col = RGBColor(rgb=rgb)
         return col
@@ -598,9 +598,9 @@ class CAM16TempSlider (SliderColorAdjuster):
         xy = colour.XYZ_to_xy(np.array(col.illuminant))
         cct = colour.temperature.xy_to_CCT_Hernandez1999(xy)
         if cct <= 6500:
-            amt = (cct - 2500) / 4000 * 0.5
+            amt = (cct - 3000) / 3500 * 0.5
         else:
-            amt = (cct - 6500) / 27000 + 0.5
+            amt = (cct - 6500) / 20000 + 0.5
         return max(0.0, amt)
 
     def get_background_validity(self):

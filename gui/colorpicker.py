@@ -197,7 +197,9 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         if illuminant == "custom_XYZ":
             illuminant = prefs['color.dimension_illuminant_XYZ']
         else:
-            illuminant = colour.ILLUMINANTS['cie_2_1931'][illuminant]
+            illuminant = (colour.xy_to_XYZ(
+                colour.ILLUMINANTS['cie_2_1931'][illuminant])
+                * 100.0)
 
         doc.last_colorpick_time = t
         pickcolor = tdw.pick_color(x, y, size=int(3/tdw.renderer.scale))
@@ -252,9 +254,16 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 if p['color.pick_blend_reverse'] is True:
                     dist = 1 - dist
                 self.blending_ratio = dist
-                brushcolor_start = color_class(color=brushcolor)
-                pickcolor = color_class(
-                    color=self.starting_color)
+                brushcolor_start = None
+                if color_class == CAM16Color:
+                    brushcolor_start = color_class(color=brushcolor,
+                                                   illuminant=illuminant)
+                    pickcolor = color_class(
+                        color=self.starting_color, illuminant=illuminant)
+                else:
+                    brushcolor_start = color_class(color=brushcolor)
+                    pickcolor = color_class(
+                        color=self.starting_color)
                 self.blending_color = brushcolor_start.mix(pickcolor, dist)
             elif mode == "PickTarget":
                 doc.last_color_target = pickcolor
