@@ -1652,7 +1652,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         brushcolor = copy.copy(self.app.brush.CAM16Color)
         cct = RGB_to_CCT(colour.XYZ_to_sRGB(brushcolor.illuminant))
         # values below 1904 are outside sRGB gamut
-        cct = max(cct - step_size, 2500)
+        cct = max(cct - step_size, 3000)
         illuminant = colour.sRGB_to_XYZ(CCT_to_RGB(cct))*100
 
         self.app.preferences['color.dimension_illuminant'] = "custom_XYZ"
@@ -1697,7 +1697,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         brushcolor = copy.copy(self.app.brush.CAM16Color)
         cct = RGB_to_CCT(colour.XYZ_to_sRGB(brushcolor.illuminant))
         # values below 1904 are outside sRGB gamut
-        cct = min(cct + step_size, 25000)
+        cct = min(cct + step_size, 16500)
         illuminant = colour.sRGB_to_XYZ(CCT_to_RGB(cct))*100
 
         self.app.preferences['color.dimension_illuminant'] = "custom_XYZ"
@@ -1871,22 +1871,22 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             h = (h + step_size / 360) % 1.0
             brushcolor = HCYColor(h, c, yy)
 
-        elif tune_model == 'CAM16':
+        elif tune_model in ('CAM16', 'Pigment'):
             self.last_color_target = None
             brushcolor = copy.copy(self.app.brush.CAM16Color)
             brushcolor.h = (brushcolor.h + step_size) % 360
             brushcolor.cachedrgb = None
 
-        elif tune_model == 'Pigment':
-            brushcolor_start = copy.copy(self.app.brush.CAM16Color)
-            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
-            brushcolor_start.h = (brushcolor_start.h + 60) % 360
-            brushcolor_start.cachedrgb = None
-            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
-            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig,
-                                                  min(step_size / 50, 1.0))
-            brushcolor = CAM16Color(color=brushcolor,
-                                     illuminant=brushcolor_start.illuminant)
+#        elif tune_model == 'Pigment':
+#            brushcolor_start = copy.copy(self.app.brush.CAM16Color)
+#            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+#            brushcolor_start.h = (brushcolor_start.h + 60) % 360
+#            brushcolor_start.cachedrgb = None
+#            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
+#            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig,
+#                                                  min(step_size / 50, 1.0))
+#            brushcolor = CAM16Color(color=brushcolor,
+#                                     illuminant=brushcolor_start.illuminant)
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
             mgr.palette.keep_position = False
@@ -1929,22 +1929,22 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             h = (h - step_size / 360) % 1.0
             brushcolor = HCYColor(h, c, yy)
 
-        elif tune_model == 'CAM16':
+        elif tune_model in ('CAM16', 'Pigment'):
             self.last_color_target = None
             brushcolor = copy.copy(self.app.brush.CAM16Color)
             brushcolor.h = (brushcolor.h - step_size) % 360
             brushcolor.cachedrgb = None
 
-        elif tune_model == 'Pigment':
-            brushcolor_start = copy.copy(self.app.brush.CAM16Color)
-            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
-            brushcolor_start.h = (brushcolor_start.h - 60) % 360
-            brushcolor_start.cachedrgb = None
-            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
-            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig,
-                                                  min(step_size / 100, 1.0))
-            brushcolor = CAM16Color(color=brushcolor,
-                                     illuminant=brushcolor_start.illuminant)
+#        elif tune_model == 'Pigment':
+#            brushcolor_start = copy.copy(self.app.brush.CAM16Color)
+#            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+#            brushcolor_start.h = (brushcolor_start.h - 60) % 360
+#            brushcolor_start.cachedrgb = None
+#            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
+#            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig,
+#                                                  min(step_size / 100, 1.0))
+#            brushcolor = CAM16Color(color=brushcolor,
+#                                     illuminant=brushcolor_start.illuminant)
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
             mgr.palette.keep_position = False
