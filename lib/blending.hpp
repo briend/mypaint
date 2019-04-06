@@ -14,9 +14,12 @@
 #define __HAVE_BLENDING
 #define WGM_EPSILON 0.001
 
+#include <mypaint-tiled-surface.h>
 #include "fastapprox/fastpow.h"
+#include "fastapprox/fasttrig.h"
 #include "fix15.hpp"
 #include "compositing.hpp"
+#include <math.h>
 
 static const float T_MATRIX_SMALL[3][10] = {{0.026595621243689,0.049779426257903,0.022449850859496,-0.218453689278271
 ,-0.256894883201278,0.445881722194840,0.772365886289756,0.194498761382537
@@ -113,6 +116,57 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
             dst[i+0] = fix15_sumprods(src[i], opac, one_minus_Sa, dst[i]);
             dst[i+1] = fix15_sumprods(src[i+1], opac, one_minus_Sa, dst[i+1]);
             dst[i+2] = fix15_sumprods(src[i+2], opac, one_minus_Sa, dst[i+2]);
+            if (DSTALPHA) {
+                dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
+            }
+        }
+    }
+};
+
+template <bool DSTALPHA, unsigned int BUFSIZE>
+class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
+{
+    // Partial specialization for normal painting layers (svg:src-over),
+    // working in premultiplied alpha for speed.
+  public:
+    inline void operator() (const fix15_short_t * const src,
+                            fix15_short_t * const dst,
+                            const fix15_short_t opac) const
+    {
+        const unsigned int stride = MYPAINT_TILE_SIZE * 4;
+        //const float rad_to_angle = 180.0 / M_PI;
+        for (unsigned int i=0; i<BUFSIZE; i+=4) {
+            // Calcuate bump map normals
+            // Use alpha as  height-map
+            float top, right, left, bottom;
+            top = right = left = bottom = src[i+3];
+            if (i > stride*2) {
+                top = src[i+3 - stride];
+            }
+            if (i % stride < 252) {
+                right = src[i+3 + 4];
+            }
+            if (i % stride > 3) {
+                left = src[i-1];
+            }
+            if (i < BUFSIZE - stride) {
+                bottom = src[i+3 + stride];
+            }
+
+            float xdiff = fastpow(fastpow(left - src[i+3], 2) + fastpow(right - src[i+3], 2), 0.5);
+            float ydiff = fastpow(fastpow(top - src[i+3], 2) + fastpow(bottom - src[i+3], 2), 0.5);
+            float slope = fastpow((xdiff + ydiff) / 2 / (1<<15), 0.1);
+            float degrees = atan(slope);
+            float lambert = fastcos(degrees);
+            // if (src[i+3] > 0) {
+            //    printf("%f, %f, %f, %i, %i,  %i\n", slope, degrees, lambert, i, stride, src[i+3]);
+            // }
+            //printf("%f,%f,%f,%f\n", top, bottom, left, right);
+            const fix15_t Sa = fix15_mul(src[i+3], opac);
+            const fix15_t one_minus_Sa = fix15_one - Sa;
+            dst[i+0] = fix15_sumprods(src[i], opac * lambert, one_minus_Sa, dst[i]);
+            dst[i+1] = fix15_sumprods(src[i+1], opac * lambert, one_minus_Sa, dst[i+1]);
+            dst[i+2] = fix15_sumprods(src[i+2], opac * lambert, one_minus_Sa, dst[i+2]);
             if (DSTALPHA) {
                 dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
             }

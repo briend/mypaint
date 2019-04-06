@@ -113,6 +113,7 @@ enum CombineMode {
     CombineSourceAtop,
     CombineDestinationAtop,
     CombineSpectralWGM,
+    CombineBumpMap,
     NumCombineModes
 };
 

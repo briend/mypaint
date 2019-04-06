@@ -46,6 +46,10 @@ MODE_STRINGS = {
         _("Pigment"),
         _("Similar to mixing actual pigments by upsampling "
           "to 10 spectral channels.")),
+    lib.mypaintlib.CombineBumpMap: (
+        _("BumpMap"),
+        _("Give pixels a 3D appearance using the alpha channel "
+          "as a height-field.")),
     lib.mypaintlib.CombineMultiply: (
         _("Multiply"),
         _("Similar to loading two slides into a projector and "
