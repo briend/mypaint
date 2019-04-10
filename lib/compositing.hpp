@@ -257,16 +257,16 @@ class CompositeBumpMap : public CompositeFunc
                             fix15_short_t &rb, fix15_short_t &gb,
                             fix15_short_t &bb, fix15_short_t &ab) const
     {
-        const fix15_t j = fix15_one - as;
-        const fix15_t k = fix15_mul(ab, j);
+//        const fix15_t j = fix15_one - as;
+//        const fix15_t k = fix15_mul(ab, j);
 
-        rb = fix15_short_clamp(fix15_sumprods(as, Rs, j, rb));
-        gb = fix15_short_clamp(fix15_sumprods(as, Gs, j, gb));
-        bb = fix15_short_clamp(fix15_sumprods(as, Bs, j, bb));
-        ab = fix15_short_clamp(as + k);
+//        rb = fix15_short_clamp(fix15_sumprods(as, Rs, j, rb));
+//        gb = fix15_short_clamp(fix15_sumprods(as, Gs, j, gb));
+//        bb = fix15_short_clamp(fix15_sumprods(as, Bs, j, bb));
+//        ab = fix15_short_clamp(as + k);
     }
 
-    static const bool zero_alpha_has_effect = true;
+    static const bool zero_alpha_has_effect = false;
     static const bool can_decrease_alpha = false;
     static const bool zero_alpha_clears_backdrop = false;
 };

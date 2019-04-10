@@ -136,40 +136,65 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
         const unsigned int stride = MYPAINT_TILE_SIZE * 4;
         //const float rad_to_angle = 180.0 / M_PI;
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            // Calcuate bump map normals
-            // Use alpha as  height-map
-            float top, right, left, bottom;
-            top = right = left = bottom = src[i+3];
-            if (i > stride*2) {
-                top = src[i+3 - stride];
-            }
-            if (i % stride < 252) {
-                right = src[i+3 + 4];
-            }
-            if (i % stride > 3) {
-                left = src[i-1];
-            }
-            if (i < BUFSIZE - stride) {
-                bottom = src[i+3 + stride];
-            }
-
-            float xdiff = fastpow(fastpow(left - src[i+3], 2) + fastpow(right - src[i+3], 2), 0.5);
-            float ydiff = fastpow(fastpow(top - src[i+3], 2) + fastpow(bottom - src[i+3], 2), 0.5);
-            float slope = fastpow((xdiff + ydiff) / 2 / (1<<15), 0.1);
-            float degrees = atan(slope);
-            float lambert = fastcos(degrees);
-            // if (src[i+3] > 0) {
-            //    printf("%f, %f, %f, %i, %i,  %i\n", slope, degrees, lambert, i, stride, src[i+3]);
-            // }
-            //printf("%f,%f,%f,%f\n", top, bottom, left, right);
             const fix15_t Sa = fix15_mul(src[i+3], opac);
             const fix15_t one_minus_Sa = fix15_one - Sa;
+            // Calcuate bump map normals
+            // Use alpha as  height-map
+            float slope = 0.0;
+            float neighbors = 0;
+            float center = src[i] + src[i+1] + src[i+2] + src[i+3];
+            // North
+            if (i > stride*2) {
+                int o = i - stride;
+                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] - center) * 0.5;
+                neighbors += 0.5;
+            }
+            // East
+            if (i % stride < stride - 4) {
+                int o = i + 4;
+                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] - center) * 0.5;
+                neighbors += 0.5;
+            }
+            // West
+            if (i % stride > 3) {
+                int o = i - 4;
+                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] - center);
+                neighbors += 1;
+            }
+            // South
+            if (i < BUFSIZE - stride) {
+                int o = i + stride;
+                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] - center);
+                neighbors += 1;
+            }
+            
+            slope /= neighbors * (1<<15);
+            slope = fastpow(slope, center / (1<<18));
+            //slope *= ((float)opac / (1<<15));
+
+            //fix15_short_t ldiff = abs(left - src[i+3]);
+            //float tdiff = abs(top - src[i+3]);
+            //float rdiff = abs(right - src[i+3]);
+            //fix15_short_t bdiff = abs(bottom - src[i+3]);
+            //float slope = (float)(ldiff + bdiff) / 2.0 / (1<<15);
+            float degrees = atan(slope);
+            float lambert = fastcos(degrees);
+            //if (src[i+3] > 0) {
+            //    printf("%f, %f, %f, %i, %i,  %i\n", slope, degrees, lambert, i, stride, src[i+3]);
+            //}
+            //printf("%f,%f,%f,%f\n", top, bottom, left, right);
+
             dst[i+0] = fix15_sumprods(src[i], opac * lambert, one_minus_Sa, dst[i]);
             dst[i+1] = fix15_sumprods(src[i+1], opac * lambert, one_minus_Sa, dst[i+1]);
             dst[i+2] = fix15_sumprods(src[i+2], opac * lambert, one_minus_Sa, dst[i+2]);
             if (DSTALPHA) {
                 dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
             }
+//            if (src[i+3] > 0) {
+//                dst[i+0] = lambert * dst[i];
+//                dst[i+1] = lambert * dst[i+1];
+//                dst[i+2] = lambert * dst[i+2];
+//            }
         }
     }
 };
