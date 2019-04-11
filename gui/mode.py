@@ -987,7 +987,7 @@ class DragMode (InteractionMode):
             self.start_x = event.x
             self.start_y = event.y
         else:
-            last_t, last_x, last_y = self.doc.get_last_event_info(tdw)
+            last_t, last_x, last_y, last_p = self.doc.get_last_event_info(tdw)
             self.start_x = last_x
             self.start_y = last_y
         tdw_window = tdw.get_window()
