@@ -2088,6 +2088,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if old_pos is None:
             old_pos = mgr.palette.get_match_position()
             self.last_palette_color = old_pos
+        mgr.palette.set_match_position(old_pos)
         target_pos = self.current_palette_color_target
         if target_pos is None:
             mgr.palette.move_match_position(-1, brushcolor_start, group=True)
@@ -2101,7 +2102,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             return
         origin = brushcolor_start
         diff = color_diff(RGBColor(*target.get_rgb()), RGBColor(*origin.get_rgb()))
-        if diff < 1.0:
+        if diff < 2.0:
             if (old_pos > 0
                     and mgr.palette._colors[target_pos - 1]
                     is not mgr.palette._EMPTY_SLOT_ITEM):
@@ -2151,6 +2152,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if old_pos is None:
             old_pos = mgr.palette.get_match_position()
             self.last_palette_color = old_pos
+        mgr.palette.set_match_position(old_pos)
         target_pos = self.current_palette_color_target
         if target_pos is None:
             mgr.palette.move_match_position(1, brushcolor_start, group=True)
@@ -2164,12 +2166,13 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             return
         origin = brushcolor_start
         diff = color_diff(RGBColor(*target.get_rgb()), RGBColor(*origin.get_rgb()))
-        if diff < 1.0:
+        if diff < 2.0:
             if (target_pos < len(mgr.palette._colors) - 1
                     and mgr.palette._colors[target_pos + 1]
                     is not mgr.palette._EMPTY_SLOT_ITEM):
                 self.last_palette_color += 1
                 self.current_palette_color_target += 1
+                
                 mgr.palette.move_match_position(1, brushcolor_start, group=True)
             else:
                 mgr.palette.keep_position = False
