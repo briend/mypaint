@@ -123,10 +123,6 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
     }
 };
 
-static const float LUM_R = 0.2126;
-static const float LUM_G = 0.7152;
-static const float LUM_B = 0.0722;
-
 template <bool DSTALPHA, unsigned int BUFSIZE>
 class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
 {
@@ -146,34 +142,34 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             // Use alpha as  height-map
             float slope = 0.0;
             float neighbors = 0;
-            float center = src[i]*LUM_R + src[i+1]*LUM_G + src[i+2]*LUM_B;
+            float center = src[i] + src[i+1] + src[i+2] + src[i+3];
             // North
             if (i > stride*2) {
                 int o = i - stride;
-                slope += abs(src[o]*LUM_R + src[o+1]*LUM_G + src[o+2]*LUM_B - center) * 0.5;
+                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] - center) * 0.5;
                 neighbors += 0.5;
             }
             // East
             if (i % stride < stride - 4) {
                 int o = i + 4;
-                slope += abs(src[o]*LUM_R + src[o+1]*LUM_G + src[o+2]*LUM_B - center) * 0.5;
+                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] - center) * 0.5;
                 neighbors += 0.5;
             }
             // West
             if (i % stride > 3) {
                 int o = i - 4;
-                slope += abs(src[o]*LUM_R + src[o+1]*LUM_G + src[o+2]*LUM_B - center);
+                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] - center);
                 neighbors += 1;
             }
             // South
             if (i < BUFSIZE - stride) {
                 int o = i + stride;
-                slope += abs(src[o]*LUM_R + src[o+1]*LUM_G + src[o+2]*LUM_B - center);
+                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] - center);
                 neighbors += 1;
             }
             
             slope /= neighbors * (1<<15);
-            slope = fastpow(slope, center / (1<<16));
+            slope = fastpow(slope, center / (1<<18));
             //slope *= ((float)opac / (1<<15));
 
             //fix15_short_t ldiff = abs(left - src[i+3]);
