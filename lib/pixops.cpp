@@ -207,14 +207,14 @@ tile_convert_rgba16_to_rgba8_c (const uint16_t* const src,
       assert(b<=a);
 #endif
       // un-premultiply alpha (with rounding)
-      if (a != 0) {
-        const uint32_t rnd_a = a/2;
-        r = ((r << 15) + rnd_a) / a;
-        g = ((g << 15) + rnd_a) / a;
-        b = ((b << 15) + rnd_a) / a;
-      } else {
-        r = g = b = 0;
-      }
+//      if (a != 0) {
+//        const uint32_t rnd_a = a/2;
+//        r = ((r << 15) + rnd_a) / a;
+//        g = ((g << 15) + rnd_a) / a;
+//        b = ((b << 15) + rnd_a) / a;
+//      } else {
+//        r = g = b = 0;
+//      }
 #ifdef HEAVY_DEBUG
       assert(a<=(1<<15));
       assert(r<=(1<<15));
@@ -263,9 +263,9 @@ tile_convert_rgba16_to_rgba8_c (const uint16_t* const src,
       assert(noise_idx <= dithering_noise_size);
 #endif
 
-      *dst_p++ = uint8_t(fastpow((float)r / (1<<15) + add_r, 1.0/EOTF) * 255);
-      *dst_p++ = uint8_t(fastpow((float)g / (1<<15) + add_r, 1.0/EOTF) * 255);
-      *dst_p++ = uint8_t(fastpow((float)b / (1<<15) + add_r, 1.0/EOTF) * 255);
+      *dst_p++ = (uint8_t)(fastpow((float)r / (1<<15) + add_r, 1.0/EOTF) * 255);
+      *dst_p++ = (uint8_t)(fastpow((float)g / (1<<15) + add_r, 1.0/EOTF) * 255);
+      *dst_p++ = (uint8_t)(fastpow((float)b / (1<<15) + add_r, 1.0/EOTF) * 255);
       *dst_p++ = ((a * 255 + add_a) / (1<<15));
     }
     src_p += src_strides;
@@ -421,15 +421,15 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       a = *src_p++;
 
       // convert to fixed point (with rounding)
-      r = uint32_t(fastpow((float)r/255.0, EOTF) * (1<<15) + 0.5);
-      g = uint32_t(fastpow((float)g/255.0, EOTF) * (1<<15) + 0.5);
-      b = uint32_t(fastpow((float)b/255.0, EOTF) * (1<<15) + 0.5);
+      r = (uint32_t)(fastpow((float)r/255.0, EOTF) * (1<<15) + 0.5);
+      g = (uint32_t)(fastpow((float)g/255.0, EOTF) * (1<<15) + 0.5);
+      b = (uint32_t)(fastpow((float)b/255.0, EOTF) * (1<<15) + 0.5);
       a = (a * (1<<15) + 255/2) / 255;
 
       // premultiply alpha (with rounding), save back
-      *dst_p++ = (r * a + (1<<15)/2) / (1<<15);
-      *dst_p++ = (g * a + (1<<15)/2) / (1<<15);
-      *dst_p++ = (b * a + (1<<15)/2) / (1<<15);
+      *dst_p++ = r;
+      *dst_p++ = g;
+      *dst_p++ = b;
       *dst_p++ = a;
     }
   }

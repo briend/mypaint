@@ -120,9 +120,9 @@ class BufferCombineFunc
                 Rs = Gs = Bs = 0;
             }
             else {
-                Rs = fix15_short_clamp(fix15_div(src[i+0], as));
-                Gs = fix15_short_clamp(fix15_div(src[i+1], as));
-                Bs = fix15_short_clamp(fix15_div(src[i+2], as));
+                Rs = src[i+0];//fix15_short_clamp(fix15_div(src[i+0], as));
+                Gs = src[i+1];//fix15_short_clamp(fix15_div(src[i+1], as));
+                Bs = src[i+2];//fix15_short_clamp(fix15_div(src[i+2], as));
             }
 #ifdef HEAVY_DEBUG
             assert(Rs <= fix15_one); assert(Rs >= 0);
@@ -137,9 +137,9 @@ class BufferCombineFunc
                     Rb = Gb = Bb = 0;
                 }
                 else {
-                    Rb = fix15_short_clamp(fix15_div(dst[i+0], ab));
-                    Gb = fix15_short_clamp(fix15_div(dst[i+1], ab));
-                    Bb = fix15_short_clamp(fix15_div(dst[i+2], ab));
+                    Rb = dst[i+0];//fix15_short_clamp(fix15_div(dst[i+0], ab));
+                    Gb = dst[i+1];//fix15_short_clamp(fix15_div(dst[i+1], ab));
+                    Bb = dst[i+2];//fix15_short_clamp(fix15_div(dst[i+2], ab));
                 }
             }
             else {

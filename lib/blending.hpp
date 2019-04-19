@@ -113,11 +113,16 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t Sa = fix15_mul(src[i+3], opac);
             const fix15_t one_minus_Sa = fix15_one - Sa;
-            dst[i+0] = fix15_sumprods(src[i], opac, one_minus_Sa, dst[i]);
-            dst[i+1] = fix15_sumprods(src[i+1], opac, one_minus_Sa, dst[i+1]);
-            dst[i+2] = fix15_sumprods(src[i+2], opac, one_minus_Sa, dst[i+2]);
+            dst[i+0] = fix15_sumprods(fix15_mul(src[i], src[i+3]), opac, one_minus_Sa, fix15_mul(dst[i], dst[i+3]));
+            dst[i+1] = fix15_sumprods(fix15_mul(src[i+1], src[i+3]), opac, one_minus_Sa, fix15_mul(dst[i+1], dst[i+3]));
+            dst[i+2] = fix15_sumprods(fix15_mul(src[i+2], src[i+3]), opac, one_minus_Sa, fix15_mul(dst[i+2], dst[i+3]));
             if (DSTALPHA) {
                 dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
+                if (dst[i+3] > 0) {
+                  dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
+                  dst[i+1] = fix15_div(dst[i+1], dst[i+3]);
+                  dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
+                }
             }
         }
     }
@@ -212,61 +217,45 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t Sa = fix15_mul(src[i+3], opac);
             const fix15_t one_minus_Sa = fix15_one - Sa;
-            if ((DSTALPHA && dst[i+3] == 0)|| Sa == (1<<15) || Sa == 0) {
-              dst[i+0] = fix15_sumprods(src[i], opac, one_minus_Sa, dst[i]);
-              dst[i+1] = fix15_sumprods(src[i+1], opac, one_minus_Sa, dst[i+1]);
-              dst[i+2] = fix15_sumprods(src[i+2], opac, one_minus_Sa, dst[i+2]);
-              if (DSTALPHA) {
-                dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
-              }   
+            //alpha-weighted ratio for WGM (sums to 1.0)
+            //fix15_t dst_alpha = (1<<15);
+            float fac_a;
+            if (DSTALPHA) {
+              fac_a = (float)Sa / (Sa + one_minus_Sa * dst[i+3] / (1<<15));
             } else {
-              //alpha-weighted ratio for WGM (sums to 1.0)
-              //fix15_t dst_alpha = (1<<15);
-              float fac_a;
-              if (DSTALPHA) {
-                fac_a = (float)Sa / (Sa + one_minus_Sa * dst[i+3] / (1<<15));
-              } else {
-                fac_a = (float)Sa / (1<<15);
-              }
-              float fac_b = 1.0 - fac_a;
-
-              //convert bottom to spectral.  Un-premult alpha to obtain reflectance
-              //color noise is not a problem since low alpha also implies low weight
-              float spectral_b[10] = {0};
-              if (DSTALPHA && dst[i+3] > 0) {
-                rgb_to_spectral((float)dst[i] / dst[i+3], (float)dst[i+1] / dst[i+3], (float)dst[i+2] / dst[i+3], spectral_b);
-              } else {
-                rgb_to_spectral((float)dst[i]/ (1<<15), (float)dst[i+1]/ (1<<15), (float)dst[i+2]/ (1<<15), spectral_b);
-              }
-              // convert top to spectral.  Already straight color
-              float spectral_a[10] = {0};
-              if (src[i+3] > 0) {
-                rgb_to_spectral((float)src[i] / src[i+3], (float)src[i+1] / src[i+3], (float)src[i+2] / src[i+3], spectral_a);
-              } else {
-                rgb_to_spectral((float)src[i] / (1<<15), (float)src[i+1] / (1<<15), (float)src[i+2] / (1<<15), spectral_a);
-              }
-              // mix to the two spectral reflectances using WGM
-              float spectral_result[10] = {0};
-              for (int i=0; i<10; i++) {
-                spectral_result[i] = fastpow(spectral_a[i], fac_a) * fastpow(spectral_b[i], fac_b);
-              }
-              
-              // convert back to RGB and premultiply alpha
-              float rgb_result[4] = {0};
-              spectral_to_rgb(spectral_result, rgb_result);
-              if (DSTALPHA) {
-                rgb_result[3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
-              } else {
-                rgb_result[3] = (1<<15);
-              }
-              for (int j=0; j<3; j++) {
-                dst[i+j] =(rgb_result[j] * (rgb_result[3] + 0.5));
-              }
-              
-              if (DSTALPHA) {
-                  dst[i+3] = rgb_result[3];
-              }            
+              fac_a = (float)Sa / (1<<15);
             }
+            float fac_b = 1.0 - fac_a;
+
+            //convert bottom to spectral.  Un-premult alpha to obtain reflectance
+            //color noise is not a problem since low alpha also implies low weight
+            float spectral_b[10] = {0};
+            rgb_to_spectral((float)dst[i] / (1<<15), (float)dst[i+1] / (1<<15), (float)dst[i+2] / (1<<15), spectral_b);
+            // convert top to spectral.  Already straight color
+            float spectral_a[10] = {0};
+            rgb_to_spectral((float)src[i] / (1<<15), (float)src[i+1] / (1<<15), (float)src[i+2] / (1<<15), spectral_a);
+
+            // mix to the two spectral reflectances using WGM
+            float spectral_result[10] = {0};
+            for (int i=0; i<10; i++) {
+              spectral_result[i] = fastpow(spectral_a[i], fac_a) * fastpow(spectral_b[i], fac_b);
+            }
+            
+            // convert back to RGB
+            float rgb_result[4] = {0};
+            spectral_to_rgb(spectral_result, rgb_result);
+            if (DSTALPHA) {
+              rgb_result[3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
+            } else {
+              rgb_result[3] = (1<<15);
+            }
+            for (int j=0; j<3; j++) {
+              dst[i+j] = rgb_result[j] * (1<<15) + 0.5;
+            }
+            
+            if (DSTALPHA) {
+                dst[i+3] = rgb_result[3];
+            }            
 
         }
     }
@@ -284,11 +273,16 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationIn>
     {
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t Sa = fix15_mul(src[i+3], opac);
-            dst[i+0] = fix15_mul(dst[i+0], Sa);
-            dst[i+1] = fix15_mul(dst[i+1], Sa);
-            dst[i+2] = fix15_mul(dst[i+2], Sa);
+            dst[i+0] = fix15_mul(fix15_mul(dst[i+0], dst[i+3]), Sa);
+            dst[i+1] = fix15_mul(fix15_mul(dst[i+1], dst[i+3]), Sa);
+            dst[i+2] = fix15_mul(fix15_mul(dst[i+2], dst[i+3]), Sa);
             if (DSTALPHA) {
                 dst[i+3] = fix15_mul(Sa, dst[i+3]);
+                if (dst[i+3] > 0) {
+                  dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
+                  dst[i+1] = fix15_div(dst[i+1], dst[i+3]);
+                  dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
+                }
             }
         }
     }
@@ -306,11 +300,16 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationOut
     {
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t one_minus_Sa = fix15_one-fix15_mul(src[i+3], opac);
-            dst[i+0] = fix15_mul(dst[i+0], one_minus_Sa);
-            dst[i+1] = fix15_mul(dst[i+1], one_minus_Sa);
-            dst[i+2] = fix15_mul(dst[i+2], one_minus_Sa);
+            dst[i+0] = fix15_mul(fix15_mul(dst[i+0], dst[i+3]), one_minus_Sa);
+            dst[i+1] = fix15_mul(fix15_mul(dst[i+1], dst[i+3]), one_minus_Sa);
+            dst[i+2] = fix15_mul(fix15_mul(dst[i+2], dst[i+3]), one_minus_Sa);
             if (DSTALPHA) {
                 dst[i+3] = fix15_mul(one_minus_Sa, dst[i+3]);
+                if (dst[i+3] > 0) {
+                  dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
+                  dst[i+1] = fix15_div(dst[i+1], dst[i+3]);
+                  dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
+                }
             }
         }
     }
@@ -336,12 +335,21 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceAtop>
             // where
             //   src[n] = as*Cs    -- premultiplied
             //   dst[n] = ab*Cb    -- premultiplied
-            dst[i+0] = fix15_sumprods(fix15_mul(src[i+0], opac), ab,
-                                      dst[i+0], one_minus_as);
-            dst[i+1] = fix15_sumprods(fix15_mul(src[i+1], opac), ab,
-                                      dst[i+1], one_minus_as);
-            dst[i+2] = fix15_sumprods(fix15_mul(src[i+2], opac), ab,
-                                      dst[i+2], one_minus_as);
+            dst[i+0] = fix15_sumprods(fix15_mul(fix15_mul(src[i+0], src[i+3]), opac), ab,
+                                      fix15_mul(dst[i+0], ab), one_minus_as);
+            dst[i+1] = fix15_sumprods(fix15_mul(fix15_mul(src[i+1], src[i+3]), opac), ab,
+                                      fix15_mul(dst[i+1], ab), one_minus_as);
+            dst[i+2] = fix15_sumprods(fix15_mul(fix15_mul(src[i+2], src[i+3]), opac), ab,
+                                      fix15_mul(dst[i+2], ab), one_minus_as);
+//            printf("%i, %i, %i\n", dst[i+0], dst[i+3], as);
+            if (DSTALPHA) {
+                fix15_t alpha = fix15_sumprods(as, ab, ab, one_minus_as);
+                if (alpha > 0) {
+                  dst[i+0] = fix15_div(dst[i+0], alpha);
+                  dst[i+1] = fix15_div(dst[i+1], alpha);
+                  dst[i+2] = fix15_div(dst[i+2], alpha);
+                }
+            }
             // W3C spec:
             //   ao = as*ab + ab*(1-as)
             //   ao = ab
@@ -369,17 +377,22 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationAto
             // where
             //   src[n] = as*Cs    -- premultiplied
             //   dst[n] = ab*Cb    -- premultiplied
-            dst[i+0] = fix15_sumprods(fix15_mul(src[i+0], opac), one_minus_ab,
-                                      dst[i+0], as);
-            dst[i+1] = fix15_sumprods(fix15_mul(src[i+1], opac), one_minus_ab,
-                                      dst[i+1], as);
-            dst[i+2] = fix15_sumprods(fix15_mul(src[i+2], opac), one_minus_ab,
-                                      dst[i+2], as);
+            dst[i+0] = fix15_sumprods(fix15_mul(fix15_mul(src[i+0], src[i+3]), opac), one_minus_ab,
+                                      fix15_mul(dst[i+0], dst[i+3]), as);
+            dst[i+1] = fix15_sumprods(fix15_mul(fix15_mul(src[i+1], src[i+3]), opac), one_minus_ab,
+                                      fix15_mul(dst[i+1], dst[i+3]), as);
+            dst[i+2] = fix15_sumprods(fix15_mul(fix15_mul(src[i+2], src[i+3]), opac), one_minus_ab,
+                                      fix15_mul(dst[i+2], dst[i+3]), as);
             // W3C spec:
             //   ao = as*(1-ab) + ab*as
             //   ao = as
             if (DSTALPHA) {
                 dst[i+3] = as;
+                if (dst[i+3] > 0) {
+                  dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
+                  dst[i+1] = fix15_div(dst[i+1], dst[i+3]);
+                  dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
+                }
             }
         }
     }
