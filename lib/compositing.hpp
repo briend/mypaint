@@ -266,7 +266,7 @@ class CompositeBumpMap : public CompositeFunc
 //        ab = fix15_short_clamp(as + k);
     }
 
-    static const bool zero_alpha_has_effect = false;
+    static const bool zero_alpha_has_effect = true;
     static const bool can_decrease_alpha = false;
     static const bool zero_alpha_clears_backdrop = false;
 };
