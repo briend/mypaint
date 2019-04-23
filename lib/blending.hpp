@@ -147,29 +147,29 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             // Use alpha as  height-map
             float slope = 0.0;
             float neighbors = 0;
-            float center = src[i] + src[i+1] + src[i+2] + src[i+3] + src[i+3] + src[i+3];
+            float center = src[i]* 0.2126 + src[i+1]* 0.7152 + src[i+2]* 0.0722 + src[i+3];
             // North
             if (i > stride*2) {
                 int o = i - stride;
-                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] + src[o+3] + src[o+3] - center) * 0.5;
+                slope += abs((src[o]* 0.2126 + src[o+1]* 0.7152 + src[o+2]* 0.0722 + src[o+3]) - center) * 0.5;
                 neighbors += 0.5;
             }
             // East
             if (i % stride < stride - 4) {
                 int o = i + 4;
-                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] + src[o+3] + src[o+3] - center) * 0.5;
+                slope += abs((src[o]* 0.2126 + src[o+1]* 0.7152 + src[o+2]* 0.0722 + src[o+3]) - center) * 0.5;
                 neighbors += 0.5;
             }
             // West
             if (i % stride > 3) {
                 int o = i - 4;
-                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] + src[o+3] + src[o+3] - center);
+                slope += abs((src[o]* 0.2126 + src[o+1]* 0.7152 + src[o+2]* 0.0722 + src[o+3]) - center);
                 neighbors += 1;
             }
             // South
             if (i < BUFSIZE - stride) {
                 int o = i + stride;
-                slope += abs(src[o] + src[o+1] + src[o+2] + src[o+3] + src[o+3] + src[o+3] - center);
+                slope += abs((src[o]* 0.2126 + src[o+1]* 0.7152 + src[o+2]* 0.0722 + src[o+3]) - center);
                 neighbors += 1;
             }
             
