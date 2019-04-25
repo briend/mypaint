@@ -271,6 +271,28 @@ class CompositeBumpMap : public CompositeFunc
     static const bool zero_alpha_clears_backdrop = false;
 };
 
+class CompositeBumpMapDst : public CompositeFunc
+{
+  public:
+    inline void operator() (const fix15_t Rs, const fix15_t Gs,
+                            const fix15_t Bs, const fix15_t as,
+                            fix15_short_t &rb, fix15_short_t &gb,
+                            fix15_short_t &bb, fix15_short_t &ab) const
+    {
+//        const fix15_t j = fix15_one - as;
+//        const fix15_t k = fix15_mul(ab, j);
+
+//        rb = fix15_short_clamp(fix15_sumprods(as, Rs, j, rb));
+//        gb = fix15_short_clamp(fix15_sumprods(as, Gs, j, gb));
+//        bb = fix15_short_clamp(fix15_sumprods(as, Bs, j, bb));
+//        ab = fix15_short_clamp(as + k);
+    }
+
+    static const bool zero_alpha_has_effect = true;
+    static const bool can_decrease_alpha = false;
+    static const bool zero_alpha_clears_backdrop = false;
+};
+
 
 // Destination-In: the painted areas make stencil voids. The backdrop shows
 // through only within the painted areas of the source.

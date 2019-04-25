@@ -50,6 +50,10 @@ MODE_STRINGS = {
         _("BumpMap"),
         _("Give pixels a 3D appearance using the alpha channel "
           "as a height-field.")),
+    lib.mypaintlib.CombineBumpMapDst: (
+        _("BumpMapDst"),
+        _("Give pixels a 3D appearance using the alpha channel "
+          "as a height-field.  This mode is invisible except for the bumps")),
     lib.mypaintlib.CombineMultiply: (
         _("Multiply"),
         _("Similar to loading two slides into a projector and "
