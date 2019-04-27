@@ -269,7 +269,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             }
             
             slope = slope / 4.0 / fastpow((1<<15), (float)opac / (1<<15));
-            slope *= (1.10 - CLAMP((((float)src[i] * 0.2126 + (float)src[i+1] * 0.7152 + (float)src[i+2] * 0.0722) / (1<<15)), 0.0, 1.0));
+            slope *= (1.10 - CLAMP((((float)dst[i] * 0.2126 + (float)dst[i+1] * 0.7152 + (float)dst[i+2] * 0.0722) / (1<<15)), 0.0, 1.0));
             //slope = fastpow(slope, 1.0 - ((float)opac / (1<<15)));
             //slope *= ((float)opac / (1<<15));
 
