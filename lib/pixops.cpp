@@ -524,10 +524,8 @@ void tile_flat2rgba(PyObject * dst_obj, PyObject * bg_obj) {
     if (final_alpha > 0) {
       for (int i=0; i<3;i++) {
         int32_t color_change = (int32_t)dst_p[i] - bg_p[i];
-        //int64_t res = bg_p[i] + (int64_t)color_change*(1<<15) / final_alpha;
-        // premultiplied with final_alpha
-        int64_t res = (uint32_t)bg_p[i]*final_alpha/(1<<15) + (int64_t)color_change;
-        res = CLAMP(res, 0, final_alpha); // fix rounding errors
+        int64_t res = bg_p[i] + (int64_t)color_change*(1<<15) / final_alpha;
+        res = CLAMP(res, 0, (1<<15)); // fix rounding errors
         dst_p[i] = res;
 #ifdef HEAVY_DEBUG
         assert(dst_p[i] <= dst_p[3]);
