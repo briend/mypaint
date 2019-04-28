@@ -131,7 +131,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
 template <bool DSTALPHA, unsigned int BUFSIZE>
 class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
 {
-    // Partial specialization for normal painting layers (svg:src-over),
+    // Apply bump map to SRC using itself.
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
@@ -142,7 +142,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t Sa = src[i+3];
             const fix15_t one_minus_Sa = fix15_one - Sa;
-            // Calcuate bump map normals
+            // Calcuate bump map
             // Use alpha as  height-map
             float slope = 0.0;
             float center = src[i+3];
@@ -179,22 +179,13 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                 slope += abs((src[o+3]) - center);
             }
             
+            // amplify slope with opacity control
             slope = slope / 4.0 / fastpow((1<<15), (float)opac / (1<<15));
-            slope *= (1.10 - CLAMP((((float)src[i] * 0.2126 + (float)src[i+1] * 0.7152 + (float)src[i+2] * 0.0722) / (1<<15)), 0.0, 1.0));
-            //slope = fastpow(slope, 1.0 - ((float)opac / (1<<15)));
-            //slope *= ((float)opac / (1<<15));
+            // reduce slope for brighter colors to avoid harsh shadows
+            slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
 
-            //fix15_short_t ldiff = abs(left - src[i+3]);
-            //float tdiff = abs(top - src[i+3]);
-            //float rdiff = abs(right - src[i+3]);
-            //fix15_short_t bdiff = abs(bottom - src[i+3]);
-            //float slope = (float)(ldiff + bdiff) / 2.0 / (1<<15);
             float degrees = atan(slope);
             float lambert = fastcos(degrees) * (1<<15);
-            //if (src[i+3] > 0) {
-            //    printf("%f, %f, %f, %i, %i,  %i\n", slope, degrees, lambert, i, stride, src[i+3]);
-            //}
-            //printf("%f,%f,%f,%f\n", top, bottom, left, right);
 
             dst[i+0] = fix15_sumprods(fix15_mul(src[i], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i], dst[i+3]));
             dst[i+1] = fix15_sumprods(fix15_mul(src[i+1], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+1], dst[i+3]));
@@ -208,11 +199,6 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                   dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
                 }
             }
-//            if (src[i+3] > 0) {
-//                dst[i+0] = lambert * dst[i];
-//                dst[i+1] = lambert * dst[i+1];
-//                dst[i+2] = lambert * dst[i+2];
-//            }
         }
     }
 };
@@ -220,7 +206,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
 template <bool DSTALPHA, unsigned int BUFSIZE>
 class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
 {
-    // Partial specialization for normal painting layers (svg:src-over),
+    // apply SRC as bump map to DST.
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
@@ -229,9 +215,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
         const unsigned int stride = MYPAINT_TILE_SIZE * 4;
         //const float rad_to_angle = 180.0 / M_PI;
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            const fix15_t Sa = src[i+3];
-            const fix15_t one_minus_Sa = fix15_one - Sa;
-            // Calcuate bump map normals
+            // Calcuate bump map 
             // Use alpha as  height-map
             float slope = 0.0;
             float center = src[i+3];
@@ -268,35 +252,17 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                 slope += abs((src[o+3]) - center);
             }
             
+            // amplify slope with opacity control
             slope = slope / 4.0 / fastpow((1<<15), (float)opac / (1<<15));
-            slope *= (1.10 - CLAMP((((float)dst[i] * 0.2126 + (float)dst[i+1] * 0.7152 + (float)dst[i+2] * 0.0722) / (1<<15)), 0.0, 1.0));
-            //slope = fastpow(slope, 1.0 - ((float)opac / (1<<15)));
-            //slope *= ((float)opac / (1<<15));
+            // reduce slope for brighter colors to avoid harsh shadows
+            slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
 
-            //fix15_short_t ldiff = abs(left - src[i+3]);
-            //float tdiff = abs(top - src[i+3]);
-            //float rdiff = abs(right - src[i+3]);
-            //fix15_short_t bdiff = abs(bottom - src[i+3]);
-            //float slope = (float)(ldiff + bdiff) / 2.0 / (1<<15);
             float degrees = atan(slope);
             float lambert = fastcos(degrees) * (1<<15);
-            //if (src[i+3] > 0) {
-            //    printf("%f, %f, %f, %i, %i,  %i\n", slope, degrees, lambert, i, stride, src[i+3]);
-            //}
-            //printf("%f,%f,%f,%f\n", top, bottom, left, right);
 
             dst[i+0] = fix15_mul(dst[i], lambert);
             dst[i+1] = fix15_mul(dst[i+1], lambert);
             dst[i+2] = fix15_mul(dst[i+2], lambert);
-
-//            if (DSTALPHA) {
-//                dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
-//            }
-//            if (src[i+3] > 0) {
-//                dst[i+0] = lambert * dst[i];
-//                dst[i+1] = lambert * dst[i+1];
-//                dst[i+2] = lambert * dst[i+2];
-//            }
         }
     }
 };
