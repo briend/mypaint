@@ -161,7 +161,7 @@ void tile_clear_rgba16(PyObject * dst) {
 // Noise used for dithering (the same for each tile).
 
 static const int dithering_noise_size = MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE*4;
-static uint16_t dithering_noise[dithering_noise_size];
+static float dithering_noise[dithering_noise_size];
 static void precalculate_dithering_noise_if_required()
 {
   static bool have_noise = false;
@@ -174,7 +174,8 @@ static void precalculate_dithering_noise_if_required()
       // to guarantee 8bpc load-save roundtrips don't alter the
       // image. With the full range we would have to pay a lot
       // attention to rounding converting 8bpc to our internal format.
-      dithering_noise[i] = (rand() % (1<<15)) * 5/256 + (1<<15) * 2/256;
+      dithering_noise[i] = (float)((rand() % (1<<15)) * 240/256 + (1<<15) * 8/256) / (1<<30);
+      //dithering_noise[i] = (rand() % (1<<15)) * 5/256 + (1<<15) * 2/256;
     }
     have_noise = true;
   }
@@ -190,10 +191,10 @@ tile_convert_rgba16_to_rgba8_c (const uint16_t* const src,
                                 const int dst_strides,
                                 const float EOTF)
 {
-  precalculate_dithering_noise_if_required();
+  //precalculate_dithering_noise_if_required();
 
   for (int y=0; y<MYPAINT_TILE_SIZE; y++) {
-    int noise_idx = y*MYPAINT_TILE_SIZE*4;
+    //int noise_idx = y*MYPAINT_TILE_SIZE*4;
     const uint16_t *src_p = (uint16_t*)((char *)src + y*src_strides);
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
@@ -256,22 +257,22 @@ tile_convert_rgba16_to_rgba8_c (const uint16_t* const src,
 
       // Variant C) but with precalculated noise (much faster)
       //
-      const float add_r = (float)dithering_noise[noise_idx+0] / (1<<30);
+      //const float add_r = dithering_noise[noise_idx+0];
       //const uint32_t add_g = add_r; // hm... do not produce too much color noise
       //const uint32_t add_b = add_r;
-      const uint32_t add_a = dithering_noise[noise_idx+1];
-      noise_idx += 4;
+      //const uint32_t add_a = dithering_noise[noise_idx+1];
+      //noise_idx += 4;
 
 #ifdef HEAVY_DEBUG
-      assert(add_a < (1<<15));
-      assert(add_a >= 0);
-      assert(noise_idx <= dithering_noise_size);
+      //assert(add_a < (1<<15));
+      //assert(add_a >= 0);
+      //assert(noise_idx <= dithering_noise_size);
 #endif
 
-      *dst_p++ = (uint8_t)(fastpow((float)r / (1<<15) + add_r, 1.0/EOTF) * 255);
-      *dst_p++ = (uint8_t)(fastpow((float)g / (1<<15) + add_r, 1.0/EOTF) * 255);
-      *dst_p++ = (uint8_t)(fastpow((float)b / (1<<15) + add_r, 1.0/EOTF) * 255);
-      *dst_p++ = ((a * 255 + add_a) / (1<<15));
+      *dst_p++ = (uint8_t)((fastpow((float)r / (1<<15), 1.0/EOTF)) * 255 + 0.5);
+      *dst_p++ = (uint8_t)((fastpow((float)g / (1<<15), 1.0/EOTF)) * 255 + 0.5);
+      *dst_p++ = (uint8_t)((fastpow((float)b / (1<<15), 1.0/EOTF)) * 255 + 0.5);
+      *dst_p++ = ((a * 255) / (1<<15));
     }
     src_p += src_strides;
     dst_p += dst_strides;
@@ -321,10 +322,10 @@ tile_convert_rgbu16_to_rgbu8_c(const uint16_t* const src,
                                const int dst_strides,
                                const float EOTF)
 {
-  precalculate_dithering_noise_if_required();
+  //precalculate_dithering_noise_if_required();
 
   for (int y=0; y<MYPAINT_TILE_SIZE; y++) {
-    int noise_idx = y*MYPAINT_TILE_SIZE*4;
+    //int noise_idx = y*MYPAINT_TILE_SIZE*4;
     const uint16_t *src_p = (uint16_t*)((char *)src + y*src_strides);
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
@@ -344,15 +345,15 @@ tile_convert_rgbu16_to_rgbu8_c(const uint16_t* const src,
       const uint32_t add = (1<<15)/2;
       */
       // dithering
-      const float add = (float)dithering_noise[noise_idx++] / (1<<30);
+      //const float add = dithering_noise[noise_idx++];
 
-      *dst_p++ = (fastpow(r + add, 1.0/EOTF) ) * 255 + 0.5;
-      *dst_p++ = (fastpow(g + add, 1.0/EOTF) ) * 255 + 0.5;
-      *dst_p++ = (fastpow(b + add, 1.0/EOTF) ) * 255 + 0.5;
+      *dst_p++ = (((fastpow(r, 1.0/EOTF))) * 255) + 0.5;
+      *dst_p++ = (((fastpow(g, 1.0/EOTF))) * 255) + 0.5;
+      *dst_p++ = (((fastpow(b, 1.0/EOTF))) * 255) + 0.5;
       *dst_p++ = 255;
     }
 #ifdef HEAVY_DEBUG
-    assert(noise_idx <= dithering_noise_size);
+    //assert(noise_idx <= dithering_noise_size);
 #endif
     src_p += src_strides;
     dst_p += dst_strides;
@@ -467,9 +468,9 @@ void tile_rgba2flat(PyObject * dst_obj, PyObject * bg_obj) {
     // resultAlpha = 1.0 (thus it does not matter if resultColor is premultiplied alpha or not)
     // resultColor = topColor + (1.0 - topAlpha) * bottomColor
     const uint32_t one_minus_top_alpha = (1<<15) - dst_p[3];
-    dst_p[0] += ((uint32_t)one_minus_top_alpha*bg_p[0]) / (1<<15);
-    dst_p[1] += ((uint32_t)one_minus_top_alpha*bg_p[1]) / (1<<15);
-    dst_p[2] += ((uint32_t)one_minus_top_alpha*bg_p[2]) / (1<<15);
+    dst_p[0] += ((uint32_t)bg_p[0]);
+    dst_p[1] += ((uint32_t)bg_p[1]);
+    dst_p[2] += ((uint32_t)bg_p[2]);
     dst_p += 4;
     bg_p += 4;
   }
