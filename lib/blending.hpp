@@ -142,8 +142,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                             const fix15_short_t opac) const
     {
         const unsigned int stride = MYPAINT_TILE_SIZE * 4;
-
-
+        const float slope_amp = 4.0 / fastpow((1<<15), (float)opac / (1<<15));
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t Sa = src[i+3];
             const fix15_t one_minus_Sa = fix15_one - Sa;
@@ -185,7 +184,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             }
             
             // amplify slope with opacity control
-            slope = slope / 4.0 / fastpow((1<<15), (float)opac / (1<<15));
+            slope /= slope_amp;
             float degrees = atan(slope);
             float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15);
 
@@ -215,6 +214,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                             const fix15_short_t opac) const
     {
         const unsigned int stride = MYPAINT_TILE_SIZE * 4;
+        const float slope_amp = 4.0 / fastpow((1<<15), (float)opac / (1<<15));
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             // Calcuate bump map 
             // Use alpha as  height-map
@@ -254,7 +254,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             }
             
             // amplify slope with opacity control
-            slope = slope / 4.0 / fastpow((1<<15), (float)opac / (1<<15));
+            slope /= slope_amp;
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
 
