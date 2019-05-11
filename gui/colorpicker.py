@@ -116,7 +116,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
             app = self.doc.app
             app.brush.set_color_hsv(self.blending_color.get_hsv())
             app.brush.set_cam16_color(CAM16Color(
-                                       color=self.blending_color))
+                                      color=self.blending_color))
         super(ColorPickMode, self).leave(**kwds)
 
     def button_press_cb(self, tdw, event):
@@ -244,7 +244,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 app.brush.set_cam16_color(brushcolor)
             elif mode == "PickandBlend":
                 alloc = self.doc.tdw.get_allocation()
-                size = max(int(p['color.preview_size'] * .01 *  alloc.height),
+                size = max(int(p['color.preview_size'] * .01 * alloc.height),
                            self.MIN_PREVIEW_SIZE)
                 if self.starting_color is None:
                     self.starting_color = pickcolor
@@ -254,17 +254,19 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 if p['color.pick_blend_reverse'] is True:
                     dist = 1 - dist
                 self.blending_ratio = dist
-                brushcolor_start = None
+                c_start = None
                 if color_class == CAM16Color:
-                    brushcolor_start = color_class(color=brushcolor,
-                                                   illuminant=illuminant)
+                    c_start = color_class(color=brushcolor,
+                                          illuminant=illuminant)
                     pickcolor = color_class(
                         color=self.starting_color, illuminant=illuminant)
                 else:
-                    brushcolor_start = color_class(color=brushcolor)
+                    c_start = color_class(color=brushcolor)
                     pickcolor = color_class(
                         color=self.starting_color)
-                self.blending_color = brushcolor_start.mix(pickcolor, dist)
+                self.blending_color = CAM16Color(color=c_start.mix(pickcolor,
+                                                                   dist),
+                                                 illuminant=illuminant)
             elif mode == "PickTarget":
                 doc.last_color_target = pickcolor
             else:
