@@ -1098,6 +1098,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             si = layers.current.get_stroke_info_at(x, y)
             if si:
                 self.app.restore_brush_from_stroke_info(si)
+                self.last_color_target = None
                 corners = self.tdw.get_corners_model_coords()
                 bbox = lib.helpers.rotated_rectangle_bbox(corners)
                 self.strokeblink_state.activate(
