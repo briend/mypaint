@@ -769,13 +769,22 @@ class RootLayerStack (group.LayerStack):
 
     def get_render_ops(self, spec):
         """Get rendering instructions."""
+        # Wrap all the layers in a group layer stack so that
+        # We can use bump mapping w/ alpha channels
+        # If we composite with BG first, alpha is always 100%
+        # Need a way to configure blend mode for this invisible group.
+        # Also a configuration for bump map strength, and on/off
         ops = []
         if self._get_render_background(spec):
             bg_opcode = rendering.Opcode.BLIT
             bg_surf = self._background_layer._surface
             ops.append((bg_opcode, bg_surf, None, None))
+            ops.append((3, None, None, 1.0))
         for child_layer in reversed(self):
             ops.extend(child_layer.get_render_ops(spec))
+        if self._get_render_background(spec):
+            ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.7))
+            ops.append((4, None, lib.mypaintlib.CombineSpectralWGM, 1.0))
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))
         return ops
