@@ -453,14 +453,14 @@ class RootLayerStack (group.LayerStack):
             spec.background = bool(background)
 
         dst_has_alpha = not self.get_render_is_opaque(spec=spec)
-        ops = self.get_render_ops(spec)
+        ops = self.get_render_ops(spec, filter=filter)
 
         target_surface_is_8bpc = False
         use_cache = False
         tx, ty = tiles[0]
         with surface.tile_request(tx, ty, readonly=True) as sample_tile:
             target_surface_is_8bpc = (sample_tile.dtype == 'uint8')
-            if target_surface_is_8bpc:
+            if target_surface_is_8bpc and filter != "ByPass":
                 use_cache = spec.cacheable()
         key2 = (id(opaque_base_tile), dst_has_alpha)
 
@@ -543,7 +543,7 @@ class RootLayerStack (group.LayerStack):
 
                 # Display filtering only happens when rendering
                 # 8bpc for the screen.
-                if filter is not None:
+                if filter is not None and filter != "ByPass":
                     filter(dst)
 
             # end tile_request
@@ -685,7 +685,7 @@ class RootLayerStack (group.LayerStack):
                 if layer is None:
                     layer = self.current
                 spec = self._get_render_spec_for_layer(layer)
-            ops = self.get_render_ops(spec)
+            ops = self.get_render_ops(spec, filter="ByPass")
 
         dst_is_8bpc = (dst.dtype == 'uint8')
         if dst_is_8bpc:
@@ -767,7 +767,7 @@ class RootLayerStack (group.LayerStack):
 
     ## Renderable implementation
 
-    def get_render_ops(self, spec):
+    def get_render_ops(self, spec, filter=None):
         """Get rendering instructions."""
         # Wrap all the layers in a group layer stack so that
         # We can use bump mapping w/ alpha channels
@@ -779,12 +779,14 @@ class RootLayerStack (group.LayerStack):
             bg_opcode = rendering.Opcode.BLIT
             bg_surf = self._background_layer._surface
             ops.append((bg_opcode, bg_surf, None, None))
-            ops.append((3, None, None, 1.0))
+            if filter != "ByPass":
+                ops.append((3, None, None, 1.0))
         for child_layer in reversed(self):
             ops.extend(child_layer.get_render_ops(spec))
         if self._get_render_background(spec):
-            ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.7))
-            ops.append((4, None, lib.mypaintlib.CombineSpectralWGM, 1.0))
+            if filter != "ByPass":
+                ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.7))
+                ops.append((4, None, lib.mypaintlib.CombineSpectralWGM, 1.0))
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))
         return ops
@@ -2017,7 +2019,7 @@ class RootLayerStack (group.LayerStack):
         bd_ops = []
         if needs_backdrop_removal:
             bd_spec = self._get_backdrop_render_spec_for_layer(path)
-            bd_ops = self.get_render_ops(bd_spec)
+            bd_ops = self.get_render_ops(bd_spec, filter="ByPass")
 
         # Need to render the layer to be normalized too.
         # The ops are processed on top of the tiles bd_ops will render.
@@ -2026,7 +2028,7 @@ class RootLayerStack (group.LayerStack):
             solo=True,
             layers=set(self.layers_along_or_under_path(path))
         )
-        src_ops = self.get_render_ops(src_spec)
+        src_ops = self.get_render_ops(src_spec, filter="ByPass")
 
         # Process by tile.
         # This is like taking before/after pics from a normal render(),
@@ -2250,14 +2252,14 @@ class RootLayerStack (group.LayerStack):
 
         # Extract ops lists for the target and its backdrop
         bd_spec = self._get_backdrop_render_spec_for_layer(targ_path)
-        bd_ops = self.get_render_ops(bd_spec)
+        bd_ops = self.get_render_ops(bd_spec, filter="ByPass")
 
         targ_only_spec = rendering.Spec(
             current=targ_layer,
             solo=True,
             layers=set(self.layers_along_or_under_path(targ_path))
         )
-        targ_only_ops = self.get_render_ops(targ_only_spec)
+        targ_only_ops = self.get_render_ops(targ_only_spec, filter = "ByPass")
 
         # Process by tile, like Normalize's backdrop removal.
         logger.debug("uniq: bd_ops = %r", bd_ops)
@@ -2318,7 +2320,7 @@ class RootLayerStack (group.LayerStack):
                 solo=True,
                 layers=set(self.layers_along_or_under_path(child_path))
             )
-            ops = self.get_render_ops(spec)
+            ops = self.get_render_ops(spec, filter="ByPass")
             child_ops[child] = ops
             union_tiles.update(child.get_tile_coords())
 

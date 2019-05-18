@@ -1017,7 +1017,7 @@ class CanvasRenderer (Gtk.DrawingArea, DrawCursorMixin):
         surf = self._new_image_surface_from_visible_area(
             x, y,
             size, size,
-            use_filter = False,
+            use_filter = "ByPass",
         )
 
         # Extract a pixbuf, then an average color.
@@ -1075,7 +1075,11 @@ class CanvasRenderer (Gtk.DrawingArea, DrawCursorMixin):
             self._render_prepare(cr)
         display_filter = None
         if use_filter:
-            display_filter = self.display_filter
+            if use_filter == "ByPass":
+                display_filter = "ByPass"
+            else:
+                display_filter = self.display_filter
+
         self._render_execute(
             cr,
             transformation,
