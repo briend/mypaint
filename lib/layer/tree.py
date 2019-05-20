@@ -137,6 +137,7 @@ class RootLayerStack (group.LayerStack):
         self._default_background = default_bg
         self._background_layer = data.BackgroundLayer(default_bg)
         self._background_visible = True
+        self._background_bumpmapped = True
         # Symmetry
         self._symmetry_x = None
         self._symmetry_y = None
@@ -779,13 +780,13 @@ class RootLayerStack (group.LayerStack):
             bg_opcode = rendering.Opcode.BLIT
             bg_surf = self._background_layer._surface
             ops.append((bg_opcode, bg_surf, None, None))
-            if filter != "ByPass":
+            if filter != "ByPass" and self._background_bumpmapped:
                 ops.append((3, None, None, 1.0))
         for child_layer in reversed(self):
             ops.extend(child_layer.get_render_ops(spec))
         if self._get_render_background(spec):
-            if filter != "ByPass":
-                ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.7))
+            if filter != "ByPass" and self._background_bumpmapped:
+                ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.9))
                 ops.append((4, None, lib.mypaintlib.CombineSpectralWGM, 1.0))
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))
@@ -1112,6 +1113,29 @@ class RootLayerStack (group.LayerStack):
 
     @event
     def background_visible_changed(self):
+        """Event: the background visibility flag has changed"""
+
+    @property
+    def background_bumpmapped(self):
+        """Whether the background is bumpmapped
+
+        Accepts only values which can be converted to bool.  Changing
+        the background bumpmapped flag issues a full redraw for the root
+        layer, and also issues the `background_changed` event.
+        """
+        return bool(self._background_bumpmapped)
+
+    @background_bumpmapped.setter
+    def background_bumpmapped(self, value):
+        value = bool(value)
+        old_value = self._background_bumpmapped
+        self._background_bumpmapped = value
+        if value != old_value:
+            self.background_visible_changed()
+            self.layer_content_changed(self, 0, 0, 0, 0)
+
+    @event
+    def background_bumpmapped_changed(self):
         """Event: the background visibility flag has changed"""
 
     ## Temporary overlays for the current layer (not saved)

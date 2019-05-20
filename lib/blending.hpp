@@ -258,7 +258,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
             // reduce slope when dst alpha is very high, like thick paint hiding texture
-            slope *= (1.0 - fastpow((float)dst[i+3] / (1<<15), 8.0));
+            slope *= (1.0 - fastpow((float)dst[i+3] / (1<<15), 64));
 
             float degrees = atan(slope);
             float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15);
