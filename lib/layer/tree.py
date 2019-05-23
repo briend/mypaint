@@ -786,7 +786,7 @@ class RootLayerStack (group.LayerStack):
             ops.extend(child_layer.get_render_ops(spec))
         if self._get_render_background(spec):
             if filter != "ByPass" and self._background_bumpmapped:
-                ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.9))
+                ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.7))
                 ops.append((4, None, lib.mypaintlib.CombineSpectralWGM, 1.0))
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))

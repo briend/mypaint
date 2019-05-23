@@ -128,9 +128,10 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
     }
 };
 
-const float Oren_rough = 0.3 * 0.3;
+const float Oren_rough = 1.0;
 const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
 const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
+const float Oren_exposure = 1.0 / Oren_A;
 
 template <bool DSTALPHA, unsigned int BUFSIZE>
 class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
@@ -187,7 +188,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             // amplify slope with opacity control
             slope = slope / 4.0 / fastpow((1<<15), (float)opac / (1<<15));
             float degrees = atan(slope);
-            float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15);
+            float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15) * Oren_exposure;
 
             dst[i+0] = fix15_sumprods(fix15_mul(src[i], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i], dst[i+3]));
             dst[i+1] = fix15_sumprods(fix15_mul(src[i+1], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+1], dst[i+3]));
@@ -258,10 +259,10 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
             // reduce slope when dst alpha is very high, like thick paint hiding texture
-            slope *= (1.0 - fastpow((float)dst[i+3] / (1<<15), 64));
+            slope *= (1.0 - fastpow((float)dst[i+3] / (1<<15), 32));
 
             float degrees = atan(slope);
-            float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15);
+            float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15) * Oren_exposure;
 
             dst[i+0] = fix15_mul(dst[i], lambert);
             dst[i+1] = fix15_mul(dst[i+1], lambert);
