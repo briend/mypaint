@@ -173,11 +173,6 @@ class BufferCombineFunc
             // the destination buffer as premultiplied RGB.
             compositefunc(Rb, Gb, Bb, fix15_mul(as, src_opacity),
                           dst[i+0], dst[i+1], dst[i+2], dst[i+3]);
-            if (dst[i+3] > 0) {
-                dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
-                dst[i+1] = fix15_div(dst[i+1], dst[i+3]);
-                dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
-            }
         }
     }
 };

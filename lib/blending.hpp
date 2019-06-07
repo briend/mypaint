@@ -118,11 +118,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
             dst[i+2] = fix15_sumprods(fix15_mul(src[i+2], src[i+3]), opac, one_minus_Sa, fix15_mul(dst[i+2], dst[i+3]));
             if (DSTALPHA) {
                 dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
-                if (dst[i+3] > 0) {
-                  dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
-                  dst[i+1] = fix15_div(dst[i+1], dst[i+3]);
-                  dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
-                }
+            }
+            if (dst[i+3] > 0) {
+              dst[i+0] = fix15_short_clamp(fix15_div(dst[i+0], dst[i+3]));
+              dst[i+1] = fix15_short_clamp(fix15_div(dst[i+1], dst[i+3]));
+              dst[i+2] = fix15_short_clamp(fix15_div(dst[i+2], dst[i+3]));
             }
         }
     }
@@ -151,56 +151,59 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             // Calcuate bump map
             // Use alpha as  height-map
             float slope = 0.0;
-            float center = src[i+3] *.97 + src[i] *.01 + src[i+1] *.01 + src[i+2] *.01;
-            // North
-            if (i >= stride) {
-                int o = i - stride;
-                slope += abs((src[o+3]*.97 + src[o] *.01 + src[o+1] *.01 + src[o+2] *.01) - center);
-            } else {
-                int o = i + stride;
-                slope += abs((src[o+3]*.97 + src[o] *.01 + src[o+1] *.01 + src[o+2] *.01) - center);
+            const int reach = 3;
+            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
+            for (int p=1; p<=reach; p++) {
+                // North
+                if (i >= stride * p) {
+                    int o = i - stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                } else {
+                    int o = i + stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                }
+                // East
+                if (i % stride < stride - 4 * p) {
+                    int o = i + 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                } else {
+                    int o = i - 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                }
+                // West
+                if (i % stride >= 4 * p) {
+                    int o = i - 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                } else {
+                    int o = i + 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                }
+                // South
+                if (i < BUFSIZE - stride * p) {
+                    int o = i + stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                } else {
+                    int o = i - stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                }
             }
-            // East
-            if (i % stride < stride - 4) {
-                int o = i + 4;
-                slope += abs((src[o+3]*.97 + src[o] *.01 + src[o+1] *.01 + src[o+2] *.01) - center);
-            } else {
-                int o = i - 4;
-                slope += abs((src[o+3]*.97 + src[o] *.01 + src[o+1] *.01 + src[o+2] *.01) - center);
-            }
-            // West
-            if (i % stride > 0) {
-                int o = i - 4;
-                slope += abs((src[o+3]*.97 + src[o] *.01 + src[o+1] *.01 + src[o+2] *.01) - center);
-            } else {
-                int o = i + 4;
-                slope += abs((src[o+3]*.97 + src[o] *.01 + src[o+1] *.01 + src[o+2] *.01) - center);
-            }
-            // South
-            if (i < BUFSIZE - stride) {
-                int o = i + stride;
-                slope += abs((src[o+3]*.97 + src[o] *.01 + src[o+1] *.01 + src[o+2] *.01) - center);
-            } else {
-                int o = i - stride;
-                slope += abs((src[o+3]*.97 + src[o] *.01 + src[o+1] *.01 + src[o+2] *.01) - center);
-            }
-            
+
             // amplify slope with opacity control
-            slope = slope / 4.0 / fastpow((1<<15), (float)opac / (1<<15));
+            slope = slope / (8 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
             float degrees = atan(slope);
             float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15) * Oren_exposure;
 
-            dst[i+0] = fix15_sumprods(fix15_mul(src[i], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i], dst[i+3]));
-            dst[i+1] = fix15_sumprods(fix15_mul(src[i+1], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+1], dst[i+3]));
-            dst[i+2] = fix15_sumprods(fix15_mul(src[i+2], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+2], dst[i+3]));
+            dst[i+0] = fix15_short_clamp(fix15_sumprods(fix15_mul(src[i], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i], dst[i+3])));
+            dst[i+1] = fix15_short_clamp(fix15_sumprods(fix15_mul(src[i+1], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+1], dst[i+3])));
+            dst[i+2] = fix15_short_clamp(fix15_sumprods(fix15_mul(src[i+2], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+2], dst[i+3])));
 
             if (DSTALPHA) {
-                dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
-                if (dst[i+3] > 0) {
-                  dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
-                  dst[i+1] = fix15_div(dst[i+1], dst[i+3]);
-                  dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
-                }
+                dst[i+3] = fix15_short_clamp(fix15_mul(Sa, dst[i+3]));
+            }
+            if (dst[i+3] > 0) {
+              dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
+              dst[i+1] = fix15_div(dst[i+1], dst[i+3]);
+              dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
             }
         }
     }
@@ -220,53 +223,57 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             // Calcuate bump map 
             // Use alpha as  height-map
             float slope = 0.0;
-            float center = src[i+3] *.25 + src[i] *.25 + src[i+1] *.25 + src[i+2] *.25;
-            // North
-            if (i >= stride) {
-                int o = i - stride;
-                slope += abs((src[o+3]*.25 + src[o] *.25 + src[o+1] *.25 + src[o+2] *.25) - center);
-            } else {
-                int o = i + stride;
-                slope += abs((src[o+3]*.25 + src[o] *.25 + src[o+1] *.25 + src[o+2] *.25) - center);
-            }
-            // East
-            if (i % stride < stride - 4) {
-                int o = i + 4;
-                slope += abs((src[o+3]*.25 + src[o] *.25 + src[o+1] *.25 + src[o+2] *.25) - center);
-            } else {
-                int o = i - 4;
-                slope += abs((src[o+3]*.25 + src[o] *.25 + src[o+1] *.25 + src[o+2] *.25) - center);
-            }
-            // West
-            if (i % stride > 0) {
-                int o = i - 4;
-                slope += abs((src[o+3]*.25 + src[o] *.25 + src[o+1] *.25 + src[o+2] *.25) - center);
-            } else {
-                int o = i + 4;
-                slope += abs((src[o+3]*.25 + src[o] *.25 + src[o+1] *.25 + src[o+2] *.25) - center);
-            }
-            // South
-            if (i < BUFSIZE - stride) {
-                int o = i + stride;
-                slope += abs((src[o+3]*.25 + src[o] *.25 + src[o+1] *.25 + src[o+2] *.25) - center);
-            } else {
-                int o = i - stride;
-                slope += abs((src[o+3]*.25 + src[o] *.25 + src[o+1] *.25 + src[o+2] *.25) - center);
+            const int reach = 3;
+            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
+            for (int p=1; p<=reach; p++) {
+                // North
+                if (i >= stride * p) {
+                    int o = i - stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                } else {
+                    int o = i + stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                }
+                // East
+                if (i % stride < stride - 4 * p) {
+                    int o = i + 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                } else {
+                    int o = i - 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                }
+                // West
+                if (i % stride >= 4 * p) {
+                    int o = i - 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                } else {
+                    int o = i + 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                }
+                // South
+                if (i < BUFSIZE - stride * p) {
+                    int o = i + stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                } else {
+                    int o = i - stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                }
             }
             
             // amplify slope with opacity control
-            slope = slope / 4.0 / fastpow((1<<15), (float)opac / (1<<15));
+            slope = slope / (8 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
             // reduce slope when dst alpha is very high, like thick paint hiding texture
             slope *= (1.0 - fastpow((float)dst[i+3] / (1<<15), 32));
 
             float degrees = atan(slope);
-            float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15) * Oren_exposure;
+            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1<<15) * Oren_exposure;
 
-            dst[i+0] = fix15_mul(dst[i], lambert);
-            dst[i+1] = fix15_mul(dst[i+1], lambert);
-            dst[i+2] = fix15_mul(dst[i+2], lambert);
+            dst[i+0] = fix15_short_clamp(fix15_mul(dst[i], lambert));
+            dst[i+1] = fix15_short_clamp(fix15_mul(dst[i+1], lambert));
+            dst[i+2] = fix15_short_clamp(fix15_mul(dst[i+2], lambert));
+            dst[i+3] = fix15_short_clamp(fix15_mul(dst[i+3], lambert));
         }
     }
 };

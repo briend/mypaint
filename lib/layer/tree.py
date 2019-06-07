@@ -780,14 +780,18 @@ class RootLayerStack (group.LayerStack):
             bg_opcode = rendering.Opcode.BLIT
             bg_surf = self._background_layer._surface
             ops.append((bg_opcode, bg_surf, None, None))
-            if filter != "ByPass" and self._background_bumpmapped:
-                ops.append((3, None, None, 1.0))
         for child_layer in reversed(self):
+            if self._get_render_background(spec):
+                if filter != "ByPass" and self._background_bumpmapped:
+                    ops.append((3, None, None, 1.0))
             ops.extend(child_layer.get_render_ops(spec))
-        if self._get_render_background(spec):
-            if filter != "ByPass" and self._background_bumpmapped:
-                ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.7))
-                ops.append((4, None, lib.mypaintlib.CombineSpectralWGM, 1.0))
+            if self._get_render_background(spec):
+                bg_surf = self._background_layer._surface
+                if filter != "ByPass" and self._background_bumpmapped:
+                    if hasattr(child_layer, '_surface'):
+                        ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMapDst, 0.7))
+                    ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.7))
+                    ops.append((4, None, child_layer.mode, 1.0))
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))
         return ops
