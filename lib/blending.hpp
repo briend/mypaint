@@ -157,34 +157,34 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                 // North
                 if (i >= stride * p) {
                     int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 } else {
                     int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 }
                 // East
                 if (i % stride < stride - 4 * p) {
                     int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 } else {
                     int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 }
                 // West
                 if (i % stride >= 4 * p) {
                     int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 } else {
                     int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 }
                 // South
                 if (i < BUFSIZE - stride * p) {
                     int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 } else {
                     int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 }
             }
 
@@ -193,12 +193,12 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             float degrees = atan(slope);
             float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15) * Oren_exposure;
 
-            dst[i+0] = fix15_short_clamp(fix15_sumprods(fix15_mul(src[i], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i], dst[i+3])));
-            dst[i+1] = fix15_short_clamp(fix15_sumprods(fix15_mul(src[i+1], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+1], dst[i+3])));
-            dst[i+2] = fix15_short_clamp(fix15_sumprods(fix15_mul(src[i+2], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+2], dst[i+3])));
+            dst[i+0] = fix15_sumprods(fix15_mul(src[i], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i], dst[i+3]));
+            dst[i+1] = fix15_sumprods(fix15_mul(src[i+1], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+1], dst[i+3]));
+            dst[i+2] = fix15_sumprods(fix15_mul(src[i+2], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+2], dst[i+3]));
 
             if (DSTALPHA) {
-                dst[i+3] = fix15_short_clamp(fix15_mul(Sa, dst[i+3]));
+                dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
             }
             if (dst[i+3] > 0) {
               dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
@@ -229,34 +229,34 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                 // North
                 if (i >= stride * p) {
                     int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 } else {
                     int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 }
                 // East
                 if (i % stride < stride - 4 * p) {
                     int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 } else {
                     int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 0.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 }
                 // West
                 if (i % stride >= 4 * p) {
                     int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 } else {
                     int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 }
                 // South
                 if (i < BUFSIZE - stride * p) {
                     int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 } else {
                     int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center) * 1.5;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 }
             }
             

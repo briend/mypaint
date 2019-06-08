@@ -137,7 +137,8 @@ class RootLayerStack (group.LayerStack):
         self._default_background = default_bg
         self._background_layer = data.BackgroundLayer(default_bg)
         self._background_visible = True
-        self._background_bumpmapped = True
+        self._background_bumpmapped = self.app.preferences['document.bumpmap_enabled']
+        self._background_bumpmap_amplify = self.app.preferences['document.bumpmap_amplify']
         # Symmetry
         self._symmetry_x = None
         self._symmetry_y = None
@@ -1140,7 +1141,7 @@ class RootLayerStack (group.LayerStack):
 
     @event
     def background_bumpmapped_changed(self):
-        """Event: the background visibility flag has changed"""
+        """Event: the background bumpmap flag has changed"""
 
     ## Temporary overlays for the current layer (not saved)
 

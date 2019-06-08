@@ -574,6 +574,11 @@ class Application (object):
             'frame.color_rgba': (0.12, 0.12, 0.12, 0.92),
             'misc.context_restores_color': True,
 
+            'document.bumpmap_enabled': True,
+            'document.bumpmap_roughness': 1.0,
+            'document.bumpmap_window_size': 3,
+            'document.bumpmap_amplify': 0.7,
+
             'document.autosave_backups': True,
             'document.autosave_interval': 10,
 
