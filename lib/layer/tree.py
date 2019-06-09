@@ -790,8 +790,8 @@ class RootLayerStack (group.LayerStack):
                 bg_surf = self._background_layer._surface
                 if filter != "ByPass" and self._background_bumpmapped:
                     if hasattr(child_layer, '_surface'):
-                        ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMapDst, 0.7))
-                    ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.7))
+                        ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMapDst, 0.9))
+                    ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.9))
                     ops.append((4, None, child_layer.mode, 1.0))
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))
