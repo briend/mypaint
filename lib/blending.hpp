@@ -13,6 +13,7 @@
 #ifndef __HAVE_BLENDING
 #define __HAVE_BLENDING
 #define WGM_EPSILON 0.001
+#define NUM_WAVES 7
 
 #include <mypaint-tiled-surface.h>
 #include "fastapprox/fastpow.h"
@@ -21,27 +22,21 @@
 #include "compositing.hpp"
 #include <math.h>
 
-static const float T_MATRIX_SMALL[3][10] = {{0.026595621243689,0.049779426257903,0.022449850859496,-0.218453689278271
-,-0.256894883201278,0.445881722194840,0.772365886289756,0.194498761382537
-,0.014038157587820,0.007687264480513}
-,{-0.032601672674412,-0.061021043498478,-0.052490001018404
-,0.206659098273522,0.572496335158169,0.317837248815438,-0.021216624031211
-,-0.019387668756117,-0.001521339050858,-0.000835181622534}
-,{0.339475473216284,0.635401374177222,0.771520797089589,0.113222640692379
-,-0.055251113343776,-0.048222578468680,-0.012966666339586
-,-0.001523814504223,-0.000094718948810,-0.000051604594741}};
+static const float T_MATRIX_SMALL[3][NUM_WAVES] = {{0.004727862039458, 0.082644899379487, -0.322515894576622, -0.064320292139570,
+1.064746457514018, 0.288869101686002, 0.010454417702711},
+{-0.004081870492374, -0.101308479809214, 0.320514309815141, 0.720325047228787,
+0.066431970334792, -0.028358642287937, -0.001135818542699},
+{0.028683360043884, 1.054907349924059, 0.116111201474362, -0.084435897516297,
+-0.029621508810678, -0.002318568718824, -0.000070180490104}};
 
-static const float spectral_r_small[10] = {0.009281362787953,0.009732627042016,0.011254252737167,0.015105578649573
-,0.024797924177217,0.083622585502406,0.977865045723212,1.000000000000000
-,0.999961046144372,0.999999992756822};
+static const float spectral_r_small[NUM_WAVES] = {.014976989831103, 0.015163469993149, 0.024828861915840, 0.055372724024590,
+0.311175941451513, 2.261540004074889, 2.451861959778458};
 
-static const float spectral_g_small[10] = {0.002854127435775,0.003917589679914,0.012132151699187,0.748259205918013
-,1.000000000000000,0.865695937531795,0.037477469241101,0.022816789725717
-,0.021747419446456,0.021384940572308};
+static const float spectral_g_small[NUM_WAVES] = {0.060871084436057, 0.063645032450431, 0.344088900200936, 1.235198096662594,
+0.145221682434442, 0.101106655125270, 0.099848117829856};
 
-static const float spectral_b_small[10] = {0.537052150373386,0.546646402401469,0.575501819073983,0.258778829633924
-,0.041709923751716,0.012662638828324,0.007485593127390,0.006766900622462
-,0.006699764779016,0.006676219883241};
+static const float spectral_b_small[NUM_WAVES] = {0.777465337464873, 0.899749264722067, 0.258544195013949, 0.015623896354842,
+0.004846585772726, 0.003989003708280, 0.003962407615164};
 
 
 void
@@ -51,20 +46,20 @@ rgb_to_spectral (float r, float g, float b, float *spectral_) {
   g = g * offset + WGM_EPSILON;
   b = b * offset + WGM_EPSILON;
   //upsample rgb to spectral primaries
-  float spec_r[10] = {0};
-  for (int i=0; i < 10; i++) {
+  float spec_r[NUM_WAVES] = {0};
+  for (int i=0; i < NUM_WAVES; i++) {
     spec_r[i] = spectral_r_small[i] * r;
   }
-  float spec_g[10] = {0};
-  for (int i=0; i < 10; i++) {
+  float spec_g[NUM_WAVES] = {0};
+  for (int i=0; i < NUM_WAVES; i++) {
     spec_g[i] = spectral_g_small[i] * g;
   }
-  float spec_b[10] = {0};
-  for (int i=0; i < 10; i++) {
+  float spec_b[NUM_WAVES] = {0};
+  for (int i=0; i < NUM_WAVES; i++) {
     spec_b[i] = spectral_b_small[i] * b;
   }
   //collapse into one spd
-  for (int i=0; i<10; i++) {
+  for (int i=0; i<NUM_WAVES; i++) {
     spectral_[i] += fasterlog(spec_r[i] + spec_g[i] + spec_b[i]);
   }
 
@@ -73,7 +68,7 @@ rgb_to_spectral (float r, float g, float b, float *spectral_) {
 void
 spectral_to_rgb (float *spectral, float *rgb_) {
   float offset = 1.0 - WGM_EPSILON;
-  for (int i=0; i<10; i++) {
+  for (int i=0; i<NUM_WAVES; i++) {
     rgb_[0] += T_MATRIX_SMALL[0][i] * fasterexp(spectral[i]);
     rgb_[1] += T_MATRIX_SMALL[1][i] * fasterexp(spectral[i]);
     rgb_[2] += T_MATRIX_SMALL[2][i] * fasterexp(spectral[i]);
@@ -188,7 +183,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             }
 
             // amplify slope with opacity control
-            slope = slope / (8 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
+            slope = slope / (4 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
             float degrees = atan(slope);
             float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15) * Oren_exposure;
 
@@ -260,7 +255,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             }
             
             // amplify slope with opacity control
-            slope = slope / (8 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
+            slope = slope / (4 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
             // reduce slope when dst alpha is very high, like thick paint hiding texture
