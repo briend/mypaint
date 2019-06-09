@@ -65,7 +65,7 @@ rgb_to_spectral (float r, float g, float b, float *spectral_) {
   }
   //collapse into one spd
   for (int i=0; i<10; i++) {
-    spectral_[i] += spec_r[i] + spec_g[i] + spec_b[i];
+    spectral_[i] += fasterlog(spec_r[i] + spec_g[i] + spec_b[i]);
   }
 
 }
@@ -74,15 +74,14 @@ void
 spectral_to_rgb (float *spectral, float *rgb_) {
   float offset = 1.0 - WGM_EPSILON;
   for (int i=0; i<10; i++) {
-    rgb_[0] += T_MATRIX_SMALL[0][i] * spectral[i];
-    rgb_[1] += T_MATRIX_SMALL[1][i] * spectral[i];
-    rgb_[2] += T_MATRIX_SMALL[2][i] * spectral[i];
+    rgb_[0] += T_MATRIX_SMALL[0][i] * fasterexp(spectral[i]);
+    rgb_[1] += T_MATRIX_SMALL[1][i] * fasterexp(spectral[i]);
+    rgb_[2] += T_MATRIX_SMALL[2][i] * fasterexp(spectral[i]);
   }
   for (int i=0; i<3; i++) {
-    rgb_[i] = CLAMP((rgb_[i] - WGM_EPSILON) / offset, 0.0f, 1.0f);
+    rgb_[i] = CLAMP((rgb_[i] - WGM_EPSILON) / offset, 0.0f, (1<<15));
   }
 }
-
 
 
 // Normal: http://www.w3.org/TR/compositing/#blendingnormal
@@ -306,15 +305,15 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
             //convert bottom to spectral.  Un-premult alpha to obtain reflectance
             //color noise is not a problem since low alpha also implies low weight
             float spectral_b[10] = {0};
-            rgb_to_spectral((float)dst[i] / (1<<15), (float)dst[i+1] / (1<<15), (float)dst[i+2] / (1<<15), spectral_b);
+            rgb_to_spectral((float)dst[i], (float)dst[i+1], (float)dst[i+2], spectral_b);
             // convert top to spectral.  Already straight color
             float spectral_a[10] = {0};
-            rgb_to_spectral((float)src[i] / (1<<15), (float)src[i+1] / (1<<15), (float)src[i+2] / (1<<15), spectral_a);
+            rgb_to_spectral((float)src[i], (float)src[i+1], (float)src[i+2], spectral_a);
 
             // mix to the two spectral reflectances using WGM
             float spectral_result[10] = {0};
             for (int i=0; i<10; i++) {
-              spectral_result[i] = fastpow(spectral_a[i], fac_a) * fastpow(spectral_b[i], fac_b);
+              spectral_result[i] = spectral_a[i] * fac_a + spectral_b[i] * fac_b;
             }
             
             // convert back to RGB
@@ -326,7 +325,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
               rgb_result[3] = (1<<15);
             }
             for (int j=0; j<3; j++) {
-              dst[i+j] = rgb_result[j] * (1<<15) + 0.5;
+              dst[i+j] = rgb_result[j];
             }
             
             if (DSTALPHA) {
