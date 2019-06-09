@@ -122,7 +122,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
     }
 };
 
-const float Oren_rough = 1.0;
+const float Oren_rough = 0.5;
 const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
 const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
 const float Oren_exposure = 1.0 / Oren_A;
@@ -137,87 +137,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                             const fix15_short_t opac) const
     {
         const unsigned int stride = MYPAINT_TILE_SIZE * 4;
-
-
-        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            const fix15_t Sa = src[i+3];
-            const fix15_t one_minus_Sa = fix15_one - Sa;
-            // Calcuate bump map
-            // Use alpha as  height-map
-            float slope = 0.0;
-            const int reach = 3;
-            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
-            for (int p=1; p<=reach; p++) {
-                // North
-                if (i >= stride * p) {
-                    int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
-                // East
-                if (i % stride < stride - 4 * p) {
-                    int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
-                // West
-                if (i % stride >= 4 * p) {
-                    int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
-                // South
-                if (i < BUFSIZE - stride * p) {
-                    int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
-            }
-
-            // amplify slope with opacity control
-            slope = slope / (4 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
-            float degrees = atan(slope);
-            float lambert = fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))) * (1<<15) * Oren_exposure;
-
-            dst[i+0] = fix15_sumprods(fix15_mul(src[i], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i], dst[i+3]));
-            dst[i+1] = fix15_sumprods(fix15_mul(src[i+1], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+1], dst[i+3]));
-            dst[i+2] = fix15_sumprods(fix15_mul(src[i+2], src[i+3]), lambert, one_minus_Sa, fix15_mul(dst[i+2], dst[i+3]));
-
-            if (DSTALPHA) {
-                dst[i+3] = fix15_short_clamp(Sa + fix15_mul(dst[i+3], one_minus_Sa));
-            }
-            if (dst[i+3] > 0) {
-              dst[i+0] = fix15_div(dst[i+0], dst[i+3]);
-              dst[i+1] = fix15_div(dst[i+1], dst[i+3]);
-              dst[i+2] = fix15_div(dst[i+2], dst[i+3]);
-            }
-        }
-    }
-};
-
-template <bool DSTALPHA, unsigned int BUFSIZE>
-class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
-{
-    // apply SRC as bump map to DST.
-  public:
-    inline void operator() (const fix15_short_t * const src,
-                            fix15_short_t * const dst,
-                            const fix15_short_t opac) const
-    {
-        const unsigned int stride = MYPAINT_TILE_SIZE * 4;
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             // Calcuate bump map 
             // Use alpha as  height-map
             float slope = 0.0;
-            const int reach = 3;
+            const int reach = 1;
             float center = src[i+3] + src[i] + src[i+1] + src[i+2];
             for (int p=1; p<=reach; p++) {
                 // North
@@ -255,11 +179,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             }
             
             // amplify slope with opacity control
-            slope = slope / (4 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
+            slope = slope / (4 * reach) /  fasterpow((1<<15), (float)opac / (1<<15));
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
             // reduce slope when dst alpha is very high, like thick paint hiding texture
-            slope *= (1.0 - fastpow((float)dst[i+3] / (1<<15), 32));
+            //slope *= (1.0 - fastpow((float)dst[i+3] / (1<<15), 32));
 
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1<<15) * Oren_exposure;
@@ -267,7 +191,76 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             dst[i+0] = fix15_short_clamp(fix15_mul(dst[i], lambert));
             dst[i+1] = fix15_short_clamp(fix15_mul(dst[i+1], lambert));
             dst[i+2] = fix15_short_clamp(fix15_mul(dst[i+2], lambert));
-            dst[i+3] = fix15_short_clamp(fix15_mul(dst[i+3], lambert));
+            //dst[i+3] = fix15_short_clamp(fix15_mul(dst[i+3], lambert));
+        }
+    }
+};
+
+template <bool DSTALPHA, unsigned int BUFSIZE>
+class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
+{
+    // apply SRC as bump map to DST.
+  public:
+    inline void operator() (const fix15_short_t * const src,
+                            fix15_short_t * const dst,
+                            const fix15_short_t opac) const
+    {
+        const unsigned int stride = MYPAINT_TILE_SIZE * 4;
+        for (unsigned int i=0; i<BUFSIZE; i+=4) {
+            // Calcuate bump map 
+            // Use alpha as  height-map
+            float slope = 0.0;
+            const int reach = 1;
+            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
+            for (int p=1; p<=reach; p++) {
+                // North
+                if (i >= stride * p) {
+                    int o = i - stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+                } else {
+                    int o = i + stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+                }
+                // East
+                if (i % stride < stride - 4 * p) {
+                    int o = i + 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+                } else {
+                    int o = i - 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+                }
+                // West
+                if (i % stride >= 4 * p) {
+                    int o = i - 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+                } else {
+                    int o = i + 4 * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+                }
+                // South
+                if (i < BUFSIZE - stride * p) {
+                    int o = i + stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+                } else {
+                    int o = i - stride * p;
+                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+                }
+            }
+            
+            // amplify slope with opacity control
+            slope = slope / (4 * reach) /  fasterpow((1<<15), (float)opac / (1<<15));
+            // reduce slope for brighter colors to avoid harsh shadows
+            //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
+            // reduce slope when dst alpha is very high, like thick paint hiding texture
+            slope *= (1.0 - fasterpow((float)dst[i+3] / (1<<15), 16));
+
+            float degrees = atan(slope);
+            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1<<15) * Oren_exposure;
+
+            dst[i+0] = fix15_short_clamp(fix15_mul(dst[i], lambert));
+            dst[i+1] = fix15_short_clamp(fix15_mul(dst[i+1], lambert));
+            dst[i+2] = fix15_short_clamp(fix15_mul(dst[i+2], lambert));
+            //dst[i+3] = fix15_short_clamp(fix15_mul(dst[i+3], lambert));
         }
     }
 };
@@ -299,15 +292,15 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
 
             //convert bottom to spectral.  Un-premult alpha to obtain reflectance
             //color noise is not a problem since low alpha also implies low weight
-            float spectral_b[10] = {0};
+            float spectral_b[NUM_WAVES] = {0};
             rgb_to_spectral((float)dst[i], (float)dst[i+1], (float)dst[i+2], spectral_b);
             // convert top to spectral.  Already straight color
-            float spectral_a[10] = {0};
+            float spectral_a[NUM_WAVES] = {0};
             rgb_to_spectral((float)src[i], (float)src[i+1], (float)src[i+2], spectral_a);
 
             // mix to the two spectral reflectances using WGM
-            float spectral_result[10] = {0};
-            for (int i=0; i<10; i++) {
+            float spectral_result[NUM_WAVES] = {0};
+            for (int i=0; i<NUM_WAVES; i++) {
               spectral_result[i] = spectral_a[i] * fac_a + spectral_b[i] * fac_b;
             }
             

@@ -89,6 +89,26 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
                 "mypaint-object-visible-symbolic",
             ],
         ),
+        _LayerFlagUIInfo(
+            togglebutton="layer-bumpself-togglebutton",
+            image="layer-bumpself-image",
+            property="bumpself",
+            togglebutton_active=[True, False],
+            image_icon_name=[
+                "mypaint-object-bumpselfoff-symbolic",
+                "mypaint-object-bumpselfon-symbolic",
+            ],
+        ),
+        _LayerFlagUIInfo(
+            togglebutton="layer-bumpbg-togglebutton",
+            image="layer-bumpbg-image",
+            property="bumpbg",
+            togglebutton_active=[True, False],
+            image_icon_name=[
+                "mypaint-object-bumpbgoff-symbolic",
+                "mypaint-object-bumpbgon-symbolic",
+            ],
+        ),
     ]
     _FLAG_ICON_SIZE = Gtk.IconSize.LARGE_TOOLBAR
 
@@ -161,6 +181,14 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
             self._m2v_layer_flag(info)
         if "name" in changed:
             self._m2v_name()
+        if "bumpself" in changed:
+            info = [i for i in self._BOOL_PROPERTIES
+                    if (i.property == "bumpself")][0]
+            self._m2v_layer_flag(info)
+        if "bumpbg" in changed:
+            info = [i for i in self._BOOL_PROPERTIES
+                    if (i.property == "bumpbg")][0]
+            self._m2v_layer_flag(info)
 
     @gui.mvp.view_updater
     def _m_layer_thumbnail_updated_cb(self, root, layerpath, layer):
@@ -323,6 +351,18 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
     def _v_layer_locked_togglebutton_toggled_cb(self, btn):
         info = [i for i in self._BOOL_PROPERTIES
                 if (i.property == "locked")][0]
+        self._v2m_layer_flag(info)
+
+    @gui.mvp.model_updater
+    def _v_layer_bumpself_togglebutton_toggled_cb(self, btn):
+        info = [i for i in self._BOOL_PROPERTIES
+                if (i.property == "bumpself")][0]
+        self._v2m_layer_flag(info)
+
+    @gui.mvp.model_updater
+    def _v_layer_bumpbg_togglebutton_toggled_cb(self, btn):
+        info = [i for i in self._BOOL_PROPERTIES
+                if (i.property == "bumpbg")][0]
         self._v2m_layer_flag(info)
 
     def _v2m_layer_flag(self, info):

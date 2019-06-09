@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.1 -->
+<!-- Generated with glade 3.20.0 -->
 <interface domain="mypaint">
   <requires lib="gtk+" version="3.12"/>
   <object class="GtkAdjustment" id="layer-opacity-adjustment">
@@ -207,6 +207,58 @@ When a layer group is locked, none of the layers inside it can be edited.</prope
                 <property name="expand">True</property>
                 <property name="fill">True</property>
                 <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="layer-bumpself-togglebutton">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes" context="Layer properties widget → Flags → bumpmap self togglebutton → tooltip">Layer bumpmapped with itself or not
+
+A curved line indicates that the current layer will apply some bump map effect to itself using its own color data to derive a heightmap texture.  A straight line indicates the layer will not be bumpmapped with itself (but possibly with the background layer).</property>
+                <property name="hexpand">False</property>
+                <property name="vexpand">False</property>
+                <signal name="toggled" handler="_v_layer_bumpself_togglebutton_toggled_cb" swapped="no"/>
+                <child>
+                  <object class="GtkImage" id="layer-bumpself-image">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="icon_name">mypaint-object-unlocked-symbolic</property>
+                    <property name="icon_size">3</property>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkToggleButton" id="layer-bumpbg-togglebutton">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes" context="Layer properties widget → Flags → bumpmap background togglebutton → tooltip">Layer bumpmapped with the background or not
+
+A wavy line above the wavy base indicates that the texture from the background will be applied to this layer.  A straight line above the wavy base indicates that the background does not affect the layer.</property>
+                <property name="hexpand">False</property>
+                <property name="vexpand">False</property>
+                <signal name="toggled" handler="_v_layer_bumpbg_togglebutton_toggled_cb" swapped="no"/>
+                <child>
+                  <object class="GtkImage" id="layer-bumpbg-image">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="icon_name">mypaint-object-unlocked-symbolic</property>
+                    <property name="icon_size">3</property>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
               </packing>
             </child>
           </object>

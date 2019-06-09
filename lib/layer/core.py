@@ -93,6 +93,8 @@ class LayerBase (Renderable):
         self._group_ref = None
         self._root_ref = None
         self._thumbnail = None
+        self._bumpself = True
+        self._bumpbg = True
         #: True if the layer was marked as selected when loaded.
         self.initially_selected = False
 
@@ -361,6 +363,45 @@ class LayerBase (Renderable):
         # so that outlying empty tiles will be updated properly.
         bbox = tuple(self.get_full_redraw_bbox())
         self._content_changed(*bbox)
+
+    @property
+    def bumpself(self):
+        """Whether the layer applies a bumpmap to itself using its own data
+        """
+        return self._bumpself
+
+    @bumpself.setter
+    def bumpself(self, bumpself):
+        bumpself = bool(bumpself)
+        if bumpself == self._bumpself:
+            return
+        self._bumpself = bumpself
+        self._properties_changed(["bumpself"])
+        # Toggling the bumpself flag always causes the mode to stop
+        # or start having bumpmap effect. Need the full redraw bbox
+        # so that outlying empty tiles will be updated properly.
+        bbox = tuple(self.get_full_redraw_bbox())
+        self._content_changed(*bbox)
+
+    @property
+    def bumpbg(self):
+        """Whether the layer applies a bumpmap to itself using the BG data
+        """
+        return self._bumpbg
+
+    @bumpbg.setter
+    def bumpbg(self, bumpbg):
+        bumpbg = bool(bumpbg)
+        if bumpbg == self._bumpbg:
+            return
+        self._bumpbg = bumpbg
+        self._properties_changed(["bumpbg"])
+        # Toggling the bumpbg flag always causes the mode to stop
+        # or start having bumpmap effect from bg. Need the full redraw bbox
+        # so that outlying empty tiles will be updated properly.
+        bbox = tuple(self.get_full_redraw_bbox())
+        self._content_changed(*bbox)
+
 
     @property
     def branch_visible(self):
