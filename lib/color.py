@@ -533,13 +533,13 @@ class PigmentColor (UIColor):
     def __init__(self, spd=None, color=None, gamma=2.2):
         """Initializes from individual values, or another UIColor
           # noqa: E519,E527
-          >>> col1 = PigmentColor(spd=np.ones(10))
-          >>> col2 = PigmentColor(color=RGBColor(r=1.0, g=0.957, b=1.0))
+          >>> col1 = PigmentColor(spd=np.ones(7))
+          >>> col2 = PigmentColor(color=RGBColor(r=1.0, g=1.0, b=1.0))
           >>> col1 == col2
           True
           >>> PigmentColor(color=HSVColor(0.0, 0.0, 0.5))
-          <PigmentColor spd=[ 0.1195239   0.12194163  0.13034062  0.22245692  0.23211225  0.20936331
-            0.2226059   0.22407617  0.22382034  0.2237448 ]>
+          <PigmentColor spd=[-1.68355217 -1.54659925 -1.99099603 -1.25780568 -2.29875143 -0.6634544
+           -0.5866084 ]>
         """
         UIColor.__init__(self)
         self.gamma = gamma
@@ -577,9 +577,9 @@ class PigmentColor (UIColor):
         >>> white = PigmentColor(color=RGBColor(r=1, g=1, b=1))
         >>> black = PigmentColor(color=RGBColor(r=0, g=0, b=0))
         >>> [c.to_hex_str() for c in white.interpolate(black, 3)]
-        ['#fffefe', '#1f1f1f', '#030303']
+        ['#ffffff', '#1f1f1f', '#030303']
         >>> [c.to_hex_str() for c in black.interpolate(white, 3)]
-        ['#030303', '#1f1f1f', '#fffefe']
+        ['#030303', '#1f1f1f', '#ffffff']
 
         """
         wgm_ratio = modifier
@@ -905,9 +905,9 @@ class CAM16Color (UIColor):
         >>> red_hsv = CAM16Color(h=32.1526953,s=80.46644073,v=46.9250674 )
         >>> green_hsv = CAM16Color(h=136.6478602,s=76.64436113,v=79.7493805)
         >>> [c.to_hex_str() for c in green_hsv.interpolate(red_hsv, 3)]
-        ['#79e725', '#fecc00', '#c82c00']
+        ['#79e725', '#ac7f0c', '#c82c00']
         >>> [c.to_hex_str() for c in red_hsv.interpolate(green_hsv, 3)]
-        ['#c82c00', '#fecc00', '#79e725']
+        ['#c82c00', '#ac7f0c', '#79e725']
 
         """
         assert steps >= 3
@@ -1519,7 +1519,6 @@ def CAM16_to_RGB(self):
                                   self.L_A, self.Y_b, self.surround)
         result = colour.XYZ_to_sRGB(xyz/100.0)
     r, g, b = np.clip(result, 0.0, maxRGB)
-    print("new color", r, g, b)
     # cache the rgb for faster get_rgb calls
     # must reset this to None if changing any properties
     self.cachedrgb = (r, g, b)

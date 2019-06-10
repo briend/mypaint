@@ -60,7 +60,7 @@ rgb_to_spectral (float r, float g, float b, float *spectral_) {
   }
   //collapse into one spd
   for (int i=0; i<NUM_WAVES; i++) {
-    spectral_[i] += fasterlog(spec_r[i] + spec_g[i] + spec_b[i]);
+    spectral_[i] += fastlog(spec_r[i] + spec_g[i] + spec_b[i]);
   }
 
 }
@@ -69,9 +69,9 @@ void
 spectral_to_rgb (float *spectral, float *rgb_) {
   float offset = 1.0 - WGM_EPSILON;
   for (int i=0; i<NUM_WAVES; i++) {
-    rgb_[0] += T_MATRIX_SMALL[0][i] * fasterexp(spectral[i]);
-    rgb_[1] += T_MATRIX_SMALL[1][i] * fasterexp(spectral[i]);
-    rgb_[2] += T_MATRIX_SMALL[2][i] * fasterexp(spectral[i]);
+    rgb_[0] += T_MATRIX_SMALL[0][i] * fastexp(spectral[i]);
+    rgb_[1] += T_MATRIX_SMALL[1][i] * fastexp(spectral[i]);
+    rgb_[2] += T_MATRIX_SMALL[2][i] * fastexp(spectral[i]);
   }
   for (int i=0; i<3; i++) {
     rgb_[i] = CLAMP((rgb_[i] - WGM_EPSILON) / offset, 0.0f, (1<<15));
@@ -141,7 +141,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             // Calcuate bump map 
             // Use alpha as  height-map
             float slope = 0.0;
-            const int reach = 1;
+            const int reach = 3;
             float center = src[i+3] + src[i] + src[i+1] + src[i+2];
             for (int p=1; p<=reach; p++) {
                 // North
@@ -179,7 +179,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             }
             
             // amplify slope with opacity control
-            slope = slope / (4 * reach) /  fasterpow((1<<15), (float)opac / (1<<15));
+            slope = slope / (4 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
             // reduce slope when dst alpha is very high, like thick paint hiding texture
@@ -210,7 +210,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             // Calcuate bump map 
             // Use alpha as  height-map
             float slope = 0.0;
-            const int reach = 1;
+            const int reach = 3;
             float center = src[i+3] + src[i] + src[i+1] + src[i+2];
             for (int p=1; p<=reach; p++) {
                 // North
@@ -252,7 +252,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
             // reduce slope when dst alpha is very high, like thick paint hiding texture
-            slope *= (1.0 - fasterpow((float)dst[i+3] / (1<<15), 16));
+            slope *= (1.0 - fastpow((float)dst[i+3] / (1<<15), 16));
 
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1<<15) * Oren_exposure;
@@ -277,6 +277,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
                             fix15_short_t * const dst,
                             const fix15_short_t opac) const
     {
+        #pragma omp parallel for
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t Sa = fix15_mul(src[i+3], opac);
             const fix15_t one_minus_Sa = fix15_one - Sa;
@@ -290,15 +291,15 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
             }
             float fac_b = 1.0 - fac_a;
 
-            //convert bottom to spectral.  Un-premult alpha to obtain reflectance
-            //color noise is not a problem since low alpha also implies low weight
+            //convert bottom to spectral.
             float spectral_b[NUM_WAVES] = {0};
             rgb_to_spectral((float)dst[i], (float)dst[i+1], (float)dst[i+2], spectral_b);
-            // convert top to spectral.  Already straight color
+            // convert top to spectral.
             float spectral_a[NUM_WAVES] = {0};
             rgb_to_spectral((float)src[i], (float)src[i+1], (float)src[i+2], spectral_a);
 
             // mix to the two spectral reflectances using WGM
+            // values are in log, thus this is a weighted geometric mean
             float spectral_result[NUM_WAVES] = {0};
             for (int i=0; i<NUM_WAVES; i++) {
               spectral_result[i] = spectral_a[i] * fac_a + spectral_b[i] * fac_b;

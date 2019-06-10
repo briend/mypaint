@@ -222,7 +222,7 @@ class DocPaint (unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         os.chdir(cls._old_cwd)
-        shutil.rmtree(cls._temp_dir, ignore_errors=True)
+        #shutil.rmtree(cls._temp_dir, ignore_errors=True)
 
     def test_docpaint(self):
         """Saved and reloaded documents look identical"""
