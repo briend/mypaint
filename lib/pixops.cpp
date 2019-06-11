@@ -36,15 +36,10 @@ tile_downscale_rgba16_c(const uint16_t *src, int src_strides, uint16_t *dst,
     uint16_t * dst_p = (uint16_t*)((char *)dst + (y+dst_y)*dst_strides);
     dst_p += 4*dst_x;
     for(int x=0; x<MYPAINT_TILE_SIZE/2; x++) {
-      dst_p[0] = fix15_mul(src_p[0], src_p[3])/4 + fix15_mul((src_p+4)[0], (src_p+4)[3])/4 + fix15_mul((src_p+4*MYPAINT_TILE_SIZE)[0], (src_p+4*MYPAINT_TILE_SIZE)[3])/4 + fix15_mul((src_p+4*MYPAINT_TILE_SIZE+4)[0], (src_p+4*MYPAINT_TILE_SIZE+4)[3])/4;
-      dst_p[1] = fix15_mul(src_p[1], src_p[3])/4 + fix15_mul((src_p+4)[1], (src_p+4)[3])/4 + fix15_mul((src_p+4*MYPAINT_TILE_SIZE)[1], (src_p+4*MYPAINT_TILE_SIZE)[3])/4 + fix15_mul((src_p+4*MYPAINT_TILE_SIZE+4)[1], (src_p+4*MYPAINT_TILE_SIZE+4)[3])/4;
-      dst_p[2] = fix15_mul(src_p[2], src_p[3])/4 + fix15_mul((src_p+4)[2], (src_p+4)[3])/4 + fix15_mul((src_p+4*MYPAINT_TILE_SIZE)[2], (src_p+4*MYPAINT_TILE_SIZE)[3])/4 + fix15_mul((src_p+4*MYPAINT_TILE_SIZE+4)[2], (src_p+4*MYPAINT_TILE_SIZE+4)[3])/4;
+      dst_p[0] = src_p[0]/4 + (src_p+4)[0]/4 + (src_p+4*MYPAINT_TILE_SIZE)[0]/4 + (src_p+4*MYPAINT_TILE_SIZE+4)[0]/4;
+      dst_p[1] = src_p[1]/4 + (src_p+4)[1]/4 + (src_p+4*MYPAINT_TILE_SIZE)[1]/4 + (src_p+4*MYPAINT_TILE_SIZE+4)[1]/4;
+      dst_p[2] = src_p[2]/4 + (src_p+4)[2]/4 + (src_p+4*MYPAINT_TILE_SIZE)[2]/4 + (src_p+4*MYPAINT_TILE_SIZE+4)[2]/4;
       dst_p[3] = src_p[3]/4 + (src_p+4)[3]/4 + (src_p+4*MYPAINT_TILE_SIZE)[3]/4 + (src_p+4*MYPAINT_TILE_SIZE+4)[3]/4;
-      if (dst_p[3] > 0) {
-          dst_p[0] = fix15_div(dst_p[0], dst_p[3]);
-          dst_p[1] = fix15_div(dst_p[1], dst_p[3]);
-          dst_p[2] = fix15_div(dst_p[2], dst_p[3]);
-      }
       src_p += 8;
       dst_p += 4;
     }
