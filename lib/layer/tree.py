@@ -522,7 +522,7 @@ class RootLayerStack (group.LayerStack):
                         lib.mypaintlib.tile_combine(
                             lib.mypaintlib.CombineNormal,
                             dst, dst_over_opaque_base,
-                            False, 1.0,
+                            False, 1.0, np.array([0.5, 0.5], dtype='float32'),
                         )
                         dst = dst_over_opaque_base
 
@@ -737,12 +737,13 @@ class RootLayerStack (group.LayerStack):
         # GIL-holding C++ loop body might look like.
 
         stack = []
-        for (opcode, opdata, mode, opacity) in ops:
+        for (opcode, opdata, mode, opacity, opts) in ops:
             if opcode == rendering.Opcode.COMPOSITE:
                 opdata.composite_tile(
                     dst, dst_has_alpha, tx, ty,
                     mipmap_level=mipmap_level,
                     mode=mode, opacity=opacity,
+                    opts=np.array(opts, dtype='float32')
                 )
             elif opcode == rendering.Opcode.BLIT:
                 opdata.blit_tile_into(
@@ -760,7 +761,7 @@ class RootLayerStack (group.LayerStack):
                 lib.mypaintlib.tile_combine(
                     mode,
                     src, dst, dst_has_alpha,
-                    opacity,
+                    opacity, np.array(opts, dtype='float32'),
                 )
             else:
                 raise RuntimeError(
@@ -786,20 +787,20 @@ class RootLayerStack (group.LayerStack):
         if self._get_render_background(spec):
             bg_opcode = rendering.Opcode.BLIT
             bg_surf = self._background_layer._surface
-            ops.append((bg_opcode, bg_surf, None, None))
+            ops.append((bg_opcode, bg_surf, None, None, None))
         for child_layer in reversed(self):
             if self._get_render_background(spec):
                 if filter != "ByPass" and self._background_bumpmapped and (child_layer.bumpself or child_layer.bumpbg):
-                    ops.append((3, None, None, 1.0))
+                    ops.append((3, None, None, 1.0, None))
             ops.extend(child_layer.get_render_ops(spec))
             if self._get_render_background(spec):
                 bg_surf = self._background_layer._surface
                 if filter != "ByPass" and self._background_bumpmapped and (child_layer.bumpself or child_layer.bumpbg):
                     if hasattr(child_layer, '_surface') and child_layer.bumpself:
-                        ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMap, 0.8))
+                        ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMap, 1.0, np.array([child_layer.bumpself_rough, child_layer.bumpself_amp], dtype='float32')))
                     if child_layer.bumpbg:
-                        ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 0.8))
-                    ops.append((4, None, child_layer.mode, 1.0))
+                        ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 1.0, np.array([child_layer.bumpbg_rough, child_layer.bumpbg_amp], dtype='float32')))
+                    ops.append((4, None, child_layer.mode, 1.0, None))
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))
         return ops
@@ -2193,7 +2194,8 @@ class RootLayerStack (group.LayerStack):
                     layer._surface.composite_tile(
                         dst, True,
                         tx, ty, mipmap_level=0,
-                        mode=mode, opacity=layer.opacity
+                        mode=mode, opacity=layer.opacity,
+                        opts=np.array([0.5, 0.5], dtype='float32')
                     )
         return dstlayer
 

@@ -86,7 +86,7 @@ class Ops (unittest.TestCase):
             dst[...] = self.dst_orig[...]
 
             # Combine using the current mode
-            mypaintlib.tile_combine(mode, src, dst, True, 1.0)
+            mypaintlib.tile_combine(mode, src, dst, True, 1.0, 0)
 
             # Tests
             zero_alpha_has_effect = False

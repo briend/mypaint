@@ -95,6 +95,10 @@ class LayerBase (Renderable):
         self._thumbnail = None
         self._bumpself = True
         self._bumpbg = True
+        self._bumpself_rough = 0.5
+        self._bumpself_amp = 0.8
+        self._bumpbg_rough = 0.5
+        self._bumpbg_amp = 0.8
         #: True if the layer was marked as selected when loaded.
         self.initially_selected = False
 
@@ -180,6 +184,18 @@ class LayerBase (Renderable):
         compop = str(attrs.get('composite-op', ''))
         self.mode = ORA_MODES_BY_OPNAME.get(compop, DEFAULT_MODE)
         self.opacity = helpers.clamp(float(attrs.get('opacity', '1.0')),
+                                     0.0, 1.0)
+        bumpself = attrs.get("bumpself", 'false').lower()
+        self.bumpself = lib.xml.xsd2bool(bumpself)
+        bumpbg = attrs.get("bumpself", 'false').lower()
+        self.bumpbg = lib.xml.xsd2bool(bumpbg)
+        self.bumpself_rough = helpers.clamp(float(attrs.get('bumpself_rough', '0.5')),
+                                     0.0, 1.0)
+        self.bumpself_amp = helpers.clamp(float(attrs.get('bumpself_amp', '0.8')),
+                                     0.0, 1.0)
+        self.bumpbg_rough = helpers.clamp(float(attrs.get('bumpbg_rough', '0.5')),
+                                     0.0, 1.0)
+        self.bumpbg_amp = helpers.clamp(float(attrs.get('bumpbg_amp', '0.8')),
                                      0.0, 1.0)
         visible = attrs.get('visibility', 'visible').lower()
         self.visible = (visible != "hidden")
@@ -384,6 +400,40 @@ class LayerBase (Renderable):
         self._content_changed(*bbox)
 
     @property
+    def bumpself_amp(self):
+        """bumpself_amp
+        amplifies bump mapping
+        """
+        return self._bumpself_amp
+
+    @bumpself_amp.setter
+    def bumpself_amp(self, bumpself_amp):
+        bumpself_amp = helpers.clamp(float(bumpself_amp), 0.0, 1.0)
+        if bumpself_amp == self._bumpself_amp:
+            return
+        self._bumpself_amp = bumpself_amp
+        self._properties_changed(["bumpself_amp"])
+        bbox = tuple(self.get_bbox())
+        self._content_changed(*bbox)
+
+    @property
+    def bumpself_rough(self):
+        """bumpself_rough
+        amplifies bump mapping
+        """
+        return self._bumpself_rough
+
+    @bumpself_rough.setter
+    def bumpself_rough(self, bumpself_rough):
+        bumpself_rough = helpers.clamp(float(bumpself_rough), 0.0, 1.0)
+        if bumpself_rough == self._bumpself_rough:
+            return
+        self._bumpself_rough = bumpself_rough
+        self._properties_changed(["bumpself_rough"])
+        bbox = tuple(self.get_bbox())
+        self._content_changed(*bbox)
+
+    @property
     def bumpbg(self):
         """Whether the layer applies a bumpmap to itself using the BG data
         """
@@ -402,6 +452,39 @@ class LayerBase (Renderable):
         bbox = tuple(self.get_full_redraw_bbox())
         self._content_changed(*bbox)
 
+    @property
+    def bumpbg_amp(self):
+        """bumpbg_amp
+        amplifies bump mapping
+        """
+        return self._bumpbg_amp
+
+    @bumpbg_amp.setter
+    def bumpbg_amp(self, bumpbg_amp):
+        bumpbg_amp = helpers.clamp(float(bumpbg_amp), 0.0, 1.0)
+        if bumpbg_amp == self._bumpbg_amp:
+            return
+        self._bumpbg_amp = bumpbg_amp
+        self._properties_changed(["bumpbg_amp"])
+        bbox = tuple(self.get_bbox())
+        self._content_changed(*bbox)
+
+    @property
+    def bumpbg_rough(self):
+        """bumpbg_rough
+        amplifies bump mapping
+        """
+        return self._bumpbg_rough
+
+    @bumpbg_rough.setter
+    def bumpbg_rough(self, bumpbg_rough):
+        bumpbg_rough = helpers.clamp(float(bumpbg_rough), 0.0, 1.0)
+        if bumpbg_rough == self._bumpbg_rough:
+            return
+        self._bumpbg_rough = bumpbg_rough
+        self._properties_changed(["bumpbg_rough"])
+        bbox = tuple(self.get_bbox())
+        self._content_changed(*bbox)
 
     @property
     def branch_visible(self):
@@ -884,6 +967,14 @@ class LayerBase (Renderable):
             attrs["visibility"] = "visible"
         else:
             attrs["visibility"] = "hidden"
+        if self.bumpself:
+            attrs["bumpself"] = "true"
+        if self.bumpbg:
+            attrs["bumpbg"] = "true"
+        attrs["bumpself_rough"] = str(self.bumpself_rough)
+        attrs["bumpself_amp"] = str(self.bumpself_amp)
+        attrs["bumpbg_rough"] = str(self.bumpbg_rough)
+        attrs["bumpbg_rough"] = str(self.bumpbg_amp)
         # NOTE: This *will* be wrong for the PASS_THROUGH_MODE case.
         # NOTE: LayerStack will need to override this attr.
         mode_info = lib.mypaintlib.combine_mode_get_info(self.mode)
@@ -1021,6 +1112,12 @@ class LayerBaseSnapshot (object):
         self.opacity = layer.opacity
         self.visible = layer.visible
         self.locked = layer.locked
+        self.bumpself = layer.bumpself
+        self.bumpbg = layer.bumpbg
+        self.bumpself_rough = layer.bumpself_rough
+        self.bumpself_amp = layer.bumpself_amp
+        self.bumpbg_rough = layer.bumpbg_rough
+        self.bumpbg_amp = layer.bumpbg_amp
 
     def restore_to_layer(self, layer):
         layer.name = self.name
@@ -1028,6 +1125,12 @@ class LayerBaseSnapshot (object):
         layer.opacity = self.opacity
         layer.visible = self.visible
         layer.locked = self.locked
+        layer.bumpself = self.bumpself
+        layer.bumpbg = self.bumpbg
+        layer.bumpself_rough = self.bumpself_rough
+        layer.bumpself_amp = self.bumpself_amp
+        layer.bumpbg_rough = self.bumpbg_rough
+        layer.bumpbg_amp = self.bumpbg_amp
 
 
 class ExternallyEditable:

@@ -34,7 +34,8 @@ class BlendFunc
                               const fix15_t src_b,
                               fix15_t &dst_r,
                               fix15_t &dst_g,
-                              fix15_t &dst_b ) const = 0;
+                              fix15_t &dst_b,
+                              const float * const opts) const = 0;
 };
 
 
@@ -91,7 +92,8 @@ class BufferCombineFunc
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
-                            const fix15_short_t src_opacity) const
+                            const fix15_short_t src_opacity,
+                            const float * const opts) const
     {
 #ifndef HEAVY_DEBUG
         // Skip tile if it can't affect the backdrop
@@ -155,7 +157,7 @@ class BufferCombineFunc
 #endif
 
             // Apply the colour blend functor
-            blendfunc(Rs, Gs, Bs, Rb, Gb, Bb);
+            blendfunc(Rs, Gs, Bs, Rb, Gb, Bb, opts);
 
             // Apply results of the blend in place
             if (DSTALPHA) {
@@ -191,7 +193,8 @@ class TileDataCombineOp
     virtual void combine_data (const fix15_short_t *src_p,
                                fix15_short_t *dst_p,
                                const bool dst_has_alpha,
-                               const float src_opacity) const = 0;
+                               const float src_opacity,
+                               const float *opts) const = 0;
     virtual const char* get_name() const = 0;
     virtual bool zero_alpha_has_effect() const = 0;
     virtual bool can_decrease_alpha() const = 0;

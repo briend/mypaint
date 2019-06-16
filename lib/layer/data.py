@@ -364,16 +364,16 @@ class SurfaceBackedLayer (core.LayerBase, lib.autosave.Autosaveable):
         ops = []
         if (spec.current_overlay is not None) and (self is spec.current):
             # Temporary special effects, e.g. layer blink.
-            ops.append((rendering.Opcode.PUSH, None, None, None))
+            ops.append((rendering.Opcode.PUSH, None, None, None, None))
             ops.append((
-                rendering.Opcode.COMPOSITE, self._surface, mode_default, 1.0,
+                rendering.Opcode.COMPOSITE, self._surface, mode_default, 1.0, None,
             ))
             ops.extend(spec.current_overlay.get_render_ops(spec))
-            ops.append(rendering.Opcode.POP, None, mode, opacity)
+            ops.append(rendering.Opcode.POP, None, mode, opacity, None)
         else:
             # The 99%+ case☺
             ops.append((
-                rendering.Opcode.COMPOSITE, self._surface, mode, opacity,
+                rendering.Opcode.COMPOSITE, self._surface, mode, opacity, None,
             ))
         return ops
 

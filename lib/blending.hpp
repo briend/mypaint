@@ -86,7 +86,8 @@ class BlendNormal : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         dst_r = src_r;
         dst_g = src_g;
@@ -102,7 +103,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
-                            const fix15_short_t opac) const
+                            const fix15_short_t opac,
+                            const float * const opts) const
     {
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t Sa = fix15_mul(src[i+3], opac);
@@ -122,10 +124,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
     }
 };
 
-const float Oren_rough = 0.5;
-const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
-const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
-const float Oren_exposure = 1.0 / Oren_A;
+
 
 template <bool DSTALPHA, unsigned int BUFSIZE>
 class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
@@ -134,14 +133,19 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
-                            const fix15_short_t opac) const
+                            const fix15_short_t opac,
+                            const float * const opts) const
     {
+        const float Oren_rough = opts[0];
+        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
+        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
+        const float Oren_exposure = 1.0 / Oren_A;
         const unsigned int stride = MYPAINT_TILE_SIZE * 4;
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             // Calcuate bump map 
             // Use alpha as  height-map
             float slope = 0.0;
-            const int reach = 3;
+            const int reach = 1;
             float center = src[i+3] + src[i] + src[i+1] + src[i+2];
             for (int p=1; p<=reach; p++) {
                 // North
@@ -179,12 +183,12 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             }
             
             // amplify slope with opacity control
-            slope = slope / (4 * reach) /  fastpow((1<<15), (float)opac / (1<<15));
+            
+            slope = slope / (4 * reach) /  fasterpow((1<<15), opts[1]);
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
             // reduce slope when dst alpha is very high, like thick paint hiding texture
             //slope *= (1.0 - fastpow((float)dst[i+3] / (1<<15), 32));
-
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1<<15) * Oren_exposure;
 
@@ -203,14 +207,19 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
-                            const fix15_short_t opac) const
+                            const fix15_short_t opac,
+                            const float * const opts) const
     {
+        const float Oren_rough = opts[0];
+        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
+        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
+        const float Oren_exposure = 1.0 / Oren_A;
         const unsigned int stride = MYPAINT_TILE_SIZE * 4;
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             // Calcuate bump map 
             // Use alpha as  height-map
             float slope = 0.0;
-            const int reach = 3;
+            const int reach = 1;
             float center = src[i+3] + src[i] + src[i+1] + src[i+2];
             for (int p=1; p<=reach; p++) {
                 // North
@@ -248,7 +257,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             }
             
             // amplify slope with opacity control
-            slope = slope / (4 * reach) /  fasterpow((1<<15), (float)opac / (1<<15));
+            
+            slope = slope / (4 * reach) /  fasterpow((1<<15), opts[1]);
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));
             // reduce slope when dst alpha is very high, like thick paint hiding texture
@@ -257,10 +267,10 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1<<15) * Oren_exposure;
 
-            dst[i+0] = fix15_short_clamp(fix15_mul(dst[i], lambert));
-            dst[i+1] = fix15_short_clamp(fix15_mul(dst[i+1], lambert));
-            dst[i+2] = fix15_short_clamp(fix15_mul(dst[i+2], lambert));
-            //dst[i+3] = fix15_short_clamp(fix15_mul(dst[i+3], lambert));
+            //dst[i+0] = fix15_short_clamp(fix15_mul(dst[i], lambert));
+            //dst[i+1] = fix15_short_clamp(fix15_mul(dst[i+1], lambert));
+            //dst[i+2] = fix15_short_clamp(fix15_mul(dst[i+2], lambert));
+            dst[i+3] = fix15_short_clamp(fix15_mul(dst[i+3], lambert));
         }
     }
 };
@@ -275,7 +285,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
-                            const fix15_short_t opac) const
+                            const fix15_short_t opac,
+                            const float * const opts) const
     {
         #pragma omp parallel for
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
@@ -314,7 +325,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
               rgb_result[3] = (1<<15);
             }
             for (int j=0; j<3; j++) {
-              dst[i+j] = rgb_result[j] + 0.5;
+              dst[i+j] = rgb_result[j];
             }
             
             if (DSTALPHA) {
@@ -333,7 +344,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationIn>
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
-                            const fix15_short_t opac) const
+                            const fix15_short_t opac,
+                            const float * const opts) const
     {
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t Sa = fix15_mul(src[i+3], opac);
@@ -360,7 +372,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationOut
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
-                            const fix15_short_t opac) const
+                            const fix15_short_t opac,
+                            const float * const opts) const
     {
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t one_minus_Sa = fix15_one-fix15_mul(src[i+3], opac);
@@ -388,7 +401,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceAtop>
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
-                            const fix15_short_t opac) const
+                            const fix15_short_t opac,
+                            const float * const opts) const
     {
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t as = fix15_mul(src[i+3], opac);
@@ -430,7 +444,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationAto
   public:
     inline void operator() (const fix15_short_t * const src,
                             fix15_short_t * const dst,
-                            const fix15_short_t opac) const
+                            const fix15_short_t opac,
+                            const float * const opts) const
     {
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const fix15_t as = fix15_mul(src[i+3], opac);
@@ -470,7 +485,8 @@ class BlendMultiply : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         dst_r = fix15_mul(src_r, dst_r);
         dst_g = fix15_mul(src_g, dst_g);
@@ -488,7 +504,8 @@ class BlendScreen : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         dst_r = dst_r + src_r - fix15_mul(dst_r, src_r);
         dst_g = dst_g + src_g - fix15_mul(dst_g, src_g);
@@ -518,7 +535,8 @@ class BlendOverlay : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         process_channel(src_r, dst_r);
         process_channel(src_g, dst_g);
@@ -534,7 +552,8 @@ class BlendDarken : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         if (src_r < dst_r) dst_r = src_r;
         if (src_g < dst_g) dst_g = src_g;
@@ -550,7 +569,8 @@ class BlendLighten : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         if (src_r > dst_r) dst_r = src_r;
         if (src_g > dst_g) dst_g = src_g;
@@ -580,7 +600,8 @@ class BlendHardLight : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         process_channel(src_r, dst_r);
         process_channel(src_g, dst_g);
@@ -609,7 +630,8 @@ class BlendColorDodge : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         process_channel(src_r, dst_r);
         process_channel(src_g, dst_g);
@@ -638,7 +660,8 @@ class BlendColorBurn : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         process_channel(src_r, dst_r);
         process_channel(src_g, dst_g);
@@ -688,7 +711,8 @@ class BlendSoftLight : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         process_channel(src_r, dst_r);
         process_channel(src_g, dst_g);
@@ -713,7 +737,8 @@ class BlendDifference : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         process_channel(src_r, dst_r);
         process_channel(src_g, dst_g);
@@ -735,7 +760,8 @@ class BlendExclusion : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         process_channel(src_r, dst_r);
         process_channel(src_g, dst_g);
@@ -859,7 +885,8 @@ class BlendHue : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         const ufix15_t dst_lum = blending_nonsep_lum(dst_r, dst_g, dst_b);
         const ufix15_t dst_sat = blending_nonsep_sat(dst_r, dst_g, dst_b);
@@ -890,7 +917,8 @@ class BlendSaturation : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         const ufix15_t dst_lum = blending_nonsep_lum(dst_r, dst_g, dst_b);
         const ufix15_t src_sat = blending_nonsep_sat(src_r, src_g, src_b);
@@ -921,7 +949,8 @@ class BlendColor : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         ufix15_t r = src_r;
         ufix15_t g = src_g;
@@ -950,7 +979,8 @@ class BlendLuminosity : public BlendFunc
   public:
     inline void operator()
         (const fix15_t src_r, const fix15_t src_g, const fix15_t src_b,
-         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b) const
+         fix15_t &dst_r, fix15_t &dst_g, fix15_t &dst_b,
+         const float * const opts) const
     {
         ufix15_t r = dst_r;
         ufix15_t g = dst_g;

@@ -398,7 +398,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
                         mypaintlib.tile_convert_rgbu16_to_rgbu8(src, dst, self.EOTF)
 
     def composite_tile(self, dst, dst_has_alpha, tx, ty, mipmap_level=0,
-                       opacity=1.0, mode=mypaintlib.CombineNormal,
+                       opacity=1.0, mode=mypaintlib.CombineNormal, opts=np.array([0.1, 0.3], dtype='float32'),
                        *args, **kwargs):
         """Composite one tile of this surface over a NumPy array.
 
@@ -424,7 +424,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
         # mipmap level.
         if self.mipmap_level < mipmap_level:
             self.mipmap.composite_tile(dst, dst_has_alpha, tx, ty,
-                                       mipmap_level, opacity, mode)
+                                       mipmap_level, opacity, mode, opts)
             return
 
         # Tile request at the required level.
@@ -437,7 +437,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
                         return
                 if mode not in lib.modes.MODES_EFFECTIVE_AT_ZERO_ALPHA:
                     return
-            mypaintlib.tile_combine(mode, src, dst, dst_has_alpha, opacity)
+            mypaintlib.tile_combine(mode, src, dst, dst_has_alpha, opacity, opts)
 
     ## Snapshotting
 
@@ -829,7 +829,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             for tx, ty in dirty_tiles:
                 s.blit_tile_into(tmp, True, tx, ty)
                 with self.tile_request(tx, ty, readonly=False) as dst:
-                    mypaintlib.tile_combine(mode, tmp, dst, True, 1.0)
+                    mypaintlib.tile_combine(mode, tmp, dst, True, 1.0, np.array([0.5, 0.5], dtype='float32'))
 
         # Tell everyone about the changes
         bbox = lib.surface.get_tiles_bbox(dirty_tiles)

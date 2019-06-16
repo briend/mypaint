@@ -629,14 +629,15 @@ class TileDataCombine : public TileDataCombineOp
     void combine_data (const fix15_short_t *src_p,
                        fix15_short_t *dst_p,
                        const bool dst_has_alpha,
-                       const float src_opacity) const
+                       const float src_opacity,
+                       const float *opts) const
     {
         const fix15_short_t opac = fix15_short_clamp(src_opacity * fix15_one);
         if (dst_has_alpha) {
-            combine_dstalpha(src_p, dst_p, opac);
+            combine_dstalpha(src_p, dst_p, opac, opts);
         }
         else {
-            combine_dstnoalpha(src_p, dst_p, opac);
+            combine_dstnoalpha(src_p, dst_p, opac, opts);
         }
     }
 
@@ -726,10 +727,12 @@ tile_combine (enum CombineMode mode,
               PyObject *src_obj,
               PyObject *dst_obj,
               const bool dst_has_alpha,
-              const float src_opacity)
+              const float src_opacity,
+              PyObject *opts_array)
 {
     PyArrayObject* src = ((PyArrayObject*)src_obj);
     PyArrayObject* dst = ((PyArrayObject*)dst_obj);
+    PyArrayObject* opts = ((PyArrayObject*)opts_array);
 #ifdef HEAVY_DEBUG
     assert(PyArray_Check(src_obj));
     assert(PyArray_DIM(src, 0) == MYPAINT_TILE_SIZE);
@@ -752,11 +755,12 @@ tile_combine (enum CombineMode mode,
 
     const fix15_short_t* const src_p = (fix15_short_t *)PyArray_DATA(src);
     fix15_short_t*       const dst_p = (fix15_short_t *)PyArray_DATA(dst);
+    const float* const opts_a = (float *)PyArray_DATA(opts);
 
     if (mode >= NumCombineModes || mode < 0) {
         return;
     }
     const TileDataCombineOp *op = combine_mode_info[mode];
-    op->combine_data(src_p, dst_p, dst_has_alpha, src_opacity);
+    op->combine_data(src_p, dst_p, dst_has_alpha, src_opacity, opts_a);
 }
 

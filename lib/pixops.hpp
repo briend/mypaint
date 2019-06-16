@@ -132,7 +132,8 @@ tile_combine (enum CombineMode mode,
               PyObject *src_obj,
               PyObject *dst_obj,
               const bool dst_has_alpha,
-              const float src_opacity);
+              const float src_opacity,
+              PyObject *opts_array);
 
 
 #endif // PIXOPS_HPP

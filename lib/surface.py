@@ -113,6 +113,7 @@ class TileCompositable (Bounded):
 
     @abc.abstractmethod
     def composite_tile(self, dst, dst_has_alpha, tx, ty, mipmap_level=0,
+                       opts=np.array([0.5, 0.5], dtype='float32'),
                        *args, **kwargs):
         """Composites one tile from this object over a NumPy array.
 
@@ -121,6 +122,7 @@ class TileCompositable (Bounded):
         :param int tx: Tile X coord (multiply by TILE_SIZE for pixels)
         :param int ty: Tile Y coord (multiply by TILE_SIZE for pixels)
         :param int mode: mode to use when compositing
+        :param opts: array of options that mode will understand
         :param \*args: Implementation may extend this interface
         :param \*\*kwargs: Implementation may extend this interface
 
