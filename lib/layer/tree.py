@@ -778,11 +778,7 @@ class RootLayerStack (group.LayerStack):
 
     def get_render_ops(self, spec, filter=None):
         """Get rendering instructions."""
-        # Wrap all the layers in a group layer stack so that
-        # We can use bump mapping w/ alpha channels
-        # If we composite with BG first, alpha is always 100%
-        # Need a way to configure blend mode for this invisible group.
-        # Also a configuration for bump map strength, and on/off
+        # Render each layer with an optional bump map effect
         ops = []
         if self._get_render_background(spec):
             bg_opcode = rendering.Opcode.BLIT
@@ -797,9 +793,11 @@ class RootLayerStack (group.LayerStack):
                 bg_surf = self._background_layer._surface
                 if filter != "ByPass" and self._background_bumpmapped and (child_layer.bumpself or child_layer.bumpbg):
                     if hasattr(child_layer, '_surface') and child_layer.bumpself:
-                        ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMap, 1.0, np.array([child_layer.bumpself_rough, child_layer.bumpself_amp], dtype='float32')))
+                        opts = np.array([child_layer.bumpself_rough, child_layer.bumpself_amp], dtype='float32')
+                        ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMap, 1.0, opts))
                     if child_layer.bumpbg:
-                        ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 1.0, np.array([child_layer.bumpbg_rough, child_layer.bumpbg_amp], dtype='float32')))
+                        opts = np.array([child_layer.bumpbg_rough, child_layer.bumpbg_amp], dtype='float32')
+                        ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 1.0, opts))
                     ops.append((4, None, child_layer.mode, 1.0, None))
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))

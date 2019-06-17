@@ -1449,7 +1449,7 @@ def RGB_to_CAM16(self, rgb):
 
 
 def CAM16_to_RGB(self):
-    if self.illuminant is None:
+    if self.illuminant is None or np.isnan(self.illuminant).any():
         self.illuminant = np.array(
             colour.xy_to_XYZ(
                 colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0)

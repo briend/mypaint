@@ -13,6 +13,7 @@ from lib.helpers import rgb_to_hsv, hsv_to_rgb
 import lib.color
 
 import colour
+import numpy as np
 
 import gui.blendmodehandler
 
@@ -91,11 +92,11 @@ class BrushModifier (object):
                 self.unmodified_brushinfo.get_setting('cie_s'),
                 self.unmodified_brushinfo.get_setting('cie_h'))
             cieaxes = self.unmodified_brushinfo.get_setting('cieaxes')
-            illuminant = (
+            illuminant = np.array([
                 self.unmodified_brushinfo.get_setting('illuminant_X'),
                 self.unmodified_brushinfo.get_setting('illuminant_Y'),
-                self.unmodified_brushinfo.get_setting('illuminant_Z'))
-        except KeyError:
+                self.unmodified_brushinfo.get_setting('illuminant_Z')], dtype='float64')
+        except (KeyError, ValueError):
             vsh = cieaxes = illuminant = ''
         if '' not in [vsh, cieaxes, illuminant]:
             color = lib.color.CAM16Color(

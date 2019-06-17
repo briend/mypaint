@@ -145,7 +145,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             // Calcuate bump map 
             // Use alpha as  height-map
             float slope = 0.0;
-            const int reach = 1;
+            const int reach = 2;
             float center = src[i+3] + src[i] + src[i+1] + src[i+2];
             for (int p=1; p<=reach; p++) {
                 // North
@@ -220,44 +220,25 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             // Use alpha as  height-map
             float slope = 0.0;
             const int reach = 1;
+            int o = 0;
             float center = src[i+3] + src[i] + src[i+1] + src[i+2];
             for (int p=1; p<=reach; p++) {
                 // North
-                if (i >= stride * p) {
-                    int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
+                o = (i - stride * p) % BUFSIZE;
+                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 // East
-                if (i % stride < stride - 4 * p) {
-                    int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
+                o = (i + 4 * p) % stride;
+                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 // West
-                if (i % stride >= 4 * p) {
-                    int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
+                o = (i - 4 * p) % stride;
+                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
                 // South
-                if (i < BUFSIZE - stride * p) {
-                    int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
+                o = (i + stride * p) % BUFSIZE;
+                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
             }
-            
+
             // amplify slope with opacity control
-            
+
             slope = slope / (4 * reach) /  fasterpow((1<<15), opts[1]);
             // reduce slope for brighter colors to avoid harsh shadows
             //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1<<15));

@@ -448,11 +448,11 @@ class LayerStack (core.LayerBase, lib.autosave.Autosaveable):
 
         ops = []
         if isolate_child_layers:
-            ops.append((Opcode.PUSH, None, None, None))
+            ops.append((Opcode.PUSH, None, None, None, None))
         for child_layer in reversed(self._layers):
             ops.extend(child_layer.get_render_ops(spec))
         if isolate_child_layers:
-            ops.append((Opcode.POP, None, mode, opacity))
+            ops.append((Opcode.POP, None, mode, opacity, None))
 
         return ops
 
