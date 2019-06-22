@@ -434,6 +434,10 @@ def composite(
                     src_tile, *(fill_col + tile_bounds)
                 )
 
+            # unassociate the alpha (straightened)
+            src_tile_rgba[:,:,0] = src_tile_rgba[:,:,0] / (src_tile_rgba[:,:,3] / (1<<15))
+            src_tile_rgba[:,:,1] = src_tile_rgba[:,:,1] / (src_tile_rgba[:,:,3] / (1<<15))
+            src_tile_rgba[:,:,2] = src_tile_rgba[:,:,2] / (src_tile_rgba[:,:,3] / (1<<15))
             # If alpha locking is enabled in combination with a mode other than
             # CombineNormal, we need to copy the dst tile to mask the result
             if lock_alpha and mode != myplib.CombineSourceAtop:

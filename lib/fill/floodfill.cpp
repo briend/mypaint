@@ -77,8 +77,8 @@ straightened(int targ_r, int targ_g, int targ_b, int targ_a)
 }
 
 Filler::Filler(int targ_r, int targ_g, int targ_b, int targ_a, double tol)
-    : target_color(straightened(targ_r, targ_g, targ_b, targ_a)),
-      target_color_premultiplied(rgba((chan_t)targ_r, targ_g, targ_b, targ_a)),
+    : target_color(rgba((chan_t)targ_r, targ_g, targ_b, targ_a)),
+      target_color_premultiplied(rgba((chan_t)fix15_mul(targ_r, targ_a), fix15_mul(targ_g, targ_a), fix15_mul(targ_b, targ_a), targ_a)),
       tolerance((fix15_t)(MIN(1.0, MAX(0.0, tol)) * fix15_one))
 {
 }
