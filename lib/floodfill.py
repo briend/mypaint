@@ -443,10 +443,10 @@ def composite(
             if lock_alpha and mode != myplib.CombineSourceAtop:
                 mask = np.copy(dst_tile)
                 mask_mode = myplib.CombineDestinationAtop
-                tile_combine(mode, src_tile_rgba, dst_tile, True, opacity)
-                tile_combine(mask_mode, mask, dst_tile, True, 1.0)
+                tile_combine(mode, src_tile_rgba, dst_tile, True, opacity, None)
+                tile_combine(mask_mode, mask, dst_tile, True, 1.0, None)
             else:
-                tile_combine(mode, src_tile_rgba, dst_tile, True, opacity)
+                tile_combine(mode, src_tile_rgba, dst_tile, True, opacity, None)
 
     # Handle dst-out and dst-atop: clear untouched tiles
     if mode in [myplib.CombineDestinationIn, myplib.CombineDestinationAtop]:

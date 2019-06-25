@@ -106,7 +106,7 @@ Filler::pixel_fill_alpha(const rgba& px)
         dist = px.alpha;
     else
         dist = target_color.max_diff(
-            straightened(px.red, px.green, px.blue, px.alpha));
+            rgba((chan_t)px.red, px.green, px.blue, px.alpha));
 
     // Compare with adjustable tolerance of mismatches.
     static const fix15_t onepointfive = fix15_one + fix15_halve(fix15_one);
