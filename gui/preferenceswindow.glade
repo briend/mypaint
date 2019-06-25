@@ -1372,7 +1372,7 @@ Different traditions have different color harmonies.</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="label40">
+                  <object class="GtkLabel" id="label41">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="hexpand">True</property>
@@ -1408,7 +1408,7 @@ before you start painting.</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="label41">
+                  <object class="GtkLabel" id="label42">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="tooltip_text" translatable="yes" context="Prefs Dialog|Color|Color Adjusters">When using the color adjusters it can be useful to
@@ -1446,7 +1446,7 @@ Can be distracting, but useful for laying down subtle gradients.</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="label42">
+                  <object class="GtkLabel" id="label43">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="tooltip_text" translatable="yes" context="Prefs Dialog|Color|Color Adjusters">Multiply the step size by this amount.  1.0 keep the default intervals. 0.5 makes the steps half as wide.  2.0 makes the step-sizes twice as wide.</property>
@@ -1484,7 +1484,7 @@ Can be distracting, but useful for laying down subtle gradients.</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="label43">
+                  <object class="GtkLabel" id="label44">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="tooltip_text" translatable="yes" context="Prefs Dialog|Color|Color Adjusters">Instead of a static step size that remains the same, use a step-size that changes dynamically. </property>
