@@ -70,7 +70,7 @@ class _Tile (object):
     def __init__(self, copy_from=None):
         super(_Tile, self).__init__()
         if copy_from is None:
-            self.rgba = np.zeros((N, N, 4), 'uint16')
+            self.rgba = np.zeros((N, N, 4), 'float32')
         else:
             self.rgba = copy_from.rgba.copy()
         self.readonly = False
@@ -374,20 +374,20 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
                                               mipmap_level)
 
         assert dst.shape[2] == 4
-        if dst.dtype not in ('uint16', 'uint8'):
+        if dst.dtype not in ('float32', 'uint8'):
             raise ValueError('Unsupported destination buffer type %r',
                              dst.dtype)
-        dst_is_uint16 = (dst.dtype == 'uint16')
+        dst_is_float32 = (dst.dtype == 'float32')
 
         with self.tile_request(tx, ty, readonly=True) as src:
             if src is transparent_tile.rgba:
                 # dst[:] = 0  # <-- notably slower than memset()
-                if dst_is_uint16:
+                if dst_is_float32:
                     mypaintlib.tile_clear_rgba16(dst)
                 else:
                     mypaintlib.tile_clear_rgba8(dst)
             else:
-                if dst_is_uint16:
+                if dst_is_float32:
                     # this will do memcpy, not worth to bother skipping
                     # the u channel
                     mypaintlib.tile_copy_rgba16_into_rgba16(src, dst)
@@ -825,7 +825,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
                 with self.tile_request(tx, ty, readonly=False) as dst:
                     s.blit_tile_into(dst, True, tx, ty)
         else:
-            tmp = np.zeros((N, N, 4), 'uint16')
+            tmp = np.zeros((N, N, 4), 'float32')
             for tx, ty in dirty_tiles:
                 s.blit_tile_into(tmp, True, tx, ty)
                 with self.tile_request(tx, ty, readonly=False) as dst:
@@ -1161,7 +1161,7 @@ class Background (Surface):
         """Construct from a color or from a NumPy array
 
         :param obj: RGB triple (uint8), or a HxWx4 or HxWx3 numpy array which
-           can be either uint8 or uint16.
+           can be either uint8 or float32.
         :param mipmap_level: mipmap level, used internally. Root is zero.
         """
 
@@ -1183,7 +1183,7 @@ class Background (Surface):
 
         # Generate mipmap
         if mipmap_level <= MAX_MIPMAP_LEVEL:
-            mipmap_obj = np.zeros((height, width, 4), dtype='uint16')
+            mipmap_obj = np.zeros((height, width, 4), dtype='float32')
             for ty in range(height // N * 2):
                 for tx in range(width // N * 2):
                     with self.tile_request(tx, ty, readonly=True) as src:
@@ -1203,13 +1203,13 @@ class Background (Surface):
         """Loads tile data from a numpy array
 
         This extends the base class's implementation with additional support
-        for tile-aligned uint16 data.
+        for tile-aligned float32 data.
 
         """
         h, w, channels = arr.shape
         if h <= 0 or w <= 0:
             return (x, y, w, h)
-        if arr.dtype == 'uint16':
+        if arr.dtype == 'float32':
             assert w % N == 0 and h % N == 0
             assert x == 0 and y == 0
             for ty in range(h // N):

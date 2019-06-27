@@ -43,18 +43,18 @@ fix15_short_clamp(fix15_t n)
 /* Basic arithmetic */
 
 // Multiplication of two fix15_t.
-static inline fix15_t
-fix15_mul (const fix15_t a, const fix15_t b)
+static inline float
+float_mul (const float a, const float b)
 {
-    return (a * b) >> _fix15_fracbits;
+    return (a * b);
 }
 
-// Sum of two fix15_t products.
-static inline fix15_t
-fix15_sumprods (const fix15_t a1, const fix15_t a2,
-                const fix15_t b1, const fix15_t b2)
+// Sum of two float products.
+static inline float
+float_sumprods (const float a1, const float a2,
+               const float b1, const float b2)
 {
-    return ((a1 * a2) + (b1 * b2)) >> _fix15_fracbits;
+    return ((a1 * a2) + (b1 * b2));
 }
 
 static inline fix15_t
@@ -62,18 +62,18 @@ fix15_double (const fix15_t n) {
     return n<<1;
 }
 
-static inline fix15_t
-fix15_halve (const fix15_t n) {
-    return n>>1;
+static inline float
+float_halve (const float n) {
+    return n/2.0;
 }
 
 
 
 // Division of one fix15_t by another.
-static inline fix15_t
-fix15_div (const fix15_t a, const fix15_t b)
+static inline float
+float_div (const float a, const float b)
 {
-    return (a << _fix15_fracbits) / b;
+    return (a / b);
 }
 
 
@@ -101,42 +101,11 @@ static const uint16_t _int15_sqrt_approx16[] = {
 // in Python: [int(((i/16.0)**0.5)*(1<<16))-1 for i in xrange(1, 17)]
 
 
-static inline fix15_t
-fix15_sqrt (const fix15_t x)
+static inline float
+float_sqrt (const float a)
 {
-#ifdef HEAVY_DEBUG
-    assert(x <= fix15_one);
-#endif
-    if ((x == 0) || (x == fix15_one)) {
-        return x;
-    }
-    // Add one extra bit of precision for working
-    // A scaled value of 1.0 would overflow, so inflate type
-    uint32_t s = x << 1;
-    const int fracbits = _fix15_fracbits + 1;
-
-    // Initial approximation
-    uint32_t n = _int15_sqrt_approx16[s>>12];  // s/4096 as index 0..15
-    // If we really accurate sqrt() for x >
-    // 1.0, we'll need a 64-bit representation since the (s << fracbits) term
-    // in the iteration below will overflow a uint32_t. This could use n = x as
-    // its approximation for x > 1.0.
-
-    uint32_t n_old = 0;
-    // Iterate until converged "closely enough" (ugh).
-    for (int i = 0; i < 15; ++i) {
-        n_old = n;
-        n += (s << fracbits) / n;
-        n >>= 1;
-        if ((n == n_old)
-            || ((n > n_old) && (n-1 == n_old))
-            || ((n < n_old) && (n+1 == n_old)))
-        {
-            break;
-        }
-    }
-    // Lose the extra bit of precision
-    return n>>1;
+    return (a * a);
 }
+
 
 #endif // __HAVE_FIX15

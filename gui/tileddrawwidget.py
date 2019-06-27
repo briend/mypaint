@@ -775,7 +775,7 @@ class CanvasRenderer (Gtk.DrawingArea, DrawCursorMixin):
         pattern.set_extend(cairo.EXTEND_REPEAT)
         self._real_alpha_check_pattern = pattern
         # Fake: faster rendering, but ugly
-        tile = np.empty((n, n, 4), dtype='uint16')
+        tile = np.empty((n, n, 4), dtype='float32')
         f = 1 << 15
         col1 = [int(f * c) for c in gui.style.ALPHA_CHECK_COLOR_1] + [f]
         col2 = [int(f * c) for c in gui.style.ALPHA_CHECK_COLOR_2] + [f]

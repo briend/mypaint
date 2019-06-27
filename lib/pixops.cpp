@@ -28,12 +28,12 @@
 
 
 void
-tile_downscale_rgba16_c(const uint16_t *src, int src_strides, uint16_t *dst,
+tile_downscale_rgba16_c(const float *src, int src_strides, float *dst,
                         int dst_strides, int dst_x, int dst_y)
 {
   for (int y=0; y<MYPAINT_TILE_SIZE/2; y++) {
-    uint16_t * src_p = (uint16_t*)((char *)src + (2*y)*src_strides);
-    uint16_t * dst_p = (uint16_t*)((char *)dst + (y+dst_y)*dst_strides);
+    float * src_p = (float*)((char *)src + (2*y)*src_strides);
+    float * dst_p = (float*)((char *)dst + (y+dst_y)*dst_strides);
     dst_p += 4*dst_x;
     for(int x=0; x<MYPAINT_TILE_SIZE/2; x++) {
       dst_p[0] = src_p[0]/4 + (src_p+4)[0]/4 + (src_p+4*MYPAINT_TILE_SIZE)[0]/4 + (src_p+4*MYPAINT_TILE_SIZE+4)[0]/4;
@@ -65,15 +65,15 @@ void tile_downscale_rgba16(PyObject *src, PyObject *dst, int dst_x, int dst_y) {
   assert(PyArray_ISCARRAY(dst_arr));
 #endif
 
-  tile_downscale_rgba16_c((uint16_t*)PyArray_DATA(src_arr), PyArray_STRIDES(src_arr)[0],
-                          (uint16_t*)PyArray_DATA(dst_arr), PyArray_STRIDES(dst_arr)[0],
+  tile_downscale_rgba16_c((float*)PyArray_DATA(src_arr), PyArray_STRIDES(src_arr)[0],
+                          (float*)PyArray_DATA(dst_arr), PyArray_STRIDES(dst_arr)[0],
                           dst_x, dst_y);
 
 }
 
 
-void tile_copy_rgba16_into_rgba16_c(const uint16_t *src, uint16_t *dst) {
-  memcpy(dst, src, MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE*4*sizeof(uint16_t));
+void tile_copy_rgba16_into_rgba16_c(const float *src, float *dst) {
+  memcpy(dst, src, MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE*4*sizeof(float));
 }
 
 void tile_copy_rgba16_into_rgba16(PyObject * src, PyObject * dst) {
@@ -87,8 +87,8 @@ void tile_copy_rgba16_into_rgba16(PyObject * src, PyObject * dst) {
   assert(PyArray_DIM(dst_arr, 2) == 4);
   assert(PyArray_TYPE(dst_arr) == NPY_UINT16);
   assert(PyArray_ISCARRAY(dst_arr));
-  assert(PyArray_STRIDES(dst_arr)[1] == 4*sizeof(uint16_t));
-  assert(PyArray_STRIDES(dst_arr)[2] ==   sizeof(uint16_t));
+  assert(PyArray_STRIDES(dst_arr)[1] == 4*sizeof(float));
+  assert(PyArray_STRIDES(dst_arr)[2] ==   sizeof(float));
 
   assert(PyArray_Check(src));
   assert(PyArray_DIM(src_arr, 0) == MYPAINT_TILE_SIZE);
@@ -96,8 +96,8 @@ void tile_copy_rgba16_into_rgba16(PyObject * src, PyObject * dst) {
   assert(PyArray_DIM(src_arr, 2) == 4);
   assert(PyArray_TYPE(src_arr) == NPY_UINT16);
   assert(PyArray_ISCARRAY(src_arr));
-  assert(PyArray_STRIDES(src_arr)[1] == 4*sizeof(uint16_t));
-  assert(PyArray_STRIDES(src_arr)[2] ==   sizeof(uint16_t));
+  assert(PyArray_STRIDES(src_arr)[1] == 4*sizeof(float));
+  assert(PyArray_STRIDES(src_arr)[2] ==   sizeof(float));
 #endif
 
   /* the code below can be used if it is not ISCARRAY, but only ISBEHAVED:
@@ -110,8 +110,8 @@ void tile_copy_rgba16_into_rgba16(PyObject * src, PyObject * dst) {
   }
   */
 
-  tile_copy_rgba16_into_rgba16_c((uint16_t *)PyArray_DATA(src_arr),
-                                 (uint16_t *)PyArray_DATA(dst_arr));
+  tile_copy_rgba16_into_rgba16_c((float *)PyArray_DATA(src_arr),
+                                 (float *)PyArray_DATA(dst_arr));
 }
 
 void tile_clear_rgba8(PyObject * dst) {
@@ -146,7 +146,7 @@ void tile_clear_rgba16(PyObject * dst) {
 #endif
 
   for (int y=0; y<MYPAINT_TILE_SIZE; y++) {
-    uint16_t  * dst_p = (uint16_t*)((char *)PyArray_DATA(dst_arr) + y*PyArray_STRIDES(dst_arr)[0]);
+    float  * dst_p = (float*)((char *)PyArray_DATA(dst_arr) + y*PyArray_STRIDES(dst_arr)[0]);
     memset(dst_p, 0, MYPAINT_TILE_SIZE*PyArray_STRIDES(dst_arr)[1]);
     dst_p += PyArray_STRIDES(dst_arr)[0];
   }
@@ -180,7 +180,7 @@ static void precalculate_dithering_noise_if_required()
 // can be transparent areas in the output.
 
 static inline void
-tile_convert_rgba16_to_rgba8_c (const uint16_t* const src,
+tile_convert_rgba16_to_rgba8_c (const float* const src,
                                 const int src_strides,
                                 const uint8_t* dst,
                                 const int dst_strides,
@@ -190,7 +190,7 @@ tile_convert_rgba16_to_rgba8_c (const uint16_t* const src,
 
   for (int y=0; y<MYPAINT_TILE_SIZE; y++) {
     //int noise_idx = y*MYPAINT_TILE_SIZE*4;
-    const uint16_t *src_p = (uint16_t*)((char *)src + y*src_strides);
+    const float *src_p = (float*)((char *)src + y*src_strides);
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       uint32_t r, g, b, a;
@@ -299,11 +299,11 @@ tile_convert_rgba16_to_rgba8 (PyObject *src,
   assert(PyArray_DIM(src_arr, 2) == 4);
   assert(PyArray_TYPE(src_arr) == NPY_UINT16);
   assert(PyArray_ISBEHAVED(src_arr));
-  assert(PyArray_STRIDE(src_arr, 1) == 4*sizeof(uint16_t));
-  assert(PyArray_STRIDE(src_arr, 2) ==   sizeof(uint16_t));
+  assert(PyArray_STRIDE(src_arr, 1) == 4*sizeof(float));
+  assert(PyArray_STRIDE(src_arr, 2) ==   sizeof(float));
 #endif
 
-  tile_convert_rgba16_to_rgba8_c((uint16_t*)PyArray_DATA(src_arr),
+  tile_convert_rgba16_to_rgba8_c((float*)PyArray_DATA(src_arr),
                                  PyArray_STRIDES(src_arr)[0],
                                  (uint8_t*)PyArray_DATA(dst_arr),
                                  PyArray_STRIDES(dst_arr)[0],
@@ -311,7 +311,7 @@ tile_convert_rgba16_to_rgba8 (PyObject *src,
 }
 
 static inline void
-tile_convert_rgbu16_to_rgbu8_c(const uint16_t* const src,
+tile_convert_rgbu16_to_rgbu8_c(const float* const src,
                                const int src_strides,
                                const uint8_t* dst,
                                const int dst_strides,
@@ -321,7 +321,7 @@ tile_convert_rgbu16_to_rgbu8_c(const uint16_t* const src,
 
   for (int y=0; y<MYPAINT_TILE_SIZE; y++) {
     //int noise_idx = y*MYPAINT_TILE_SIZE*4;
-    const uint16_t *src_p = (uint16_t*)((char *)src + y*src_strides);
+    const float *src_p = (float*)((char *)src + y*src_strides);
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       float r, g, b;
@@ -376,11 +376,11 @@ void tile_convert_rgbu16_to_rgbu8(PyObject * src, PyObject * dst, const float EO
   assert(PyArray_DIM(src_arr, 2) == 4);
   assert(PyArray_TYPE(src_arr) == NPY_UINT16);
   assert(PyArray_ISBEHAVED(src_arr));
-  assert(PyArray_STRIDE(src_arr, 1) == 4*sizeof(uint16_t));
-  assert(PyArray_STRIDE(src_arr, 2) ==   sizeof(uint16_t));
+  assert(PyArray_STRIDE(src_arr, 1) == 4*sizeof(float));
+  assert(PyArray_STRIDE(src_arr, 2) ==   sizeof(float));
 #endif
 
-  tile_convert_rgbu16_to_rgbu8_c((uint16_t*)PyArray_DATA(src_arr), PyArray_STRIDES(src_arr)[0],
+  tile_convert_rgbu16_to_rgbu8_c((float*)PyArray_DATA(src_arr), PyArray_STRIDES(src_arr)[0],
                                  (uint8_t*)PyArray_DATA(dst_arr), PyArray_STRIDES(dst_arr)[0],
                                   EOTF);
 }
@@ -398,8 +398,8 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
   assert(PyArray_DIM(dst_arr, 2) == 4);
   assert(PyArray_TYPE(dst_arr) == NPY_UINT16);
   assert(PyArray_ISBEHAVED(dst_arr));
-  assert(PyArray_STRIDES(dst_arr)[1] == 4*sizeof(uint16_t));
-  assert(PyArray_STRIDES(dst_arr)[2] ==   sizeof(uint16_t));
+  assert(PyArray_STRIDES(dst_arr)[1] == 4*sizeof(float));
+  assert(PyArray_STRIDES(dst_arr)[2] ==   sizeof(float));
 
   assert(PyArray_Check(src));
   assert(PyArray_DIM(src_arr, 0) == MYPAINT_TILE_SIZE);
@@ -413,7 +413,7 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
 
   for (int y=0; y<MYPAINT_TILE_SIZE; y++) {
     uint8_t  * src_p = (uint8_t*)((char *)PyArray_DATA(src_arr) + y*PyArray_STRIDES(src_arr)[0]);
-    uint16_t * dst_p = (uint16_t*)((char *)PyArray_DATA(dst_arr) + y*PyArray_STRIDES(dst_arr)[0]);
+    float * dst_p = (float*)((char *)PyArray_DATA(dst_arr) + y*PyArray_STRIDES(dst_arr)[0]);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       uint32_t r, g, b, a;
       r = *src_p++;
@@ -457,8 +457,8 @@ void tile_rgba2flat(PyObject * dst_obj, PyObject * bg_obj) {
   assert(PyArray_ISCARRAY(bg));
 #endif
 
-  uint16_t * dst_p  = (uint16_t*)PyArray_DATA(dst);
-  uint16_t * bg_p  = (uint16_t*)PyArray_DATA(bg);
+  float * dst_p  = (float*)PyArray_DATA(dst);
+  float * bg_p  = (float*)PyArray_DATA(bg);
   for (int i=0; i<MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE; i++) {
     // resultAlpha = 1.0 (thus it does not matter if resultColor is premultiplied alpha or not)
     // resultColor = topColor + (1.0 - topAlpha) * bottomColor
@@ -492,15 +492,15 @@ void tile_flat2rgba(PyObject * dst_obj, PyObject * bg_obj) {
   assert(PyArray_ISCARRAY(bg));
 #endif
 
-  uint16_t * dst_p  = (uint16_t*)PyArray_DATA(dst);
-  uint16_t * bg_p  = (uint16_t*)PyArray_DATA(bg);
+  float * dst_p  = (float*)PyArray_DATA(dst);
+  float * bg_p  = (float*)PyArray_DATA(bg);
   for (int i=0; i<MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE; i++) {
 
     // 1. calculate final dst.alpha
-    uint16_t final_alpha = dst_p[3];
+    float final_alpha = dst_p[3];
     for (int i=0; i<3;i++) {
       int32_t color_change = (int32_t)dst_p[i] - bg_p[i];
-      uint16_t minimal_alpha;
+      float minimal_alpha;
       if (color_change > 0) {
         minimal_alpha = (int64_t)color_change*(1<<15) / ((1<<15) - bg_p[i]);
       } else if (color_change < 0) {
@@ -553,8 +553,8 @@ void tile_perceptual_change_strokemap(PyObject * a_obj, PyObject * b_obj, PyObje
   assert(PyArray_ISCARRAY(res));
 #endif
 
-  uint16_t * a_p  = (uint16_t*)PyArray_DATA(a);
-  uint16_t * b_p  = (uint16_t*)PyArray_DATA(b);
+  float * a_p  = (float*)PyArray_DATA(a);
+  float * b_p  = (float*)PyArray_DATA(b);
   uint8_t * res_p = (uint8_t*)PyArray_DATA(res);
 
   for (int y=0; y<MYPAINT_TILE_SIZE; y++) {
@@ -624,15 +624,15 @@ class TileDataCombine : public TileDataCombineOp
     }
 
     // Apply this combine operation to source and destination tile-sized
-    // buffers of uint16_t (15ish-bit) RGBA data. The output is written back
+    // buffers of float (15ish-bit) RGBA data. The output is written back
     // into the destination buffer.
-    void combine_data (const fix15_short_t *src_p,
-                       fix15_short_t *dst_p,
+    void combine_data (const float *src_p,
+                       float *dst_p,
                        const bool dst_has_alpha,
                        const float src_opacity,
                        const float *opts) const
     {
-        const fix15_short_t opac = fix15_short_clamp(src_opacity * fix15_one);
+        const float opac = fix15_short_clamp(src_opacity * fix15_one);
         if (dst_has_alpha) {
             combine_dstalpha(src_p, dst_p, opac, opts);
         }
@@ -748,13 +748,13 @@ tile_combine (enum CombineMode mode,
     assert(PyArray_TYPE(dst) == NPY_UINT16);
     assert(PyArray_ISCARRAY(dst));
 
-    assert(PyArray_STRIDES(dst)[0] == 4*sizeof(fix15_short_t)*MYPAINT_TILE_SIZE);
-    assert(PyArray_STRIDES(dst)[1] == 4*sizeof(fix15_short_t));
-    assert(PyArray_STRIDES(dst)[2] ==   sizeof(fix15_short_t));
+    assert(PyArray_STRIDES(dst)[0] == 4*sizeof(float)*MYPAINT_TILE_SIZE);
+    assert(PyArray_STRIDES(dst)[1] == 4*sizeof(float));
+    assert(PyArray_STRIDES(dst)[2] ==   sizeof(float));
 #endif
 
-    const fix15_short_t* const src_p = (fix15_short_t *)PyArray_DATA(src);
-    fix15_short_t*       const dst_p = (fix15_short_t *)PyArray_DATA(dst);
+    const float* const src_p = (float *)PyArray_DATA(src);
+    float*       const dst_p = (float *)PyArray_DATA(dst);
     const float* const opts_a = (float *)PyArray_DATA(opts);
 
     if (mode >= NumCombineModes || mode < 0) {

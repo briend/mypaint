@@ -29,12 +29,12 @@
 class BlendFunc
 {
   public:
-    virtual void operator() ( const fix15_t src_r,
-                              const fix15_t src_g,
-                              const fix15_t src_b,
-                              fix15_t &dst_r,
-                              fix15_t &dst_g,
-                              fix15_t &dst_b,
+    virtual void operator() ( const float src_r,
+                              const float src_g,
+                              const float src_b,
+                              float &dst_r,
+                              float &dst_g,
+                              float &dst_b,
                               const float * const opts) const = 0;
 };
 
@@ -57,10 +57,10 @@ class BlendFunc
 class CompositeFunc
 {
   public:
-    virtual void operator() (const fix15_t Rs, const fix15_t Gs,
-                             const fix15_t Bs, const fix15_t as,
-                             fix15_short_t &rb, fix15_short_t &gb,
-                             fix15_short_t &bb, fix15_short_t &ab) const = 0;
+    virtual void operator() (const float Rs, const float Gs,
+                             const float Bs, const float as,
+                             float &rb, float &gb,
+                             float &bb, float &ab) const = 0;
     static const bool zero_alpha_has_effect = true;
     static const bool can_decrease_alpha = true;
     static const bool zero_alpha_clears_backdrop = true;
@@ -90,9 +90,9 @@ class BufferCombineFunc
     COMPOSITEFUNC compositefunc;
 
   public:
-    inline void operator() (const fix15_short_t * const src,
-                            fix15_short_t * const dst,
-                            const fix15_short_t src_opacity,
+    inline void operator() (const float * const src,
+                            float * const dst,
+                            const float src_opacity,
                             const float * const opts) const
     {
 #ifndef HEAVY_DEBUG
@@ -104,7 +104,7 @@ class BufferCombineFunc
 #endif
 
         // Pixel loop
-        fix15_t Rs,Gs,Bs,as, Rb,Gb,Bb,ab, one_minus_ab;
+        float Rs,Gs,Bs,as, Rb,Gb,Bb,ab, one_minus_ab;
 #pragma omp parallel for private(Rs,Gs,Bs,as, Rb,Gb,Bb,ab, one_minus_ab)
         for (unsigned int i = 0; i < BUFSIZE; i += 4)
         {
@@ -122,14 +122,14 @@ class BufferCombineFunc
                 Rs = Gs = Bs = 0;
             }
             else {
-                Rs = src[i+0];//fix15_short_clamp(fix15_div(src[i+0], as));
-                Gs = src[i+1];//fix15_short_clamp(fix15_div(src[i+1], as));
-                Bs = src[i+2];//fix15_short_clamp(fix15_div(src[i+2], as));
+                Rs = src[i+0];//(float_div(src[i+0], as));
+                Gs = src[i+1];//(float_div(src[i+1], as));
+                Bs = src[i+2];//(float_div(src[i+2], as));
             }
 #ifdef HEAVY_DEBUG
-            assert(Rs <= fix15_one); assert(Rs >= 0);
-            assert(Gs <= fix15_one); assert(Gs >= 0);
-            assert(Bs <= fix15_one); assert(Bs >= 0);
+            assert(Rs <= 1.0); assert(Rs >= 0);
+            assert(Gs <= 1.0); assert(Gs >= 0);
+            assert(Bs <= 1.0); assert(Bs >= 0);
 #endif
 
             // Calculate unpremultiplied backdrop RGB values
@@ -139,21 +139,21 @@ class BufferCombineFunc
                     Rb = Gb = Bb = 0;
                 }
                 else {
-                    Rb = dst[i+0];//fix15_short_clamp(fix15_div(dst[i+0], ab));
-                    Gb = dst[i+1];//fix15_short_clamp(fix15_div(dst[i+1], ab));
-                    Bb = dst[i+2];//fix15_short_clamp(fix15_div(dst[i+2], ab));
+                    Rb = dst[i+0];//(float_div(dst[i+0], ab));
+                    Gb = dst[i+1];//(float_div(dst[i+1], ab));
+                    Bb = dst[i+2];//(float_div(dst[i+2], ab));
                 }
             }
             else {
-                ab = fix15_one;
+                ab = 1.0;
                 Rb = dst[i+0];
                 Gb = dst[i+1];
                 Bb = dst[i+2];
             }
 #ifdef HEAVY_DEBUG
-            assert(Rb <= fix15_one); assert(Rb >= 0);
-            assert(Gb <= fix15_one); assert(Gb >= 0);
-            assert(Bb <= fix15_one); assert(Bb >= 0);
+            assert(Rb <= 1.0); assert(Rb >= 0);
+            assert(Gb <= 1.0); assert(Gb >= 0);
+            assert(Bb <= 1.0); assert(Bb >= 0);
 #endif
 
             // Apply the colour blend functor
@@ -161,19 +161,19 @@ class BufferCombineFunc
 
             // Apply results of the blend in place
             if (DSTALPHA) {
-                one_minus_ab = fix15_one - ab;
-                Rb = fix15_sumprods(one_minus_ab, Rs, ab, Rb);
-                Gb = fix15_sumprods(one_minus_ab, Gs, ab, Gb);
-                Bb = fix15_sumprods(one_minus_ab, Bs, ab, Bb);
+                one_minus_ab = 1.0 - ab;
+                Rb = float_sumprods(one_minus_ab, Rs, ab, Rb);
+                Gb = float_sumprods(one_minus_ab, Gs, ab, Gb);
+                Bb = float_sumprods(one_minus_ab, Bs, ab, Bb);
             }
 #ifdef HEAVY_DEBUG
-            assert(Rb <= fix15_one); assert(Rb >= 0);
-            assert(Gb <= fix15_one); assert(Gb >= 0);
-            assert(Bb <= fix15_one); assert(Bb >= 0);
+            assert(Rb <= 1.0); assert(Rb >= 0);
+            assert(Gb <= 1.0); assert(Gb >= 0);
+            assert(Bb <= 1.0); assert(Bb >= 0);
 #endif
             // Use the blend result as a source, and composite directly into
             // the destination buffer as premultiplied RGB.
-            compositefunc(Rb, Gb, Bb, fix15_mul(as, src_opacity),
+            compositefunc(Rb, Gb, Bb, float_mul(as, src_opacity),
                           dst[i+0], dst[i+1], dst[i+2], dst[i+3]);
         }
     }
@@ -190,8 +190,8 @@ class BufferCombineFunc
 class TileDataCombineOp
 {
   public:
-    virtual void combine_data (const fix15_short_t *src_p,
-                               fix15_short_t *dst_p,
+    virtual void combine_data (const float *src_p,
+                               float *dst_p,
                                const bool dst_has_alpha,
                                const float src_opacity,
                                const float *opts) const = 0;
@@ -209,18 +209,18 @@ class TileDataCombineOp
 class CompositeSourceOver : public CompositeFunc
 {
   public:
-    inline void operator() (const fix15_t Rs, const fix15_t Gs,
-                            const fix15_t Bs, const fix15_t as,
-                            fix15_short_t &rb, fix15_short_t &gb,
-                            fix15_short_t &bb, fix15_short_t &ab) const
+    inline void operator() (const float Rs, const float Gs,
+                            const float Bs, const float as,
+                            float &rb, float &gb,
+                            float &bb, float &ab) const
     {
-        const fix15_t j = fix15_one - as;
-        const fix15_t k = fix15_mul(ab, j);
+        const float j = 1.0 - as;
+        const float k = float_mul(ab, j);
 
-        rb = fix15_short_clamp(fix15_sumprods(as, Rs, j, rb));
-        gb = fix15_short_clamp(fix15_sumprods(as, Gs, j, gb));
-        bb = fix15_short_clamp(fix15_sumprods(as, Bs, j, bb));
-        ab = fix15_short_clamp(as + k);
+        rb = (float_sumprods(as, Rs, j, rb));
+        gb = (float_sumprods(as, Gs, j, gb));
+        bb = (float_sumprods(as, Bs, j, bb));
+        ab = (as + k);
     }
 
     static const bool zero_alpha_has_effect = false;
@@ -235,15 +235,15 @@ class CompositeSourceOver : public CompositeFunc
 class CompositeSpectralWGM : public CompositeFunc
 {
   public:
-    inline void operator() (const fix15_t Rs, const fix15_t Gs,
-                            const fix15_t Bs, const fix15_t as,
-                            fix15_short_t &rb, fix15_short_t &gb,
-                            fix15_short_t &bb, fix15_short_t &ab) const
+    inline void operator() (const float Rs, const float Gs,
+                            const float Bs, const float as,
+                            float &rb, float &gb,
+                            float &bb, float &ab) const
     {
         // pseudo code example:
         // ratio = as / as + (1 - as) * ab;
         // rgb = pow(rgb, ratio) * pow(rgb, (1-ratio));
-        // ab = fix15_short_clamp(as + k);
+        // ab = (as + k);
         // rgb = rgb * ab;
     }
 
@@ -255,18 +255,18 @@ class CompositeSpectralWGM : public CompositeFunc
 class CompositeBumpMap : public CompositeFunc
 {
   public:
-    inline void operator() (const fix15_t Rs, const fix15_t Gs,
-                            const fix15_t Bs, const fix15_t as,
-                            fix15_short_t &rb, fix15_short_t &gb,
-                            fix15_short_t &bb, fix15_short_t &ab) const
+    inline void operator() (const float Rs, const float Gs,
+                            const float Bs, const float as,
+                            float &rb, float &gb,
+                            float &bb, float &ab) const
     {
-//        const fix15_t j = fix15_one - as;
-//        const fix15_t k = fix15_mul(ab, j);
+//        const float j = 1.0 - as;
+//        const float k = float_mul(ab, j);
 
-//        rb = fix15_short_clamp(fix15_sumprods(as, Rs, j, rb));
-//        gb = fix15_short_clamp(fix15_sumprods(as, Gs, j, gb));
-//        bb = fix15_short_clamp(fix15_sumprods(as, Bs, j, bb));
-//        ab = fix15_short_clamp(as + k);
+//        rb = (float_sumprods(as, Rs, j, rb));
+//        gb = (float_sumprods(as, Gs, j, gb));
+//        bb = (float_sumprods(as, Bs, j, bb));
+//        ab = (as + k);
     }
 
     static const bool zero_alpha_has_effect = true;
@@ -277,18 +277,18 @@ class CompositeBumpMap : public CompositeFunc
 class CompositeBumpMapDst : public CompositeFunc
 {
   public:
-    inline void operator() (const fix15_t Rs, const fix15_t Gs,
-                            const fix15_t Bs, const fix15_t as,
-                            fix15_short_t &rb, fix15_short_t &gb,
-                            fix15_short_t &bb, fix15_short_t &ab) const
+    inline void operator() (const float Rs, const float Gs,
+                            const float Bs, const float as,
+                            float &rb, float &gb,
+                            float &bb, float &ab) const
     {
-//        const fix15_t j = fix15_one - as;
-//        const fix15_t k = fix15_mul(ab, j);
+//        const float j = 1.0 - as;
+//        const float k = float_mul(ab, j);
 
-//        rb = fix15_short_clamp(fix15_sumprods(as, Rs, j, rb));
-//        gb = fix15_short_clamp(fix15_sumprods(as, Gs, j, gb));
-//        bb = fix15_short_clamp(fix15_sumprods(as, Bs, j, bb));
-//        ab = fix15_short_clamp(as + k);
+//        rb = (float_sumprods(as, Rs, j, rb));
+//        gb = (float_sumprods(as, Gs, j, gb));
+//        bb = (float_sumprods(as, Bs, j, bb));
+//        ab = (as + k);
     }
 
     static const bool zero_alpha_has_effect = true;
@@ -304,15 +304,15 @@ class CompositeBumpMapDst : public CompositeFunc
 class CompositeDestinationIn : public CompositeFunc
 {
   public:
-    inline void operator() (const fix15_t Rs, const fix15_t Gs,
-                            const fix15_t Bs, const fix15_t as,
-                            fix15_short_t &rb, fix15_short_t &gb,
-                            fix15_short_t &bb, fix15_short_t &ab) const
+    inline void operator() (const float Rs, const float Gs,
+                            const float Bs, const float as,
+                            float &rb, float &gb,
+                            float &bb, float &ab) const
     {
-        rb = fix15_short_clamp(fix15_mul(rb, as));
-        gb = fix15_short_clamp(fix15_mul(gb, as));
-        bb = fix15_short_clamp(fix15_mul(bb, as));
-        ab = fix15_short_clamp(fix15_mul(ab, as));
+        rb = (float_mul(rb, as));
+        gb = (float_mul(gb, as));
+        bb = (float_mul(bb, as));
+        ab = (float_mul(ab, as));
     }
 
     static const bool zero_alpha_has_effect = true;
@@ -328,16 +328,16 @@ class CompositeDestinationIn : public CompositeFunc
 class CompositeDestinationOut : public CompositeFunc
 {
   public:
-    inline void operator() (const fix15_t Rs, const fix15_t Gs,
-                            const fix15_t Bs, const fix15_t as,
-                            fix15_short_t &rb, fix15_short_t &gb,
-                            fix15_short_t &bb, fix15_short_t &ab) const
+    inline void operator() (const float Rs, const float Gs,
+                            const float Bs, const float as,
+                            float &rb, float &gb,
+                            float &bb, float &ab) const
     {
-        const fix15_t j = fix15_one - as;
-        rb = fix15_short_clamp(fix15_mul(rb, j));
-        gb = fix15_short_clamp(fix15_mul(gb, j));
-        bb = fix15_short_clamp(fix15_mul(bb, j));
-        ab = fix15_short_clamp(fix15_mul(ab, j));
+        const float j = 1.0 - as;
+        rb = (float_mul(rb, j));
+        gb = (float_mul(gb, j));
+        bb = (float_mul(bb, j));
+        ab = (float_mul(ab, j));
     }
 
     static const bool zero_alpha_has_effect = false;
@@ -353,21 +353,21 @@ class CompositeDestinationOut : public CompositeFunc
 class CompositeSourceAtop : public CompositeFunc
 {
   public:
-    inline void operator() (const fix15_t Rs, const fix15_t Gs,
-                            const fix15_t Bs, const fix15_t as,
-                            fix15_short_t &rb, fix15_short_t &gb,
-                            fix15_short_t &bb, fix15_short_t &ab) const
+    inline void operator() (const float Rs, const float Gs,
+                            const float Bs, const float as,
+                            float &rb, float &gb,
+                            float &bb, float &ab) const
     {
         // W3C spec:
         //   co = as*Cs*ab + ab*Cb*(1-as)
         // where
         //   Cs ∈ {Rs, Gs, Bs}         -- input is non-premultiplied
         //   cb ∈ {rb gb, bb} = ab*Cb  -- output is premultiplied by alpha
-        const fix15_t one_minus_as = fix15_one - as;
-        const fix15_t ab_mul_as = fix15_mul(as, ab);
-        rb = fix15_short_clamp(fix15_sumprods(ab_mul_as, Rs, one_minus_as, rb));
-        gb = fix15_short_clamp(fix15_sumprods(ab_mul_as, Gs, one_minus_as, gb));
-        bb = fix15_short_clamp(fix15_sumprods(ab_mul_as, Bs, one_minus_as, bb));
+        const float one_minus_as = 1.0 - as;
+        const float ab_mul_as = float_mul(as, ab);
+        rb = (float_sumprods(ab_mul_as, Rs, one_minus_as, rb));
+        gb = (float_sumprods(ab_mul_as, Gs, one_minus_as, gb));
+        bb = (float_sumprods(ab_mul_as, Bs, one_minus_as, bb));
         // W3C spec:
         //   ao = as*ab + ab*(1-as)
         //   ao = ab
@@ -387,21 +387,21 @@ class CompositeSourceAtop : public CompositeFunc
 class CompositeDestinationAtop : public CompositeFunc
 {
   public:
-    inline void operator() (const fix15_t Rs, const fix15_t Gs,
-                            const fix15_t Bs, const fix15_t as,
-                            fix15_short_t &rb, fix15_short_t &gb,
-                            fix15_short_t &bb, fix15_short_t &ab) const
+    inline void operator() (const float Rs, const float Gs,
+                            const float Bs, const float as,
+                            float &rb, float &gb,
+                            float &bb, float &ab) const
     {
         // W3C spec:
         //   co = as*Cs*(1-ab) + ab*Cb*as
         // where
         //   Cs ∈ {Rs, Gs, Bs}         -- input is non-premultiplied
         //   cb ∈ {rb gb, bb} = ab*Cb  -- output is premultiplied by alpha
-        const fix15_t one_minus_ab = fix15_one - ab;
-        const fix15_t as_mul_one_minus_ab = fix15_mul(as, one_minus_ab);
-        rb = fix15_short_clamp(fix15_sumprods(as_mul_one_minus_ab, Rs, as, rb));
-        gb = fix15_short_clamp(fix15_sumprods(as_mul_one_minus_ab, Gs, as, gb));
-        bb = fix15_short_clamp(fix15_sumprods(as_mul_one_minus_ab, Bs, as, bb));
+        const float one_minus_ab = 1.0 - ab;
+        const float as_mul_one_minus_ab = float_mul(as, one_minus_ab);
+        rb = (float_sumprods(as_mul_one_minus_ab, Rs, as, rb));
+        gb = (float_sumprods(as_mul_one_minus_ab, Gs, as, gb));
+        bb = (float_sumprods(as_mul_one_minus_ab, Bs, as, bb));
         // W3C spec:
         //   ao = as*(1-ab) + ab*as
         //   ao = as
@@ -421,15 +421,15 @@ class CompositeDestinationAtop : public CompositeFunc
 class CompositeLighter : public CompositeFunc
 {
   public:
-    inline void operator() (const fix15_t Rs, const fix15_t Gs,
-                            const fix15_t Bs, const fix15_t as,
-                            fix15_short_t &rb, fix15_short_t &gb,
-                            fix15_short_t &bb, fix15_short_t &ab) const
+    inline void operator() (const float Rs, const float Gs,
+                            const float Bs, const float as,
+                            float &rb, float &gb,
+                            float &bb, float &ab) const
     {
-        rb = fix15_short_clamp(fix15_mul(Rs, as) + rb);
-        gb = fix15_short_clamp(fix15_mul(Gs, as) + gb);
-        bb = fix15_short_clamp(fix15_mul(Bs, as) + bb);
-        ab = fix15_short_clamp(ab + as);
+        rb = (float_mul(Rs, as) + rb);
+        gb = (float_mul(Gs, as) + gb);
+        bb = (float_mul(Bs, as) + bb);
+        ab = (ab + as);
     }
 
     static const bool zero_alpha_has_effect = false;

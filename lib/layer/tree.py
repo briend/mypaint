@@ -493,7 +493,7 @@ class RootLayerStack (group.LayerStack):
                         dst = self._render_cache_get(key1, key2)
 
                     if dst is None:
-                        dst = np.zeros(tiledims, dtype='uint16')
+                        dst = np.zeros(tiledims, dtype='float32')
                     else:
                         cache_hit = True  # note: dtype is now uint8
 
@@ -508,7 +508,7 @@ class RootLayerStack (group.LayerStack):
                             opaque_base_tile,
                             dst_over_opaque_base,
                         )
-                        dst = np.zeros(tiledims, dtype='uint16')
+                        dst = np.zeros(tiledims, dtype='float32')
 
                     # Process the ops list.
                     self._process_ops_list(
@@ -699,7 +699,7 @@ class RootLayerStack (group.LayerStack):
         if dst_is_8bpc:
             dst_8bpc_orig = dst
             tiledims = (tiledsurface.N, tiledsurface.N, 4)
-            dst = np.zeros(tiledims, dtype='uint16')
+            dst = np.zeros(tiledims, dtype='float32')
 
         self._process_ops_list(ops, dst, dst_has_alpha, tx, ty, mipmap_level)
 
@@ -753,7 +753,7 @@ class RootLayerStack (group.LayerStack):
             elif opcode == rendering.Opcode.PUSH:
                 stack.append((dst, dst_has_alpha))
                 tiledims = (tiledsurface.N, tiledsurface.N, 4)
-                dst = np.zeros(tiledims, dtype='uint16')
+                dst = np.zeros(tiledims, dtype='float32')
                 dst_has_alpha = True
             elif opcode == rendering.Opcode.POP:
                 src = dst
@@ -1078,7 +1078,7 @@ class RootLayerStack (group.LayerStack):
 
         The background object argument `obj` can be a background layer,
         or an RGB triple (uint8), or a HxWx4 or HxWx3 numpy array which
-        can be either uint8 or uint16.
+        can be either uint8 or float32.
 
         Setting the background issues a full redraw for the root layer,
         and also issues the `background_changed` event. The background
@@ -2073,7 +2073,7 @@ class RootLayerStack (group.LayerStack):
         dstsurf = dstlayer._surface
         tiledims = (tiledsurface.N, tiledsurface.N, 4)
         for tx, ty in tiles:
-            bd = np.zeros(tiledims, dtype='uint16')
+            bd = np.zeros(tiledims, dtype='float32')
             with dstsurf.tile_request(tx, ty, readonly=False) as dst:
                 self._process_ops_list(bd_ops, bd, True, tx, ty, 0)
                 lib.mypaintlib.tile_copy_rgba16_into_rgba16(bd, dst)
@@ -2303,7 +2303,7 @@ class RootLayerStack (group.LayerStack):
         targ_surf = targ_layer._surface
         tile_dims = (tiledsurface.N, tiledsurface.N, 4)
         unchanged_tile_indices = set()
-        zeros = np.zeros(tile_dims, dtype='uint16')
+        zeros = np.zeros(tile_dims, dtype='float32')
         for tx, ty in targ_surf.get_tiles():
             bd_img = copy(zeros)
             self._process_ops_list(bd_ops, bd_img, True, tx, ty, 0)
@@ -2372,7 +2372,7 @@ class RootLayerStack (group.LayerStack):
 
         # Process by tile
         n = tiledsurface.N
-        zeros_rgba = np.zeros((n, n, 4), dtype='uint16')
+        zeros_rgba = np.zeros((n, n, 4), dtype='float32')
         ones_bool = np.ones((n, n, 1), dtype='bool')
         common_data_tiles = set()
         child0 = normalized_child_layers[0]
@@ -2812,7 +2812,7 @@ class _TileRenderWrapper (TileAccessible, TileBlittable):
                 dst = tiledsurface.transparent_tile.rgba
             else:
                 tiledims = (tiledsurface.N, tiledsurface.N, 4)
-                dst = np.zeros(tiledims, 'uint16')
+                dst = np.zeros(tiledims, 'float32')
                 self._root.render_single_tile(
                     dst, True,
                     tx, ty, 0,
@@ -2838,7 +2838,7 @@ class _TileRenderWrapper (TileAccessible, TileBlittable):
         """Copy a rendered tile into a fix15 or 8bpp array."""
         assert dst.dtype == 'uint8'
         with self.tile_request(tx, ty, readonly=True) as src:
-            assert src.dtype == 'uint16'
+            assert src.dtype == 'float32'
             if dst_has_alpha:
                 conv = lib.mypaintlib.tile_convert_rgba16_to_rgba8
             else:

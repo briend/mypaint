@@ -48,7 +48,7 @@ tile_request_start(MyPaintTiledSurface *tiled_surface, MyPaintTileRequest *reque
 #endif
         // tiledsurface.py will keep a reference in its tiledict, at least until the final end_atomic()
         Py_DECREF((PyObject *)rgba);
-        request->buffer = (uint16_t*)PyArray_DATA(rgba);
+        request->buffer = (float*)PyArray_DATA(rgba);
     }
 } // #end pragma opt critical
 
