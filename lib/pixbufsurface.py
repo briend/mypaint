@@ -162,7 +162,7 @@ class Surface (TileAccessible, TileBlittable):
     def blit_tile_into(self, dst, dst_has_alpha, tx, ty):
         # (used mainly for loading transparent PNGs)
         assert dst_has_alpha is True
-        assert dst.dtype == 'uint16', '16 bit dst expected'
+        assert dst.dtype == 'float32', '32 bit dst expected'
         src = self.tile_memory_dict[(tx, ty)]
         assert src.shape[2] == 4, 'alpha required'
         mypaintlib.tile_convert_rgba8_to_rgba16(src, dst, self.EOTF)

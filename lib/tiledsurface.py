@@ -32,7 +32,7 @@ from .errors import FileHandlingError
 import lib.fileutils
 import lib.modes
 import lib.feedback
-import lib.floodfill
+# import lib.floodfill
 from lib.pycompat import xrange
 from lib.pycompat import PY3
 

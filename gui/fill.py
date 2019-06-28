@@ -27,7 +27,7 @@ from gui.blendmodehandler import BlendModes
 import gui.layers
 import gui.overlays
 
-import lib.floodfill
+# import lib.floodfill
 import lib.helpers
 import lib.mypaintlib
 import lib.layer
