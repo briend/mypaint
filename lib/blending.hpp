@@ -109,16 +109,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const float Sa = float_mul(src[i+3], opac);
             const float one_minus_Sa = 1.0 - Sa;
-            dst[i+0] = float_sumprods(float_mul(src[i], src[i+3]), opac, one_minus_Sa, float_mul(dst[i], dst[i+3]));
-            dst[i+1] = float_sumprods(float_mul(src[i+1], src[i+3]), opac, one_minus_Sa, float_mul(dst[i+1], dst[i+3]));
-            dst[i+2] = float_sumprods(float_mul(src[i+2], src[i+3]), opac, one_minus_Sa, float_mul(dst[i+2], dst[i+3]));
+            dst[i+0] = float_sumprods(src[i], opac, one_minus_Sa, dst[i]);
+            dst[i+1] = float_sumprods(src[i+1], opac, one_minus_Sa, dst[i+1]);
+            dst[i+2] = float_sumprods(src[i+2], opac, one_minus_Sa, dst[i+2]);
             if (DSTALPHA) {
                 dst[i+3] = (Sa + float_mul(dst[i+3], one_minus_Sa));
-            }
-            if (dst[i+3] > 0) {
-              dst[i+0] = (float_div(dst[i+0], dst[i+3]));
-              dst[i+1] = (float_div(dst[i+1], dst[i+3]));
-              dst[i+2] = (float_div(dst[i+2], dst[i+3]));
             }
         }
     }
@@ -195,7 +190,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             dst[i+0] = (float_mul(dst[i], lambert));
             dst[i+1] = (float_mul(dst[i+1], lambert));
             dst[i+2] = (float_mul(dst[i+2], lambert));
-            //dst[i+3] = (float_mul(dst[i+3], lambert));
+            dst[i+3] = (float_mul(dst[i+3], lambert));
         }
     }
 };
@@ -248,9 +243,9 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1.0) * Oren_exposure;
 
-            //dst[i+0] = (float_mul(dst[i], lambert));
-            //dst[i+1] = (float_mul(dst[i+1], lambert));
-            //dst[i+2] = (float_mul(dst[i+2], lambert));
+            dst[i+0] = (float_mul(dst[i], lambert));
+            dst[i+1] = (float_mul(dst[i+1], lambert));
+            dst[i+2] = (float_mul(dst[i+2], lambert));
             dst[i+3] = (float_mul(dst[i+3], lambert));
         }
     }
@@ -330,16 +325,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationIn>
     {
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const float Sa = float_mul(src[i+3], opac);
-            dst[i+0] = float_mul(float_mul(dst[i+0], dst[i+3]), Sa);
-            dst[i+1] = float_mul(float_mul(dst[i+1], dst[i+3]), Sa);
-            dst[i+2] = float_mul(float_mul(dst[i+2], dst[i+3]), Sa);
+            dst[i+0] = float_mul(dst[i+0], Sa);
+            dst[i+1] = float_mul(dst[i+1], Sa);
+            dst[i+2] = float_mul(dst[i+2], Sa);
             if (DSTALPHA) {
                 dst[i+3] = float_mul(Sa, dst[i+3]);
-                if (dst[i+3] > 0) {
-                  dst[i+0] = float_div(dst[i+0], dst[i+3]);
-                  dst[i+1] = float_div(dst[i+1], dst[i+3]);
-                  dst[i+2] = float_div(dst[i+2], dst[i+3]);
-                }
             }
         }
     }
@@ -358,16 +348,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationOut
     {
         for (unsigned int i=0; i<BUFSIZE; i+=4) {
             const float one_minus_Sa = 1.0-float_mul(src[i+3], opac);
-            dst[i+0] = float_mul(float_mul(dst[i+0], dst[i+3]), one_minus_Sa);
-            dst[i+1] = float_mul(float_mul(dst[i+1], dst[i+3]), one_minus_Sa);
-            dst[i+2] = float_mul(float_mul(dst[i+2], dst[i+3]), one_minus_Sa);
+            dst[i+0] = float_mul(dst[i+0], one_minus_Sa);
+            dst[i+1] = float_mul(dst[i+1], one_minus_Sa);
+            dst[i+2] = float_mul(dst[i+2], one_minus_Sa);
             if (DSTALPHA) {
                 dst[i+3] = float_mul(one_minus_Sa, dst[i+3]);
-                if (dst[i+3] > 0) {
-                  dst[i+0] = float_div(dst[i+0], dst[i+3]);
-                  dst[i+1] = float_div(dst[i+1], dst[i+3]);
-                  dst[i+2] = float_div(dst[i+2], dst[i+3]);
-                }
             }
         }
     }
@@ -394,20 +379,15 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceAtop>
             // where
             //   src[n] = as*Cs    -- premultiplied
             //   dst[n] = ab*Cb    -- premultiplied
-            dst[i+0] = float_sumprods(float_mul(float_mul(src[i+0], src[i+3]), opac), ab,
+            dst[i+0] = float_sumprods(float_mul(src[i+0], opac), ab,
                                       float_mul(dst[i+0], ab), one_minus_as);
-            dst[i+1] = float_sumprods(float_mul(float_mul(src[i+1], src[i+3]), opac), ab,
+            dst[i+1] = float_sumprods(float_mul(src[i+1], opac), ab,
                                       float_mul(dst[i+1], ab), one_minus_as);
-            dst[i+2] = float_sumprods(float_mul(float_mul(src[i+2], src[i+3]), opac), ab,
+            dst[i+2] = float_sumprods(float_mul(src[i+2], opac), ab,
                                       float_mul(dst[i+2], ab), one_minus_as);
 //            printf("%i, %i, %i\n", dst[i+0], dst[i+3], as);
             if (DSTALPHA) {
                 float alpha = float_sumprods(as, ab, ab, one_minus_as);
-                if (alpha > 0) {
-                  dst[i+0] = float_div(dst[i+0], alpha);
-                  dst[i+1] = float_div(dst[i+1], alpha);
-                  dst[i+2] = float_div(dst[i+2], alpha);
-                }
             }
             // W3C spec:
             //   ao = as*ab + ab*(1-as)
@@ -437,22 +417,17 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationAto
             // where
             //   src[n] = as*Cs    -- premultiplied
             //   dst[n] = ab*Cb    -- premultiplied
-            dst[i+0] = float_sumprods(float_mul(float_mul(src[i+0], src[i+3]), opac), one_minus_ab,
+            dst[i+0] = float_sumprods(float_mul(src[i+0], opac), one_minus_ab,
                                       float_mul(dst[i+0], dst[i+3]), as);
-            dst[i+1] = float_sumprods(float_mul(float_mul(src[i+1], src[i+3]), opac), one_minus_ab,
+            dst[i+1] = float_sumprods(float_mul(src[i+1], opac), one_minus_ab,
                                       float_mul(dst[i+1], dst[i+3]), as);
-            dst[i+2] = float_sumprods(float_mul(float_mul(src[i+2], src[i+3]), opac), one_minus_ab,
+            dst[i+2] = float_sumprods(float_mul(src[i+2], opac), one_minus_ab,
                                       float_mul(dst[i+2], dst[i+3]), as);
             // W3C spec:
             //   ao = as*(1-ab) + ab*as
             //   ao = as
             if (DSTALPHA) {
                 dst[i+3] = as;
-                if (dst[i+3] > 0) {
-                  dst[i+0] = float_div(dst[i+0], dst[i+3]);
-                  dst[i+1] = float_div(dst[i+1], dst[i+3]);
-                  dst[i+2] = float_div(dst[i+2], dst[i+3]);
-                }
             }
         }
     }

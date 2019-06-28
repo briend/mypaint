@@ -122,9 +122,9 @@ class BufferCombineFunc
                 Rs = Gs = Bs = 0;
             }
             else {
-                Rs = src[i+0];//(float_div(src[i+0], as));
-                Gs = src[i+1];//(float_div(src[i+1], as));
-                Bs = src[i+2];//(float_div(src[i+2], as));
+                Rs = (float_div(src[i+0], as));
+                Gs = (float_div(src[i+1], as));
+                Bs = (float_div(src[i+2], as));
             }
 #ifdef HEAVY_DEBUG
             assert(Rs <= 1.0); assert(Rs >= 0);
@@ -139,9 +139,9 @@ class BufferCombineFunc
                     Rb = Gb = Bb = 0;
                 }
                 else {
-                    Rb = dst[i+0];//(float_div(dst[i+0], ab));
-                    Gb = dst[i+1];//(float_div(dst[i+1], ab));
-                    Bb = dst[i+2];//(float_div(dst[i+2], ab));
+                    Rb = (float_div(dst[i+0], ab));
+                    Gb = (float_div(dst[i+1], ab));
+                    Bb = (float_div(dst[i+2], ab));
                 }
             }
             else {

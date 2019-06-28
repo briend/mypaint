@@ -140,14 +140,14 @@ void tile_clear_rgba16(PyObject * dst) {
   assert(PyArray_Check(dst));
   assert(PyArray_DIM(dst_arr, 0) == MYPAINT_TILE_SIZE);
   assert(PyArray_DIM(dst_arr, 1) == MYPAINT_TILE_SIZE);
-  assert(PyArray_TYPE(dst_arr) == NPY_UINT16);
+  assert(PyArray_TYPE(dst_arr) == NPY_FLOAT32);
   assert(PyArray_ISBEHAVED(dst_arr));
   assert(PyArray_STRIDES(dst_arr)[1] <= 8);
 #endif
 
   for (int y=0; y<MYPAINT_TILE_SIZE; y++) {
     float  * dst_p = (float*)((char *)PyArray_DATA(dst_arr) + y*PyArray_STRIDES(dst_arr)[0]);
-    memset(dst_p, 0, MYPAINT_TILE_SIZE*PyArray_STRIDES(dst_arr)[1]);
+    memset(dst_p, 0.0, MYPAINT_TILE_SIZE*PyArray_STRIDES(dst_arr)[1]);
     dst_p += PyArray_STRIDES(dst_arr)[0];
   }
 }
@@ -163,14 +163,14 @@ static void precalculate_dithering_noise_if_required()
   if (!have_noise) {
     // let's make some noise
     for (int i=0; i<dithering_noise_size; i++) {
-      // random number in range [0.03 .. 0.2] * (1<<15)
+      // random number in range [0.03 .. 0.2] * 1.0
       //
       // We could use the full range, but like this it is much easier
       // to guarantee 8bpc load-save roundtrips don't alter the
       // image. With the full range we would have to pay a lot
       // attention to rounding converting 8bpc to our internal format.
-      dithering_noise[i] = (float)((rand() % (1<<15)) * 240/256 + (1<<15) * 8/256) / (1<<30);
-      //dithering_noise[i] = (rand() % (1<<15)) * 5/256 + (1<<15) * 2/256;
+      //dithering_noise[i] = (float)((rand() % 1.0) * 240/256 + 1.0 * 8/256) / (1<<30);
+      //dithering_noise[i] = (rand() % 1.0) * 5/256 + 1.0 * 2/256;
     }
     have_noise = true;
   }
@@ -193,60 +193,62 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
     const float *src_p = (float*)((char *)src + y*src_strides);
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
-      uint32_t r, g, b, a;
+      float r, g, b, a;
       r = *src_p++;
       g = *src_p++;
       b = *src_p++;
       a = *src_p++;
+      if (a > 0.0) {
+        printf("%f, %f, %f, %f\n", r, g, b, a);
+      }
 #ifdef HEAVY_DEBUG
-      assert(a<=(1<<15));
-      assert(r<=(1<<15));
-      assert(g<=(1<<15));
-      assert(b<=(1<<15));
+      assert(a<=1.0);
+      assert(r<=1.0);
+      assert(g<=1.0);
+      assert(b<=1.0);
       assert(r<=a);
       assert(g<=a);
       assert(b<=a);
 #endif
-      // un-premultiply alpha (with rounding)
-//      if (a != 0) {
-//        const uint32_t rnd_a = a/2;
-//        r = ((r << 15) + rnd_a) / a;
-//        g = ((g << 15) + rnd_a) / a;
-//        b = ((b << 15) + rnd_a) / a;
-//      } else {
-//        r = g = b = 0;
-//      }
+       //un-premultiply alpha (with rounding)
+      if (a != 0.0) {
+        r = r / a;
+        g = g / a;
+        b = b / a;
+      } else {
+        r = g = b = 0.0;
+      }
 #ifdef HEAVY_DEBUG
-      assert(a<=(1<<15));
-      assert(r<=(1<<15));
-      assert(g<=(1<<15));
-      assert(b<=(1<<15));
+      assert(a<=1.0);
+      assert(r<=1.0);
+      assert(g<=1.0);
+      assert(b<=1.0);
 #endif
       /*
       // Variant A) rounding
-      const uint32_t add_r = (1<<15)/2;
-      const uint32_t add_g = (1<<15)/2;
-      const uint32_t add_b = (1<<15)/2;
-      const uint32_t add_a = (1<<15)/2;
+      const uint32_t add_r = 1.0/2;
+      const uint32_t add_g = 1.0/2;
+      const uint32_t add_b = 1.0/2;
+      const uint32_t add_a = 1.0/2;
       */
 
       /*
       // Variant B) naive dithering
       // This can alter the alpha channel during a load->save cycle.
-      const uint32_t add_r = rand() % (1<<15);
-      const uint32_t add_g = rand() % (1<<15);
-      const uint32_t add_b = rand() % (1<<15);
-      const uint32_t add_a = rand() % (1<<15);
+      const uint32_t add_r = rand() % 1.0;
+      const uint32_t add_g = rand() % 1.0;
+      const uint32_t add_b = rand() % 1.0;
+      const uint32_t add_a = rand() % 1.0;
       */
 
       /*
       // Variant C) slightly better dithering
       // make sure we don't dither rounding errors (those did occur when converting 8bit-->16bit)
       // this preserves the alpha channel, but we still add noise to the highly transparent colors
-      const uint32_t add_r = (rand() % (1<<15)) * 240/256 + (1<<15) * 8/256;
+      const uint32_t add_r = (rand() % 1.0) * 240/256 + 1.0 * 8/256;
       const uint32_t add_g = add_r; // hm... do not produce too much color noise
       const uint32_t add_b = add_r;
-      const uint32_t add_a = (rand() % (1<<15)) * 240/256 + (1<<15) * 8/256;
+      const uint32_t add_a = (rand() % 1.0) * 240/256 + 1.0 * 8/256;
       // TODO: error diffusion might work better than random dithering...
       */
 
@@ -259,15 +261,19 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
       //noise_idx += 4;
 
 #ifdef HEAVY_DEBUG
-      //assert(add_a < (1<<15));
+      //assert(add_a < 1.0);
       //assert(add_a >= 0);
       //assert(noise_idx <= dithering_noise_size);
 #endif
 
-      *dst_p++ = (uint8_t)((fastpow((float)r / (1<<15), 1.0/EOTF)) * 255 + 0.5);
-      *dst_p++ = (uint8_t)((fastpow((float)g / (1<<15), 1.0/EOTF)) * 255 + 0.5);
-      *dst_p++ = (uint8_t)((fastpow((float)b / (1<<15), 1.0/EOTF)) * 255 + 0.5);
-      *dst_p++ = ((a * 255) / (1<<15));
+      *dst_p++ = (uint8_t)((fastpow((float)r, 1.0/EOTF)) * 255);
+      *dst_p++ = (uint8_t)((fastpow((float)g, 1.0/EOTF)) * 255);
+      *dst_p++ = (uint8_t)((fastpow((float)b, 1.0/EOTF)) * 255);
+      *dst_p++ = (uint8_t)((a * 255));
+//      printf("%i\n",(uint8_t)((fastpow((float)r, 1.0/EOTF)) * 255));
+//      printf("%i\n",(uint8_t)((fastpow((float)g, 1.0/EOTF)) * 255));
+//      printf("%i\n",(uint8_t)((fastpow((float)b, 1.0/EOTF)) * 255));
+//      printf("a is %i\n",(uint8_t)((a * 255)));
     }
     src_p += src_strides;
     dst_p += dst_strides;
@@ -325,26 +331,26 @@ tile_convert_rgbu16_to_rgbu8_c(const float* const src,
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       float r, g, b;
-      r = ((float)*src_p++ / (1<<15));
-      g = ((float)*src_p++ / (1<<15));
-      b = ((float)*src_p++ / (1<<15));
+      r = *src_p++;
+      g = *src_p++;
+      b = *src_p++;
       src_p++; // alpha unused
 #ifdef HEAVY_DEBUG
-      assert(r<=(1<<15));
-      assert(g<=(1<<15));
-      assert(b<=(1<<15));
+      assert(r<=1.0);
+      assert(g<=1.0);
+      assert(b<=1.0);
 #endif
 
       /*
       // rounding
-      const uint32_t add = (1<<15)/2;
+      const uint32_t add = 1.0/2;
       */
       // dithering
       //const float add = dithering_noise[noise_idx++];
 
-      *dst_p++ = (((fastpow(r, 1.0/EOTF))) * 255) + 0.5;
-      *dst_p++ = (((fastpow(g, 1.0/EOTF))) * 255) + 0.5;
-      *dst_p++ = (((fastpow(b, 1.0/EOTF))) * 255) + 0.5;
+      *dst_p++ = (uint8_t)((((fastpow(r, 1.0/EOTF))) * 255));
+      *dst_p++ = (uint8_t)((((fastpow(g, 1.0/EOTF))) * 255));
+      *dst_p++ = (uint8_t)((((fastpow(b, 1.0/EOTF))) * 255));
       *dst_p++ = 255;
     }
 #ifdef HEAVY_DEBUG
@@ -415,22 +421,22 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
     uint8_t  * src_p = (uint8_t*)((char *)PyArray_DATA(src_arr) + y*PyArray_STRIDES(src_arr)[0]);
     float * dst_p = (float*)((char *)PyArray_DATA(dst_arr) + y*PyArray_STRIDES(dst_arr)[0]);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
-      uint32_t r, g, b, a;
+      float r, g, b, a;
       r = *src_p++;
       g = *src_p++;
       b = *src_p++;
       a = *src_p++;
 
       // convert to fixed point (with rounding)
-      r = (uint32_t)(fastpow((float)r/255.0, EOTF) * (1<<15) + 0.5);
-      g = (uint32_t)(fastpow((float)g/255.0, EOTF) * (1<<15) + 0.5);
-      b = (uint32_t)(fastpow((float)b/255.0, EOTF) * (1<<15) + 0.5);
-      a = (a * (1<<15) + 255/2) / 255;
+      r = (float)(fastpow((float)r/255.0, EOTF));
+      g = (float)(fastpow((float)g/255.0, EOTF));
+      b = (float)(fastpow((float)b/255.0, EOTF));
+      a = (float)a / 255.0;
 
       // premultiply alpha (with rounding), save back
-      *dst_p++ = r;
-      *dst_p++ = g;
-      *dst_p++ = b;
+      *dst_p++ = r * a;
+      *dst_p++ = g * a;
+      *dst_p++ = b * a;
       *dst_p++ = a;
     }
   }
@@ -462,7 +468,7 @@ void tile_rgba2flat(PyObject * dst_obj, PyObject * bg_obj) {
   for (int i=0; i<MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE; i++) {
     // resultAlpha = 1.0 (thus it does not matter if resultColor is premultiplied alpha or not)
     // resultColor = topColor + (1.0 - topAlpha) * bottomColor
-    const uint32_t one_minus_top_alpha = (1<<15) - dst_p[3];
+    const uint32_t one_minus_top_alpha = 1.0 - dst_p[3];
     dst_p[0] += ((uint32_t)bg_p[0]);
     dst_p[1] += ((uint32_t)bg_p[1]);
     dst_p[2] += ((uint32_t)bg_p[2]);
@@ -494,6 +500,7 @@ void tile_flat2rgba(PyObject * dst_obj, PyObject * bg_obj) {
 
   float * dst_p  = (float*)PyArray_DATA(dst);
   float * bg_p  = (float*)PyArray_DATA(bg);
+  printf("flat2rgba\n");
   for (int i=0; i<MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE; i++) {
 
     // 1. calculate final dst.alpha
@@ -502,16 +509,16 @@ void tile_flat2rgba(PyObject * dst_obj, PyObject * bg_obj) {
       int32_t color_change = (int32_t)dst_p[i] - bg_p[i];
       float minimal_alpha;
       if (color_change > 0) {
-        minimal_alpha = (int64_t)color_change*(1<<15) / ((1<<15) - bg_p[i]);
+        minimal_alpha = (int64_t)color_change*1.0 / (1.0 - bg_p[i]);
       } else if (color_change < 0) {
-        minimal_alpha = (int64_t)-color_change*(1<<15) / bg_p[i];
+        minimal_alpha = (int64_t)-color_change*1.0 / bg_p[i];
       } else {
         minimal_alpha = 0;
       }
       final_alpha = MAX(final_alpha, minimal_alpha);
 #ifdef HEAVY_DEBUG
-      assert(minimal_alpha <= (1<<15));
-      assert(final_alpha   <= (1<<15));
+      assert(minimal_alpha <= 1.0);
+      assert(final_alpha   <= 1.0);
 #endif
     }
 
@@ -520,8 +527,8 @@ void tile_flat2rgba(PyObject * dst_obj, PyObject * bg_obj) {
     if (final_alpha > 0) {
       for (int i=0; i<3;i++) {
         int32_t color_change = (int32_t)dst_p[i] - bg_p[i];
-        int64_t res = bg_p[i] + (int64_t)color_change*(1<<15) / final_alpha;
-        res = CLAMP(res, 0, (1<<15)); // fix rounding errors
+        int64_t res = bg_p[i] + (int64_t)color_change*1.0 / final_alpha;
+        res = CLAMP(res, 0, 1.0); // fix rounding errors
         dst_p[i] = res;
 #ifdef HEAVY_DEBUG
         assert(dst_p[i] <= dst_p[3]);
@@ -567,8 +574,8 @@ void tile_perceptual_change_strokemap(PyObject * a_obj, PyObject * b_obj, PyObje
       // scaled the same and can be compared.
 
       for (int i=0; i<3; i++) {
-        int32_t a_col = (uint32_t)a_p[i] * b_p[3] / (1<<15); // a.color * a.alpha*b.alpha
-        int32_t b_col = (uint32_t)b_p[i] * a_p[3] / (1<<15); // b.color * a.alpha*b.alpha
+        int32_t a_col = (uint32_t)a_p[i] * b_p[3] / 1.0; // a.color * a.alpha*b.alpha
+        int32_t b_col = (uint32_t)b_p[i] * a_p[3] / 1.0; // b.color * a.alpha*b.alpha
         color_change += abs(b_col - a_col);
       }
       // "color_change" is in the range [0, 3*a_a]
@@ -585,10 +592,10 @@ void tile_perceptual_change_strokemap(PyObject * a_obj, PyObject * b_obj, PyObje
 
       int32_t alpha_diff = alpha_new - alpha_old; // no abs() here (ignore erasers)
       // We check the alpha increase relative to the previous alpha.
-      bool is_perceptual_alpha_increase = alpha_diff > (1<<15)/4;
+      bool is_perceptual_alpha_increase = alpha_diff > 1.0/4;
 
       // this one is responsible for making fat big ugly easy-to-hit pointer targets
-      bool is_big_relative_alpha_increase  = alpha_diff > (1<<15)/64 && alpha_diff > alpha_old/2;
+      bool is_big_relative_alpha_increase  = alpha_diff > 1.0/64 && alpha_diff > alpha_old/2;
 
       if (is_perceptual_alpha_increase || is_big_relative_alpha_increase || is_perceptual_color_change) {
         res_p[0] = 1;
@@ -632,7 +639,7 @@ class TileDataCombine : public TileDataCombineOp
                        const float src_opacity,
                        const float *opts) const
     {
-        const float opac = fix15_short_clamp(src_opacity * fix15_one);
+        const float opac = src_opacity;
         if (dst_has_alpha) {
             combine_dstalpha(src_p, dst_p, opac, opts);
         }
