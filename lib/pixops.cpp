@@ -198,9 +198,9 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
       g = *src_p++;
       b = *src_p++;
       a = *src_p++;
-      if (a > 0.0) {
-        printf("%f, %f, %f, %f\n", r, g, b, a);
-      }
+//      if (a > 0.0) {
+//        printf("%f, %f, %f, %f\n", r, g, b, a);
+//      }
 #ifdef HEAVY_DEBUG
       assert(a<=1.0);
       assert(r<=1.0);
