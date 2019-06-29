@@ -219,7 +219,10 @@ class BrushInfo (object):
             self.EOTF = 2.2
         self.displayexceeded = None
         self.gamutexceeded = None
+        # keep a conceptual color as CAM16 
         self.CAM16Color = CAM16Color(vsh=(50, 50, 50))
+        # keep a raw color of N channels, RGB or spectral
+        self.brush_chans = np.zeros([mypaintlib.NUM_CHANS], dtype='float32')
 
     def settings_changed_cb(self, settings):
         self.cache_str = None
@@ -582,6 +585,7 @@ class BrushInfo (object):
             self.set_base_value('color_h', h)
             self.set_base_value('color_s', s)
             self.set_base_value('color_v', v)
+            self.brush_chans = np.array(rgb, dtype='float32')
         finally:
             self.end_atomic()
 
@@ -635,13 +639,15 @@ class Brush (mypaintlib.PythonBrush):
         self.brushinfo = brushinfo
         brushinfo.observers.append(self._update_from_brushinfo)
         self._update_from_brushinfo(ALL_SETTINGS)
-        chans = np.array([1.,1.,0.], dtype='float32')
-        self.set_brush_chans(chans)
+
 
     def _update_from_brushinfo(self, settings):
         """Updates changed low-level settings from the BrushInfo"""
         for cname in settings:
             self._update_setting_from_brushinfo(cname)
+        # brush chans is an N-array, can't see a good way to fit that
+        # into the normal settings concept.
+        self.set_brush_chans(self.brushinfo.brush_chans)
 
     def _update_setting_from_brushinfo(self, cname):
         setting = brushsettings.settings_dict.get(cname)

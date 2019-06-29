@@ -86,12 +86,15 @@ public:
   }
 
   std::vector<double> get_color (double x, double y, double radius) {
-    std::vector<double> rgba = std::vector<double>(4, 0.0);
-    float r,g,b,a,paint;
-    paint = 1.0;
+    std::vector<double> rgba = std::vector<double>(NUM_CHANS, 0.0);
+    float paint = 1.;
+    float color[NUM_CHANS];
     mypaint_surface_get_color((MyPaintSurface *)c_surface, x, y, radius,
-                              &r, &g, &b, &a, paint);
-    rgba[0] = r; rgba[1] = g; rgba[2] = b; rgba[3] = a;
+                              color, paint);
+    for (int i=0; i<NUM_CHANS; i++) {
+      rgba[i] = color[i];
+    }
+    //rgba[0] = r; rgba[1] = g; rgba[2] = b; rgba[3] = a;
     return rgba;
   }
 

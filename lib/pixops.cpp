@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-
 void
 tile_downscale_rgba16_c(const float *src, int src_strides, float *dst,
                         int dst_strides, int dst_x, int dst_y)
@@ -34,14 +33,13 @@ tile_downscale_rgba16_c(const float *src, int src_strides, float *dst,
   for (int y=0; y<MYPAINT_TILE_SIZE/2; y++) {
     float * src_p = (float*)((char *)src + (2*y)*src_strides);
     float * dst_p = (float*)((char *)dst + (y+dst_y)*dst_strides);
-    dst_p += 4*dst_x;
+    dst_p += MYPAINT_NUM_CHANS*dst_x;
     for(int x=0; x<MYPAINT_TILE_SIZE/2; x++) {
-      dst_p[0] = src_p[0]/4 + (src_p+4)[0]/4 + (src_p+4*MYPAINT_TILE_SIZE)[0]/4 + (src_p+4*MYPAINT_TILE_SIZE+4)[0]/4;
-      dst_p[1] = src_p[1]/4 + (src_p+4)[1]/4 + (src_p+4*MYPAINT_TILE_SIZE)[1]/4 + (src_p+4*MYPAINT_TILE_SIZE+4)[1]/4;
-      dst_p[2] = src_p[2]/4 + (src_p+4)[2]/4 + (src_p+4*MYPAINT_TILE_SIZE)[2]/4 + (src_p+4*MYPAINT_TILE_SIZE+4)[2]/4;
-      dst_p[3] = src_p[3]/4 + (src_p+4)[3]/4 + (src_p+4*MYPAINT_TILE_SIZE)[3]/4 + (src_p+4*MYPAINT_TILE_SIZE+4)[3]/4;
-      src_p += 8;
-      dst_p += 4;
+      for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
+        dst_p[chan] = src_p[chan]/4 + (src_p+MYPAINT_NUM_CHANS)[chan]/4 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[chan]/4 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[chan]/4;
+        }
+      src_p += 2*MYPAINT_NUM_CHANS;
+      dst_p += MYPAINT_NUM_CHANS;
     }
   }
 }
@@ -73,7 +71,7 @@ void tile_downscale_rgba16(PyObject *src, PyObject *dst, int dst_x, int dst_y) {
 
 
 void tile_copy_rgba16_into_rgba16_c(const float *src, float *dst) {
-  memcpy(dst, src, MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE*4*sizeof(float));
+  memcpy(dst, src, MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE*MYPAINT_NUM_CHANS*sizeof(float));
 }
 
 void tile_copy_rgba16_into_rgba16(PyObject * src, PyObject * dst) {
@@ -155,7 +153,7 @@ void tile_clear_rgba16(PyObject * dst) {
 
 // Noise used for dithering (the same for each tile).
 
-static const int dithering_noise_size = MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE*4;
+static const int dithering_noise_size = MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE*MYPAINT_NUM_CHANS;
 static float dithering_noise[dithering_noise_size];
 static void precalculate_dithering_noise_if_required()
 {
@@ -193,6 +191,12 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
     const float *src_p = (float*)((char *)src + y*src_strides);
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
+      // convert N channels to RGB
+      // 8 bit buffer will always be 3 channels
+      
+      for (int chan=0; chan<NUM_WAVES; chan++) {
+          
+      }
       float r, g, b, a;
       r = *src_p++;
       g = *src_p++;
@@ -330,6 +334,8 @@ tile_convert_rgbu16_to_rgbu8_c(const float* const src,
     const float *src_p = (float*)((char *)src + y*src_strides);
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
+      // convert from spectral to RGB here
+      
       float r, g, b;
       r = *src_p++;
       g = *src_p++;
@@ -427,17 +433,25 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       b = *src_p++;
       a = *src_p++;
 
-      // convert to fixed point (with rounding)
+      // convert to float
       r = (float)(fastpow((float)r/255.0, EOTF));
       g = (float)(fastpow((float)g/255.0, EOTF));
       b = (float)(fastpow((float)b/255.0, EOTF));
       a = (float)a / 255.0;
-
+      
+      float rgba[4] = {r*a, g*a, b*a, a};
+      
+      //convert to spectral here
+      
+      
+      for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
+          *dst_p++ = rgba[chan];
+      }
       // premultiply alpha (with rounding), save back
-      *dst_p++ = r * a;
-      *dst_p++ = g * a;
-      *dst_p++ = b * a;
-      *dst_p++ = a;
+//      *dst_p++ = r * a;
+//      *dst_p++ = g * a;
+//      *dst_p++ = b * a;
+//      *dst_p++ = a;
     }
   }
 }
