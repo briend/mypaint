@@ -43,6 +43,14 @@ public:
   void set_base_value (int id, float value) {
       mypaint_brush_set_base_value(c_brush, (MyPaintBrushSetting)id, value);
   }
+  
+  void set_brush_chans (PyObject * chans) {
+      PyArrayObject* b_chans = ((PyArrayObject*)chans);
+      float *arr_chans = (float*)PyArray_DATA(b_chans);
+      for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+          brushchans[i] = arr_chans[i];
+      }
+  }
 
   void set_mapping_n (int id, int input, int n) {
       mypaint_brush_set_mapping_n(c_brush, (MyPaintBrushSetting)id, (MyPaintBrushInput)input, n);

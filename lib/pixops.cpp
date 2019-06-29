@@ -266,10 +266,10 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
       //assert(noise_idx <= dithering_noise_size);
 #endif
 
-      *dst_p++ = (uint8_t)((fastpow((float)r, 1.0/EOTF)) * 255);
-      *dst_p++ = (uint8_t)((fastpow((float)g, 1.0/EOTF)) * 255);
-      *dst_p++ = (uint8_t)((fastpow((float)b, 1.0/EOTF)) * 255);
-      *dst_p++ = (uint8_t)((a * 255));
+      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)r, 1.0/EOTF)) * 255), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)g, 1.0/EOTF)) * 255), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)b, 1.0/EOTF)) * 255), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((a * 255)), 0, 255);
 //      printf("%i\n",(uint8_t)((fastpow((float)r, 1.0/EOTF)) * 255));
 //      printf("%i\n",(uint8_t)((fastpow((float)g, 1.0/EOTF)) * 255));
 //      printf("%i\n",(uint8_t)((fastpow((float)b, 1.0/EOTF)) * 255));

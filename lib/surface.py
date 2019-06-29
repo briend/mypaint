@@ -29,6 +29,7 @@ from lib.pycompat import xrange
 logger = logging.getLogger(__name__)
 
 N = mypaintlib.TILE_SIZE
+CHANS = mypaintlib.NUM_CHANS
 
 # throttle excesssive calls to the save/render progress monitor objects
 TILES_PER_CALLBACK = 256

@@ -19,6 +19,7 @@ from lib import brushsettings
 from lib.pycompat import unicode
 from lib.pycompat import PY3
 from lib.color import CAM16Color
+import numpy as np
 
 if PY3:
     from urllib.parse import quote_from_bytes as url_quote
@@ -634,6 +635,8 @@ class Brush (mypaintlib.PythonBrush):
         self.brushinfo = brushinfo
         brushinfo.observers.append(self._update_from_brushinfo)
         self._update_from_brushinfo(ALL_SETTINGS)
+        chans = np.array([1.,1.,0.], dtype='float32')
+        self.set_brush_chans(chans)
 
     def _update_from_brushinfo(self, settings):
         """Updates changed low-level settings from the BrushInfo"""

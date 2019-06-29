@@ -21,6 +21,8 @@ enum SymmetryType
 
 static const int TILE_SIZE = MYPAINT_TILE_SIZE;
 static const int MAX_MIPMAP_LEVEL = MYPAINT_MAX_MIPMAP_LEVEL;
+static const int NUM_CHANS = MYPAINT_NUM_CHANS;
+float def_brushchans[NUM_CHANS-1] = {0};
 
 // Implementation of tiled surface backend
 #include "pythontiledsurface.cpp"
@@ -61,6 +63,7 @@ public:
       return bbox;
   }
 
+
   // returns true if the surface was modified
   // Note: Used only in test_mypaintlib.py
   bool draw_dab (float x, float y, 
@@ -73,12 +76,13 @@ public:
                  float colorize = 0.0,
                  float posterize = 0.0,
                  float posterize_num = 0.0,
-                 float paint = 1.0
+                 float paint = 1.0,
+                 float brushchans[NUM_CHANS-1] = def_brushchans
                  ) {
 
     return mypaint_surface_draw_dab((MyPaintSurface *)c_surface, x, y, radius, color_r, color_g, color_b,
                              opaque, hardness, color_a, aspect_ratio, angle,
-                             lock_alpha, colorize, posterize, posterize_num, paint);
+                             lock_alpha, colorize, posterize, posterize_num, paint, brushchans);
   }
 
   std::vector<double> get_color (double x, double y, double radius) {
