@@ -379,7 +379,6 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             raise ValueError('Unsupported destination buffer type %r',
                              dst.dtype)
         dst_is_float32 = (dst.dtype == 'float32')
-        print(dst_is_float32)
 
         with self.tile_request(tx, ty, readonly=True) as src:
             if src is transparent_tile.rgba:

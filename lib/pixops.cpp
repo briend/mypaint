@@ -269,9 +269,9 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
       //assert(noise_idx <= dithering_noise_size);
 #endif
 
-      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)rgba[0], 1.0/EOTF)) * 255), 0, 255);
-      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)rgba[1], 1.0/EOTF)) * 255), 0, 255);
-      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)rgba[2], 1.0/EOTF)) * 255), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)fastexp(rgba[0]), 1.0/EOTF)) * 255), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)fastexp(rgba[1]), 1.0/EOTF)) * 255), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)fastexp(rgba[2]), 1.0/EOTF)) * 255), 0, 255);
       *dst_p++ = (uint8_t)CLAMP(((rgba[3] * 255)), 0, 255);
 //      printf("%i\n",(uint8_t)((fastpow((float)r, 1.0/EOTF)) * 255));
 //      printf("%i\n",(uint8_t)((fastpow((float)g, 1.0/EOTF)) * 255));
@@ -357,9 +357,9 @@ tile_convert_rgbu16_to_rgbu8_c(const float* const src,
       // dithering
       //const float add = dithering_noise[noise_idx++];
 
-      *dst_p++ = (uint8_t)((((fastpow(rgba[0], 1.0/EOTF))) * 255));
-      *dst_p++ = (uint8_t)((((fastpow(rgba[1], 1.0/EOTF))) * 255));
-      *dst_p++ = (uint8_t)((((fastpow(rgba[2], 1.0/EOTF))) * 255));
+      *dst_p++ = (uint8_t)((((fastpow(fastexp(rgba[0]), 1.0/EOTF))) * 255));
+      *dst_p++ = (uint8_t)((((fastpow(fastexp(rgba[1]), 1.0/EOTF))) * 255));
+      *dst_p++ = (uint8_t)((((fastpow(fastexp(rgba[2]), 1.0/EOTF))) * 255));
       *dst_p++ = 255;
     }
 #ifdef HEAVY_DEBUG
