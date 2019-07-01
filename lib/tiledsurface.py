@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 ## Constants
 
 TILE_SIZE = N = mypaintlib.TILE_SIZE
+NUM_CHANS = mypaintlib.NUM_CHANS
 MAX_MIPMAP_LEVEL = mypaintlib.MAX_MIPMAP_LEVEL
 
 SYMMETRY_TYPES = tuple(range(mypaintlib.NumSymmetryTypes))
@@ -70,7 +71,7 @@ class _Tile (object):
     def __init__(self, copy_from=None):
         super(_Tile, self).__init__()
         if copy_from is None:
-            self.rgba = np.zeros((N, N, 4), 'float32')
+            self.rgba = np.zeros((N, N, NUM_CHANS), 'float32')
         else:
             self.rgba = copy_from.rgba.copy()
         self.readonly = False
@@ -373,11 +374,12 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             return self.mipmap.blit_tile_into(dst, dst_has_alpha, tx, ty,
                                               mipmap_level)
 
-        assert dst.shape[2] == 4
+        assert dst.shape[2] == NUM_CHANS
         if dst.dtype not in ('float32', 'uint8'):
             raise ValueError('Unsupported destination buffer type %r',
                              dst.dtype)
         dst_is_float32 = (dst.dtype == 'float32')
+        print(dst_is_float32)
 
         with self.tile_request(tx, ty, readonly=True) as src:
             if src is transparent_tile.rgba:
@@ -825,7 +827,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
                 with self.tile_request(tx, ty, readonly=False) as dst:
                     s.blit_tile_into(dst, True, tx, ty)
         else:
-            tmp = np.zeros((N, N, 4), 'float32')
+            tmp = np.zeros((N, N, ), 'float32')
             for tx, ty in dirty_tiles:
                 s.blit_tile_into(tmp, True, tx, ty)
                 with self.tile_request(tx, ty, readonly=False) as dst:
@@ -1183,7 +1185,7 @@ class Background (Surface):
 
         # Generate mipmap
         if mipmap_level <= MAX_MIPMAP_LEVEL:
-            mipmap_obj = np.zeros((height, width, 4), dtype='float32')
+            mipmap_obj = np.zeros((height, width, NUM_CHANS), dtype='float32')
             for ty in range(height // N * 2):
                 for tx in range(width // N * 2):
                     with self.tile_request(tx, ty, readonly=True) as src:

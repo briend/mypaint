@@ -194,14 +194,11 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
       // convert N channels to RGB
       // 8 bit buffer will always be 3 channels
       
-      for (int chan=0; chan<NUM_WAVES; chan++) {
-          
+      float rgba[MYPAINT_NUM_CHANS] = {0.0};
+      for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
+          rgba[chan] = *src_p++;
       }
-      float r, g, b, a;
-      r = *src_p++;
-      g = *src_p++;
-      b = *src_p++;
-      a = *src_p++;
+      
 //      if (a > 0.0) {
 //        printf("%f, %f, %f, %f\n", r, g, b, a);
 //      }
@@ -215,12 +212,14 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
       assert(b<=a);
 #endif
        //un-premultiply alpha (with rounding)
-      if (a != 0.0) {
-        r = r / a;
-        g = g / a;
-        b = b / a;
+      if (rgba[3] != 0.0) {
+        rgba[0] = rgba[0] / rgba[3];
+        rgba[1] = rgba[1] / rgba[3];
+        rgba[2] = rgba[2] / rgba[3];
       } else {
-        r = g = b = 0.0;
+        rgba[0] = 0.0;
+        rgba[1] = 0.0;
+        rgba[2] = 0.0;
       }
 #ifdef HEAVY_DEBUG
       assert(a<=1.0);
@@ -270,10 +269,10 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
       //assert(noise_idx <= dithering_noise_size);
 #endif
 
-      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)r, 1.0/EOTF)) * 255), 0, 255);
-      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)g, 1.0/EOTF)) * 255), 0, 255);
-      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)b, 1.0/EOTF)) * 255), 0, 255);
-      *dst_p++ = (uint8_t)CLAMP(((a * 255)), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)rgba[0], 1.0/EOTF)) * 255), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)rgba[1], 1.0/EOTF)) * 255), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)rgba[2], 1.0/EOTF)) * 255), 0, 255);
+      *dst_p++ = (uint8_t)CLAMP(((rgba[3] * 255)), 0, 255);
 //      printf("%i\n",(uint8_t)((fastpow((float)r, 1.0/EOTF)) * 255));
 //      printf("%i\n",(uint8_t)((fastpow((float)g, 1.0/EOTF)) * 255));
 //      printf("%i\n",(uint8_t)((fastpow((float)b, 1.0/EOTF)) * 255));
@@ -336,16 +335,20 @@ tile_convert_rgbu16_to_rgbu8_c(const float* const src,
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       // convert from spectral to RGB here
       
-      float r, g, b;
-      r = *src_p++;
-      g = *src_p++;
-      b = *src_p++;
-      src_p++; // alpha unused
-#ifdef HEAVY_DEBUG
-      assert(r<=1.0);
-      assert(g<=1.0);
-      assert(b<=1.0);
-#endif
+      float rgba[MYPAINT_NUM_CHANS] = {0.0};
+      
+      for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
+        rgba[chan] = *src_p++;
+      }
+//      r = *src_p++;
+//      g = *src_p++;
+//      b = *src_p++;
+//      src_p++; // alpha unused
+//#ifdef HEAVY_DEBUG
+//      assert(r<=1.0);
+//      assert(g<=1.0);
+//      assert(b<=1.0);
+//#endif
 
       /*
       // rounding
@@ -354,9 +357,9 @@ tile_convert_rgbu16_to_rgbu8_c(const float* const src,
       // dithering
       //const float add = dithering_noise[noise_idx++];
 
-      *dst_p++ = (uint8_t)((((fastpow(r, 1.0/EOTF))) * 255));
-      *dst_p++ = (uint8_t)((((fastpow(g, 1.0/EOTF))) * 255));
-      *dst_p++ = (uint8_t)((((fastpow(b, 1.0/EOTF))) * 255));
+      *dst_p++ = (uint8_t)((((fastpow(rgba[0], 1.0/EOTF))) * 255));
+      *dst_p++ = (uint8_t)((((fastpow(rgba[1], 1.0/EOTF))) * 255));
+      *dst_p++ = (uint8_t)((((fastpow(rgba[2], 1.0/EOTF))) * 255));
       *dst_p++ = 255;
     }
 #ifdef HEAVY_DEBUG
@@ -439,7 +442,12 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       b = (float)(fastpow((float)b/255.0, EOTF));
       a = (float)a / 255.0;
       
-      float rgba[4] = {r*a, g*a, b*a, a};
+      float rgba[MYPAINT_NUM_CHANS] = {0.0};
+      
+      rgba[0] = r*a;
+      rgba[1] = g*a;
+      rgba[2] = b*a;
+      rgba[3] = a;
       
       //convert to spectral here
       

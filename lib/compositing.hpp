@@ -13,12 +13,9 @@
 #define __HAVE_COMPOSITING
 
 #include "fix15.hpp"
-//#include "tiledsurface.hpp"
+#include <mypaint-tiled-surface.h>
 
 #include <glib.h>
-#ifndef MYPAINT_NUM_CHANS
-#define MYPAINT_NUM_CHANS 4
-#endif
 
 // Abstract interface for TileDataCombine<> blend mode functors
 //

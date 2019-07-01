@@ -43,12 +43,15 @@ from . import data
 from . import group
 from . import core
 from . import rendering
+from lib import mypaintlib
 import lib.feedback
 import lib.naming
 from lib.pycompat import xrange
 
 
 logger = logging.getLogger(__name__)
+
+CHANS = mypaintlib.NUM_CHANS
 
 
 ## Class defs
@@ -474,7 +477,7 @@ class RootLayerStack (group.LayerStack):
 
         # Rendering loop.
         # Keep this as tight as possible, and consider C++ parallelization.
-        tiledims = (tiledsurface.N, tiledsurface.N, 4)
+        tiledims = (tiledsurface.N, tiledsurface.N, CHANS)
         dst_has_alpha_orig = dst_has_alpha
         for tx, ty in tiles:
             dst_8bpc_orig = None
@@ -698,7 +701,7 @@ class RootLayerStack (group.LayerStack):
         dst_is_8bpc = (dst.dtype == 'uint8')
         if dst_is_8bpc:
             dst_8bpc_orig = dst
-            tiledims = (tiledsurface.N, tiledsurface.N, 4)
+            tiledims = (tiledsurface.N, tiledsurface.N, CHANS)
             dst = np.zeros(tiledims, dtype='float32')
 
         self._process_ops_list(ops, dst, dst_has_alpha, tx, ty, mipmap_level)
@@ -752,7 +755,7 @@ class RootLayerStack (group.LayerStack):
                 )
             elif opcode == rendering.Opcode.PUSH:
                 stack.append((dst, dst_has_alpha))
-                tiledims = (tiledsurface.N, tiledsurface.N, 4)
+                tiledims = (tiledsurface.N, tiledsurface.N, CHANS)
                 dst = np.zeros(tiledims, dtype='float32')
                 dst_has_alpha = True
             elif opcode == rendering.Opcode.POP:
@@ -2071,7 +2074,7 @@ class RootLayerStack (group.LayerStack):
         logger.debug("Normalize: bd_ops = %r", bd_ops)
         logger.debug("Normalize: src_ops = %r", src_ops)
         dstsurf = dstlayer._surface
-        tiledims = (tiledsurface.N, tiledsurface.N, 4)
+        tiledims = (tiledsurface.N, tiledsurface.N, CHANS)
         for tx, ty in tiles:
             bd = np.zeros(tiledims, dtype='float32')
             with dstsurf.tile_request(tx, ty, readonly=False) as dst:
@@ -2811,7 +2814,7 @@ class _TileRenderWrapper (TileAccessible, TileBlittable):
             if (self._spec.solo or bg_hidden) and self._all_empty(tx, ty):
                 dst = tiledsurface.transparent_tile.rgba
             else:
-                tiledims = (tiledsurface.N, tiledsurface.N, 4)
+                tiledims = (tiledsurface.N, tiledsurface.N, CHANS)
                 dst = np.zeros(tiledims, 'float32')
                 self._root.render_single_tile(
                     dst, True,

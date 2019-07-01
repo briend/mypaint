@@ -32,8 +32,11 @@ from .drawutils import render_checks
 import gui.style
 import lib.color
 from lib.pycompat import xrange
+from lib import mypaintlib
 
 logger = logging.getLogger(__name__)
+
+CHANS = mypaintlib.NUM_CHANS
 
 ## Class definitions
 
