@@ -84,14 +84,13 @@ spectral_to_rgb (float *spectral, float *rgb_) {
 class BlendNormal : public BlendFunc
 {
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        dst_r = src_r;
-        dst_g = src_g;
-        dst_b = src_b;
+//        dst_r = src_r;
+//        dst_g = src_g;
+//        dst_b = src_b;
     }
 };
 
@@ -102,18 +101,18 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
     // working in premultiplied alpha for speed.
   public:
     inline void operator() (const float * const src,
-                            float * const dst,
+                            float * dst,
                             const float opac,
                             const float * const opts) const
     {
-        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            const float Sa = float_mul(src[i+3], opac);
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
             const float one_minus_Sa = 1.0 - Sa;
-            dst[i+0] = float_sumprods(src[i], opac, one_minus_Sa, dst[i]);
-            dst[i+1] = float_sumprods(src[i+1], opac, one_minus_Sa, dst[i+1]);
-            dst[i+2] = float_sumprods(src[i+2], opac, one_minus_Sa, dst[i+2]);
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                dst[i+p] = float_sumprods(src[i+p], opac, one_minus_Sa, dst[i+p]);
+            }
             if (DSTALPHA) {
-                dst[i+3] = (Sa + float_mul(dst[i+3], one_minus_Sa));
+                dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
             }
         }
     }
@@ -127,71 +126,71 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
     // Apply bump map to SRC using itself.
   public:
     inline void operator() (const float * const src,
-                            float * const dst,
+                            float * dst,
                             const float opac,
                             const float * const opts) const
     {
-        const float Oren_rough = opts[0];
-        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
-        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
-        const float Oren_exposure = 1.0 / Oren_A;
-        const unsigned int stride = MYPAINT_TILE_SIZE * 4;
-        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            // Calcuate bump map 
-            // Use alpha as  height-map
-            float slope = 0.0;
-            const int reach = 2;
-            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
-            for (int p=1; p<=reach; p++) {
-                // North
-                if (i >= stride * p) {
-                    int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
-                // East
-                if (i % stride < stride - 4 * p) {
-                    int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
-                // West
-                if (i % stride >= 4 * p) {
-                    int o = i - 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i + 4 * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
-                // South
-                if (i < BUFSIZE - stride * p) {
-                    int o = i + stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                } else {
-                    int o = i - stride * p;
-                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                }
-            }
-            
-            // amplify slope with opacity control
-            
-            slope = slope / (4 * reach) /  fasterpow((1.0), opts[1]);
-            // reduce slope for brighter colors to avoid harsh shadows
-            //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1.0));
-            // reduce slope when dst alpha is very high, like thick paint hiding texture
-            //slope *= (1.0 - fastpow((float)dst[i+3] / (1.0), 32));
-            float degrees = atan(slope);
-            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1.0) * Oren_exposure;
+//        const float Oren_rough = opts[0];
+//        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
+//        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
+//        const float Oren_exposure = 1.0 / Oren_A;
+//        const unsigned int stride = MYPAINT_TILE_SIZE * 4;
+//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
+//            // Calcuate bump map 
+//            // Use alpha as  height-map
+//            float slope = 0.0;
+//            const int reach = 2;
+//            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
+//            for (int p=1; p<=reach; p++) {
+//                // North
+//                if (i >= stride * p) {
+//                    int o = i - stride * p;
+//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                } else {
+//                    int o = i + stride * p;
+//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                }
+//                // East
+//                if (i % stride < stride - 4 * p) {
+//                    int o = i + 4 * p;
+//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                } else {
+//                    int o = i - 4 * p;
+//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                }
+//                // West
+//                if (i % stride >= 4 * p) {
+//                    int o = i - 4 * p;
+//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                } else {
+//                    int o = i + 4 * p;
+//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                }
+//                // South
+//                if (i < BUFSIZE - stride * p) {
+//                    int o = i + stride * p;
+//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                } else {
+//                    int o = i - stride * p;
+//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                }
+//            }
+//            
+//            // amplify slope with opacity control
+//            
+//            slope = slope / (4 * reach) /  fasterpow((1.0), opts[1]);
+//            // reduce slope for brighter colors to avoid harsh shadows
+//            //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1.0));
+//            // reduce slope when dst alpha is very high, like thick paint hiding texture
+//            //slope *= (1.0 - fastpow((float)dst[i+3] / (1.0), 32));
+//            float degrees = atan(slope);
+//            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1.0) * Oren_exposure;
 
-            dst[i+0] = (float_mul(dst[i], lambert));
-            dst[i+1] = (float_mul(dst[i+1], lambert));
-            dst[i+2] = (float_mul(dst[i+2], lambert));
-            dst[i+3] = (float_mul(dst[i+3], lambert));
-        }
+//            dst[i+0] = (float_mul(dst[i], lambert));
+//            dst[i+1] = (float_mul(dst[i+1], lambert));
+//            dst[i+2] = (float_mul(dst[i+2], lambert));
+//            dst[i+3] = (float_mul(dst[i+3], lambert));
+//        }
     }
 };
 
@@ -201,53 +200,53 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
     // apply SRC as bump map to DST.
   public:
     inline void operator() (const float * const src,
-                            float * const dst,
+                            float * dst,
                             const float opac,
                             const float * const opts) const
     {
-        const float Oren_rough = opts[0];
-        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
-        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
-        const float Oren_exposure = 1.0 / Oren_A;
-        const unsigned int stride = MYPAINT_TILE_SIZE * 4;
-        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            // Calcuate bump map 
-            // Use alpha as  height-map
-            float slope = 0.0;
-            const int reach = 1;
-            int o = 0;
-            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
-            for (int p=1; p<=reach; p++) {
-                // North
-                o = (i - stride * p) % BUFSIZE;
-                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                // East
-                o = (i + 4 * p) % stride;
-                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                // West
-                o = (i - 4 * p) % stride;
-                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-                // South
-                o = (i + stride * p) % BUFSIZE;
-                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-            }
+//        const float Oren_rough = opts[0];
+//        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
+//        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
+//        const float Oren_exposure = 1.0 / Oren_A;
+//        const unsigned int stride = MYPAINT_TILE_SIZE * 4;
+//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
+//            // Calcuate bump map 
+//            // Use alpha as  height-map
+//            float slope = 0.0;
+//            const int reach = 1;
+//            int o = 0;
+//            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
+//            for (int p=1; p<=reach; p++) {
+//                // North
+//                o = (i - stride * p) % BUFSIZE;
+//                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                // East
+//                o = (i + 4 * p) % stride;
+//                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                // West
+//                o = (i - 4 * p) % stride;
+//                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//                // South
+//                o = (i + stride * p) % BUFSIZE;
+//                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
+//            }
 
-            // amplify slope with opacity control
+//            // amplify slope with opacity control
 
-            slope = slope / (4 * reach) /  fasterpow((1.0), opts[1]);
-            // reduce slope for brighter colors to avoid harsh shadows
-            //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1.0));
-            // reduce slope when dst alpha is very high, like thick paint hiding texture
-            slope *= (1.0 - fastpow((float)dst[i+3] / (1.0), 16));
+//            slope = slope / (4 * reach) /  fasterpow((1.0), opts[1]);
+//            // reduce slope for brighter colors to avoid harsh shadows
+//            //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1.0));
+//            // reduce slope when dst alpha is very high, like thick paint hiding texture
+//            slope *= (1.0 - fastpow((float)dst[i+3] / (1.0), 16));
 
-            float degrees = atan(slope);
-            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1.0) * Oren_exposure;
+//            float degrees = atan(slope);
+//            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1.0) * Oren_exposure;
 
-            dst[i+0] = (float_mul(dst[i], lambert));
-            dst[i+1] = (float_mul(dst[i+1], lambert));
-            dst[i+2] = (float_mul(dst[i+2], lambert));
-            dst[i+3] = (float_mul(dst[i+3], lambert));
-        }
+//            dst[i+0] = (float_mul(dst[i], lambert));
+//            dst[i+1] = (float_mul(dst[i+1], lambert));
+//            dst[i+2] = (float_mul(dst[i+2], lambert));
+//            dst[i+3] = (float_mul(dst[i+3], lambert));
+//        }
     }
 };
 
@@ -260,55 +259,20 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
     // Based on work by Scott Allen Burns, Meng, and others.
   public:
     inline void operator() (const float * const src,
-                            float * const dst,
+                            float * dst,
                             const float opac,
                             const float * const opts) const
     {
-        #pragma omp parallel for
-        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            const float Sa = float_mul(src[i+3], opac);
-            const float one_minus_Sa = 1.0 - Sa;
-            //alpha-weighted ratio for WGM (sums to 1.0)
-            //float dst_alpha = (1.0);
-            float fac_a;
-            if (DSTALPHA) {
-              fac_a = (float)Sa / (Sa + one_minus_Sa * dst[i+3] / (1.0));
-            } else {
-              fac_a = (float)Sa / (1.0);
-            }
-            float fac_b = 1.0 - fac_a;
-
-            //convert bottom to spectral.
-            float spectral_b[NUM_WAVES] = {0};
-            rgb_to_spectral((float)dst[i], (float)dst[i+1], (float)dst[i+2], spectral_b);
-            // convert top to spectral.
-            float spectral_a[NUM_WAVES] = {0};
-            rgb_to_spectral((float)src[i], (float)src[i+1], (float)src[i+2], spectral_a);
-
-            // mix to the two spectral reflectances using WGM
-            // values are in log, thus this is a weighted geometric mean
-            float spectral_result[NUM_WAVES] = {0};
-            for (int i=0; i<NUM_WAVES; i++) {
-              spectral_result[i] = spectral_a[i] * fac_a + spectral_b[i] * fac_b;
-            }
-            
-            // convert back to RGB
-            float rgb_result[4] = {0};
-            spectral_to_rgb(spectral_result, rgb_result);
-            if (DSTALPHA) {
-              rgb_result[3] = (Sa + float_mul(dst[i+3], one_minus_Sa));
-            } else {
-              rgb_result[3] = (1.0);
-            }
-            for (int j=0; j<3; j++) {
-              dst[i+j] = rgb_result[j];
-            }
-            
-            if (DSTALPHA) {
-                dst[i+3] = rgb_result[3];
-            }            
-
-        }
+//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
+//            const float Sa = float_mul(src[i+3], opac);
+//            const float one_minus_Sa = 1.0 - Sa;
+//            dst[i+0] = float_sumprods(src[i], opac, one_minus_Sa, dst[i]);
+//            dst[i+1] = float_sumprods(src[i+1], opac, one_minus_Sa, dst[i+1]);
+//            dst[i+2] = float_sumprods(src[i+2], opac, one_minus_Sa, dst[i+2]);
+//            if (DSTALPHA) {
+//                dst[i+3] = (Sa + float_mul(dst[i+3], one_minus_Sa));
+//            }
+//        }
     }
 };
 
@@ -319,19 +283,19 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationIn>
     // working in premultiplied alpha for speed.
   public:
     inline void operator() (const float * const src,
-                            float * const dst,
+                            float * dst,
                             const float opac,
                             const float * const opts) const
     {
-        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            const float Sa = float_mul(src[i+3], opac);
-            dst[i+0] = float_mul(dst[i+0], Sa);
-            dst[i+1] = float_mul(dst[i+1], Sa);
-            dst[i+2] = float_mul(dst[i+2], Sa);
-            if (DSTALPHA) {
-                dst[i+3] = float_mul(Sa, dst[i+3]);
-            }
-        }
+//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
+//            const float Sa = float_mul(src[i+3], opac);
+//            dst[i+0] = float_mul(dst[i+0], Sa);
+//            dst[i+1] = float_mul(dst[i+1], Sa);
+//            dst[i+2] = float_mul(dst[i+2], Sa);
+//            if (DSTALPHA) {
+//                dst[i+3] = float_mul(Sa, dst[i+3]);
+//            }
+//        }
     }
 };
 
@@ -342,19 +306,19 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationOut
     // working in premultiplied alpha for speed.
   public:
     inline void operator() (const float * const src,
-                            float * const dst,
+                            float * dst,
                             const float opac,
                             const float * const opts) const
     {
-        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            const float one_minus_Sa = 1.0-float_mul(src[i+3], opac);
-            dst[i+0] = float_mul(dst[i+0], one_minus_Sa);
-            dst[i+1] = float_mul(dst[i+1], one_minus_Sa);
-            dst[i+2] = float_mul(dst[i+2], one_minus_Sa);
-            if (DSTALPHA) {
-                dst[i+3] = float_mul(one_minus_Sa, dst[i+3]);
-            }
-        }
+//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
+//            const float one_minus_Sa = 1.0-float_mul(src[i+3], opac);
+//            dst[i+0] = float_mul(dst[i+0], one_minus_Sa);
+//            dst[i+1] = float_mul(dst[i+1], one_minus_Sa);
+//            dst[i+2] = float_mul(dst[i+2], one_minus_Sa);
+//            if (DSTALPHA) {
+//                dst[i+3] = float_mul(one_minus_Sa, dst[i+3]);
+//            }
+//        }
     }
 };
 
@@ -366,34 +330,34 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceAtop>
     // working in premultiplied alpha for speed.
   public:
     inline void operator() (const float * const src,
-                            float * const dst,
+                            float * dst,
                             const float opac,
                             const float * const opts) const
     {
-        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            const float as = float_mul(src[i+3], opac);
-            const float ab = dst[i+3];
-            const float one_minus_as = 1.0 - as;
-            // W3C spec:
-            //   co = as*Cs*ab + ab*Cb*(1-as)
-            // where
-            //   src[n] = as*Cs    -- premultiplied
-            //   dst[n] = ab*Cb    -- premultiplied
-            dst[i+0] = float_sumprods(float_mul(src[i+0], opac), ab,
-                                      float_mul(dst[i+0], ab), one_minus_as);
-            dst[i+1] = float_sumprods(float_mul(src[i+1], opac), ab,
-                                      float_mul(dst[i+1], ab), one_minus_as);
-            dst[i+2] = float_sumprods(float_mul(src[i+2], opac), ab,
-                                      float_mul(dst[i+2], ab), one_minus_as);
-//            printf("%i, %i, %i\n", dst[i+0], dst[i+3], as);
-            if (DSTALPHA) {
-                float alpha = float_sumprods(as, ab, ab, one_minus_as);
-            }
-            // W3C spec:
-            //   ao = as*ab + ab*(1-as)
-            //   ao = ab
-            // (leave output alpha unchanged)
-        }
+//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
+//            const float as = float_mul(src[i+3], opac);
+//            const float ab = dst[i+3];
+//            const float one_minus_as = 1.0 - as;
+//            // W3C spec:
+//            //   co = as*Cs*ab + ab*Cb*(1-as)
+//            // where
+//            //   src[n] = as*Cs    -- premultiplied
+//            //   dst[n] = ab*Cb    -- premultiplied
+//            dst[i+0] = float_sumprods(float_mul(src[i+0], opac), ab,
+//                                      float_mul(dst[i+0], ab), one_minus_as);
+//            dst[i+1] = float_sumprods(float_mul(src[i+1], opac), ab,
+//                                      float_mul(dst[i+1], ab), one_minus_as);
+//            dst[i+2] = float_sumprods(float_mul(src[i+2], opac), ab,
+//                                      float_mul(dst[i+2], ab), one_minus_as);
+////            printf("%i, %i, %i\n", dst[i+0], dst[i+3], as);
+//            if (DSTALPHA) {
+//                float alpha = float_sumprods(as, ab, ab, one_minus_as);
+//            }
+//            // W3C spec:
+//            //   ao = as*ab + ab*(1-as)
+//            //   ao = ab
+//            // (leave output alpha unchanged)
+//        }
     }
 };
 
@@ -404,32 +368,32 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationAto
     // working in premultiplied alpha for speed.
   public:
     inline void operator() (const float * const src,
-                            float * const dst,
+                            float * dst,
                             const float opac,
                             const float * const opts) const
     {
-        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-            const float as = float_mul(src[i+3], opac);
-            const float ab = dst[i+3];
-            const float one_minus_ab = 1.0 - ab;
-            // W3C Spec:
-            //   co = as*Cs*(1-ab) + ab*Cb*as
-            // where
-            //   src[n] = as*Cs    -- premultiplied
-            //   dst[n] = ab*Cb    -- premultiplied
-            dst[i+0] = float_sumprods(float_mul(src[i+0], opac), one_minus_ab,
-                                      float_mul(dst[i+0], dst[i+3]), as);
-            dst[i+1] = float_sumprods(float_mul(src[i+1], opac), one_minus_ab,
-                                      float_mul(dst[i+1], dst[i+3]), as);
-            dst[i+2] = float_sumprods(float_mul(src[i+2], opac), one_minus_ab,
-                                      float_mul(dst[i+2], dst[i+3]), as);
-            // W3C spec:
-            //   ao = as*(1-ab) + ab*as
-            //   ao = as
-            if (DSTALPHA) {
-                dst[i+3] = as;
-            }
-        }
+//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
+//            const float as = float_mul(src[i+3], opac);
+//            const float ab = dst[i+3];
+//            const float one_minus_ab = 1.0 - ab;
+//            // W3C Spec:
+//            //   co = as*Cs*(1-ab) + ab*Cb*as
+//            // where
+//            //   src[n] = as*Cs    -- premultiplied
+//            //   dst[n] = ab*Cb    -- premultiplied
+//            dst[i+0] = float_sumprods(float_mul(src[i+0], opac), one_minus_ab,
+//                                      float_mul(dst[i+0], dst[i+3]), as);
+//            dst[i+1] = float_sumprods(float_mul(src[i+1], opac), one_minus_ab,
+//                                      float_mul(dst[i+1], dst[i+3]), as);
+//            dst[i+2] = float_sumprods(float_mul(src[i+2], opac), one_minus_ab,
+//                                      float_mul(dst[i+2], dst[i+3]), as);
+//            // W3C spec:
+//            //   ao = as*(1-ab) + ab*as
+//            //   ao = as
+//            if (DSTALPHA) {
+//                dst[i+3] = as;
+//            }
+//        }
     }
 };
 
@@ -439,14 +403,13 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationAto
 class BlendMultiply : public BlendFunc
 {
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        dst_r = float_mul(src_r, dst_r);
-        dst_g = float_mul(src_g, dst_g);
-        dst_b = float_mul(src_b, dst_b);
+//        dst_r = float_mul(src_r, dst_r);
+//        dst_g = float_mul(src_g, dst_g);
+//        dst_b = float_mul(src_b, dst_b);
     }
 };
 
@@ -458,14 +421,13 @@ class BlendMultiply : public BlendFunc
 class BlendScreen : public BlendFunc
 {
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        dst_r = dst_r + src_r - float_mul(dst_r, src_r);
-        dst_g = dst_g + src_g - float_mul(dst_g, src_g);
-        dst_b = dst_b + src_b - float_mul(dst_b, src_b);
+//        dst_r = dst_r + src_r - float_mul(dst_r, src_r);
+//        dst_g = dst_g + src_g - float_mul(dst_g, src_g);
+//        dst_b = dst_b + src_b - float_mul(dst_b, src_b);
     }
 };
 
@@ -489,14 +451,13 @@ class BlendOverlay : public BlendFunc
     }
 
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        process_channel(src_r, dst_r);
-        process_channel(src_g, dst_g);
-        process_channel(src_b, dst_b);
+//        process_channel(src_r, dst_r);
+//        process_channel(src_g, dst_g);
+//        process_channel(src_b, dst_b);
     }
 };
 
@@ -506,14 +467,13 @@ class BlendOverlay : public BlendFunc
 class BlendDarken : public BlendFunc
 {
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        if (src_r < dst_r) dst_r = src_r;
-        if (src_g < dst_g) dst_g = src_g;
-        if (src_b < dst_b) dst_b = src_b;
+//        if (src_r < dst_r) dst_r = src_r;
+//        if (src_g < dst_g) dst_g = src_g;
+//        if (src_b < dst_b) dst_b = src_b;
     }
 };
 
@@ -523,14 +483,13 @@ class BlendDarken : public BlendFunc
 class BlendLighten : public BlendFunc
 {
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        if (src_r > dst_r) dst_r = src_r;
-        if (src_g > dst_g) dst_g = src_g;
-        if (src_b > dst_b) dst_b = src_b;
+//        if (src_r > dst_r) dst_r = src_r;
+//        if (src_g > dst_g) dst_g = src_g;
+//        if (src_b > dst_b) dst_b = src_b;
     }
 };
 
@@ -554,14 +513,13 @@ class BlendHardLight : public BlendFunc
     }
 
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        process_channel(src_r, dst_r);
-        process_channel(src_g, dst_g);
-        process_channel(src_b, dst_b);
+//        process_channel(src_r, dst_r);
+//        process_channel(src_g, dst_g);
+//        process_channel(src_b, dst_b);
     }
 };
 
@@ -584,14 +542,13 @@ class BlendColorDodge : public BlendFunc
     }
 
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        process_channel(src_r, dst_r);
-        process_channel(src_g, dst_g);
-        process_channel(src_b, dst_b);
+//        process_channel(src_r, dst_r);
+//        process_channel(src_g, dst_g);
+//        process_channel(src_b, dst_b);
     }
 };
 
@@ -614,14 +571,13 @@ class BlendColorBurn : public BlendFunc
     }
 
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        process_channel(src_r, dst_r);
-        process_channel(src_g, dst_g);
-        process_channel(src_b, dst_b);
+//        process_channel(src_r, dst_r);
+//        process_channel(src_g, dst_g);
+//        process_channel(src_b, dst_b);
     }
 };
 
@@ -665,14 +621,13 @@ class BlendSoftLight : public BlendFunc
     }
 
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        process_channel(src_r, dst_r);
-        process_channel(src_g, dst_g);
-        process_channel(src_b, dst_b);
+//        process_channel(src_r, dst_r);
+//        process_channel(src_g, dst_g);
+//        process_channel(src_b, dst_b);
     }
 };
 
@@ -691,14 +646,13 @@ class BlendDifference : public BlendFunc
     }
 
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        process_channel(src_r, dst_r);
-        process_channel(src_g, dst_g);
-        process_channel(src_b, dst_b);
+//        process_channel(src_r, dst_r);
+//        process_channel(src_g, dst_g);
+//        process_channel(src_b, dst_b);
     }
 };
 
@@ -714,14 +668,13 @@ class BlendExclusion : public BlendFunc
     }
 
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        process_channel(src_r, dst_r);
-        process_channel(src_g, dst_g);
-        process_channel(src_b, dst_b);
+//        process_channel(src_r, dst_r);
+//        process_channel(src_g, dst_g);
+//        process_channel(src_b, dst_b);
     }
 };
 
@@ -838,29 +791,28 @@ blending_nonsep_setsat (float &r,
 class BlendHue : public BlendFunc
 {
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        const float dst_lum = blending_nonsep_lum(dst_r, dst_g, dst_b);
-        const float dst_sat = blending_nonsep_sat(dst_r, dst_g, dst_b);
-        float r = src_r;
-        float g = src_g;
-        float b = src_b;
-        blending_nonsep_setsat(r, g, b, dst_sat);
-        blending_nonsep_setlum(r, g, b, dst_lum);
-#ifdef HEAVY_DEBUG
-        assert(r <= (float)1.0);
-        assert(g <= (float)1.0);
-        assert(b <= (float)1.0);
-        assert(r >= 0);
-        assert(g >= 0);
-        assert(b >= 0);
-#endif
-        dst_r = r;
-        dst_g = g;
-        dst_b = b;
+//        const float dst_lum = blending_nonsep_lum(dst_r, dst_g, dst_b);
+//        const float dst_sat = blending_nonsep_sat(dst_r, dst_g, dst_b);
+//        float r = src_r;
+//        float g = src_g;
+//        float b = src_b;
+//        blending_nonsep_setsat(r, g, b, dst_sat);
+//        blending_nonsep_setlum(r, g, b, dst_lum);
+//#ifdef HEAVY_DEBUG
+//        assert(r <= (float)1.0);
+//        assert(g <= (float)1.0);
+//        assert(b <= (float)1.0);
+//        assert(r >= 0);
+//        assert(g >= 0);
+//        assert(b >= 0);
+//#endif
+//        dst_r = r;
+//        dst_g = g;
+//        dst_b = b;
     }
 };
 
@@ -870,29 +822,28 @@ class BlendHue : public BlendFunc
 class BlendSaturation : public BlendFunc
 {
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        const float dst_lum = blending_nonsep_lum(dst_r, dst_g, dst_b);
-        const float src_sat = blending_nonsep_sat(src_r, src_g, src_b);
-        float r = dst_r;
-        float g = dst_g;
-        float b = dst_b;
-        blending_nonsep_setsat(r, g, b, src_sat);
-        blending_nonsep_setlum(r, g, b, dst_lum);
-#ifdef HEAVY_DEBUG
-        assert(r <= (float)1.0);
-        assert(g <= (float)1.0);
-        assert(b <= (float)1.0);
-        assert(r >= 0);
-        assert(g >= 0);
-        assert(b >= 0);
-#endif
-        dst_r = r;
-        dst_g = g;
-        dst_b = b;
+//        const float dst_lum = blending_nonsep_lum(dst_r, dst_g, dst_b);
+//        const float src_sat = blending_nonsep_sat(src_r, src_g, src_b);
+//        float r = dst_r;
+//        float g = dst_g;
+//        float b = dst_b;
+//        blending_nonsep_setsat(r, g, b, src_sat);
+//        blending_nonsep_setlum(r, g, b, dst_lum);
+//#ifdef HEAVY_DEBUG
+//        assert(r <= (float)1.0);
+//        assert(g <= (float)1.0);
+//        assert(b <= (float)1.0);
+//        assert(r >= 0);
+//        assert(g >= 0);
+//        assert(b >= 0);
+//#endif
+//        dst_r = r;
+//        dst_g = g;
+//        dst_b = b;
     }
 };
 
@@ -902,27 +853,26 @@ class BlendSaturation : public BlendFunc
 class BlendColor : public BlendFunc
 {
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        float r = src_r;
-        float g = src_g;
-        float b = src_b;
-        blending_nonsep_setlum(r, g, b,
-          blending_nonsep_lum(dst_r, dst_g, dst_b));
-#ifdef HEAVY_DEBUG
-        assert(r <= (float)1.0);
-        assert(g <= (float)1.0);
-        assert(b <= (float)1.0);
-        assert(r >= 0);
-        assert(g >= 0);
-        assert(b >= 0);
-#endif
-        dst_r = r;
-        dst_g = g;
-        dst_b = b;
+//        float r = src_r;
+//        float g = src_g;
+//        float b = src_b;
+//        blending_nonsep_setlum(r, g, b,
+//          blending_nonsep_lum(dst_r, dst_g, dst_b));
+//#ifdef HEAVY_DEBUG
+//        assert(r <= (float)1.0);
+//        assert(g <= (float)1.0);
+//        assert(b <= (float)1.0);
+//        assert(r >= 0);
+//        assert(g >= 0);
+//        assert(b >= 0);
+//#endif
+//        dst_r = r;
+//        dst_g = g;
+//        dst_b = b;
     }
 };
 
@@ -932,27 +882,26 @@ class BlendColor : public BlendFunc
 class BlendLuminosity : public BlendFunc
 {
   public:
-    inline void operator()
-        (const float src_r, const float src_g, const float src_b,
-         float &dst_r, float &dst_g, float &dst_b,
-         const float * const opts) const
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
     {
-        float r = dst_r;
-        float g = dst_g;
-        float b = dst_b;
-        blending_nonsep_setlum(r, g, b,
-          blending_nonsep_lum(src_r, src_g, src_b));
-#ifdef HEAVY_DEBUG
-        assert(r <= (float)1.0);
-        assert(g <= (float)1.0);
-        assert(b <= (float)1.0);
-        assert(r >= 0);
-        assert(g >= 0);
-        assert(b >= 0);
-#endif
-        dst_r = r;
-        dst_g = g;
-        dst_b = b;
+//        float r = dst_r;
+//        float g = dst_g;
+//        float b = dst_b;
+//        blending_nonsep_setlum(r, g, b,
+//          blending_nonsep_lum(src_r, src_g, src_b));
+//#ifdef HEAVY_DEBUG
+//        assert(r <= (float)1.0);
+//        assert(g <= (float)1.0);
+//        assert(b <= (float)1.0);
+//        assert(r >= 0);
+//        assert(g >= 0);
+//        assert(b >= 0);
+//#endif
+//        dst_r = r;
+//        dst_g = g;
+//        dst_b = b;
     }
 };
 

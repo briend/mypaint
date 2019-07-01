@@ -13,28 +13,27 @@
 #define __HAVE_COMPOSITING
 
 #include "fix15.hpp"
+//#include "tiledsurface.hpp"
 
 #include <glib.h>
-
+#ifndef MYPAINT_NUM_CHANS
+#define MYPAINT_NUM_CHANS 4
+#endif
 
 // Abstract interface for TileDataCombine<> blend mode functors
 //
 // Blend functors are low-level pixel operations. Derived classes' operator()
 // implementations should be declared inline and in the class body.
 //
-// These functors that apply a source colour to a destination, with no
+// These functors that apply a source colour to qa destination, with no
 // metadata. The R, G and B values are not premultiplied by alpha during the
 // blending phase.
 
 class BlendFunc
 {
   public:
-    virtual void operator() ( const float src_r,
-                              const float src_g,
-                              const float src_b,
-                              float &dst_r,
-                              float &dst_g,
-                              float &dst_b,
+    virtual void operator() (const float * const src,
+                              float * dst,
                               const float * const opts) const = 0;
 };
 
@@ -57,10 +56,8 @@ class BlendFunc
 class CompositeFunc
 {
   public:
-    virtual void operator() (const float Rs, const float Gs,
-                             const float Bs, const float as,
-                             float &rb, float &gb,
-                             float &bb, float &ab) const = 0;
+    virtual void operator() (float * const src,
+                            float * dst) const = 0;
     static const bool zero_alpha_has_effect = true;
     static const bool can_decrease_alpha = true;
     static const bool zero_alpha_clears_backdrop = true;
@@ -104,77 +101,62 @@ class BufferCombineFunc
 #endif
 
         // Pixel loop
-        float Rs,Gs,Bs,as, Rb,Gb,Bb,ab, one_minus_ab;
-#pragma omp parallel for private(Rs,Gs,Bs,as, Rb,Gb,Bb,ab, one_minus_ab)
-        for (unsigned int i = 0; i < BUFSIZE; i += 4)
+        //float Rs,Gs,Bs,as, Rb,Gb,Bb,ab, one_minus_ab;
+        float Psrc[MYPAINT_NUM_CHANS];
+        float Pdst[MYPAINT_NUM_CHANS];
+        float one_minus_ab;
+//#pragma omp parallel for private(Psrc, Pdst, one_minus_ab)
+        for (unsigned int i = 0; i < BUFSIZE; i += MYPAINT_NUM_CHANS)
         {
             // Calculate unpremultiplied source RGB values
-            as = src[i+3];
-            if (as == 0) {
+            Psrc[MYPAINT_NUM_CHANS-1] = src[i+MYPAINT_NUM_CHANS-1];
+            if (Psrc[MYPAINT_NUM_CHANS-1] == 0) {
 #ifndef HEAVY_DEBUG
                 // Skip pixel if it can't affect the backdrop pixel
                 if (skip_empty_src) {
                     continue;
                 }
 #endif
-                // Otherwise just avoid the divide-by-zero by assuming the
-                // value before premultiplication was also zero.
-                Rs = Gs = Bs = 0;
             }
             else {
-                Rs = (float_div(src[i+0], as));
-                Gs = (float_div(src[i+1], as));
-                Bs = (float_div(src[i+2], as));
+                for (int p=0; i<MYPAINT_NUM_CHANS-1; p++) {
+                    Psrc[p] = (float_div(src[i+p], Psrc[MYPAINT_NUM_CHANS-1]));
+                }
             }
-#ifdef HEAVY_DEBUG
-            assert(Rs <= 1.0); assert(Rs >= 0);
-            assert(Gs <= 1.0); assert(Gs >= 0);
-            assert(Bs <= 1.0); assert(Bs >= 0);
-#endif
 
             // Calculate unpremultiplied backdrop RGB values
             if (DSTALPHA) {
-                ab = dst[i+3];
-                if (ab == 0) {
-                    Rb = Gb = Bb = 0;
+                Pdst[MYPAINT_NUM_CHANS-1] = dst[i+MYPAINT_NUM_CHANS-1];
+                if (Pdst[MYPAINT_NUM_CHANS-1] == 0) {
+                    //Rb = Gb = Bb = 0;
                 }
                 else {
-                    Rb = (float_div(dst[i+0], ab));
-                    Gb = (float_div(dst[i+1], ab));
-                    Bb = (float_div(dst[i+2], ab));
+                    for (int p=0; i<MYPAINT_NUM_CHANS-1; p++) {
+                      Pdst[p] = (float_div(dst[i+p], Pdst[MYPAINT_NUM_CHANS-1]));
+                    }
                 }
             }
             else {
-                ab = 1.0;
-                Rb = dst[i+0];
-                Gb = dst[i+1];
-                Bb = dst[i+2];
+                Pdst[MYPAINT_NUM_CHANS-1] = 1.0;
+                for (int p=0; i<MYPAINT_NUM_CHANS-1; p++) {
+                  Pdst[p] = dst[i+p];
+                }
             }
-#ifdef HEAVY_DEBUG
-            assert(Rb <= 1.0); assert(Rb >= 0);
-            assert(Gb <= 1.0); assert(Gb >= 0);
-            assert(Bb <= 1.0); assert(Bb >= 0);
-#endif
 
             // Apply the colour blend functor
-            blendfunc(Rs, Gs, Bs, Rb, Gb, Bb, opts);
+            blendfunc(Psrc, Pdst, opts);
 
             // Apply results of the blend in place
             if (DSTALPHA) {
-                one_minus_ab = 1.0 - ab;
-                Rb = float_sumprods(one_minus_ab, Rs, ab, Rb);
-                Gb = float_sumprods(one_minus_ab, Gs, ab, Gb);
-                Bb = float_sumprods(one_minus_ab, Bs, ab, Bb);
+                one_minus_ab = 1.0 - Pdst[MYPAINT_NUM_CHANS-1];
+                for (int p=0; i<MYPAINT_NUM_CHANS-1; p++) {
+                  Pdst[p] = float_sumprods(one_minus_ab, Psrc[p], Pdst[MYPAINT_NUM_CHANS-1], Pdst[p]);
+                }
             }
-#ifdef HEAVY_DEBUG
-            assert(Rb <= 1.0); assert(Rb >= 0);
-            assert(Gb <= 1.0); assert(Gb >= 0);
-            assert(Bb <= 1.0); assert(Bb >= 0);
-#endif
             // Use the blend result as a source, and composite directly into
             // the destination buffer as premultiplied RGB.
-            compositefunc(Rb, Gb, Bb, float_mul(as, src_opacity),
-                          dst[i+0], dst[i+1], dst[i+2], dst[i+3]);
+            Pdst[MYPAINT_NUM_CHANS-1] = float_mul(Psrc[MYPAINT_NUM_CHANS-1], src_opacity);
+            compositefunc(Pdst, dst);
         }
     }
 };
@@ -209,18 +191,15 @@ class TileDataCombineOp
 class CompositeSourceOver : public CompositeFunc
 {
   public:
-    inline void operator() (const float Rs, const float Gs,
-                            const float Bs, const float as,
-                            float &rb, float &gb,
-                            float &bb, float &ab) const
+    inline void operator() (float * const src,
+                            float * dst) const
     {
-        const float j = 1.0 - as;
-        const float k = float_mul(ab, j);
-
-        rb = (float_sumprods(as, Rs, j, rb));
-        gb = (float_sumprods(as, Gs, j, gb));
-        bb = (float_sumprods(as, Bs, j, bb));
-        ab = (as + k);
+        const float j = 1.0 - src[MYPAINT_NUM_CHANS-1];
+        const float k = float_mul(dst[MYPAINT_NUM_CHANS-1], j);
+        for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+            dst[i] = (float_sumprods(src[MYPAINT_NUM_CHANS-1], src[i], j, dst[i]));
+        }
+        dst[MYPAINT_NUM_CHANS-1] = (src[MYPAINT_NUM_CHANS-1] + k);
     }
 
     static const bool zero_alpha_has_effect = false;
@@ -235,10 +214,8 @@ class CompositeSourceOver : public CompositeFunc
 class CompositeSpectralWGM : public CompositeFunc
 {
   public:
-    inline void operator() (const float Rs, const float Gs,
-                            const float Bs, const float as,
-                            float &rb, float &gb,
-                            float &bb, float &ab) const
+    inline void operator() (float * const src,
+                            float * dst) const
     {
         // pseudo code example:
         // ratio = as / as + (1 - as) * ab;
@@ -255,10 +232,8 @@ class CompositeSpectralWGM : public CompositeFunc
 class CompositeBumpMap : public CompositeFunc
 {
   public:
-    inline void operator() (const float Rs, const float Gs,
-                            const float Bs, const float as,
-                            float &rb, float &gb,
-                            float &bb, float &ab) const
+    inline void operator() (float * const src,
+                            float * dst) const
     {
 //        const float j = 1.0 - as;
 //        const float k = float_mul(ab, j);
@@ -277,10 +252,8 @@ class CompositeBumpMap : public CompositeFunc
 class CompositeBumpMapDst : public CompositeFunc
 {
   public:
-    inline void operator() (const float Rs, const float Gs,
-                            const float Bs, const float as,
-                            float &rb, float &gb,
-                            float &bb, float &ab) const
+    inline void operator() (float * const src,
+                            float * dst) const
     {
 //        const float j = 1.0 - as;
 //        const float k = float_mul(ab, j);
@@ -304,15 +277,13 @@ class CompositeBumpMapDst : public CompositeFunc
 class CompositeDestinationIn : public CompositeFunc
 {
   public:
-    inline void operator() (const float Rs, const float Gs,
-                            const float Bs, const float as,
-                            float &rb, float &gb,
-                            float &bb, float &ab) const
+    inline void operator() (float * const src,
+                            float * dst) const
     {
-        rb = (float_mul(rb, as));
-        gb = (float_mul(gb, as));
-        bb = (float_mul(bb, as));
-        ab = (float_mul(ab, as));
+//        rb = (float_mul(rb, as));
+//        gb = (float_mul(gb, as));
+//        bb = (float_mul(bb, as));
+//        ab = (float_mul(ab, as));
     }
 
     static const bool zero_alpha_has_effect = true;
@@ -328,16 +299,14 @@ class CompositeDestinationIn : public CompositeFunc
 class CompositeDestinationOut : public CompositeFunc
 {
   public:
-    inline void operator() (const float Rs, const float Gs,
-                            const float Bs, const float as,
-                            float &rb, float &gb,
-                            float &bb, float &ab) const
+    inline void operator() (float * const src,
+                            float * dst) const
     {
-        const float j = 1.0 - as;
-        rb = (float_mul(rb, j));
-        gb = (float_mul(gb, j));
-        bb = (float_mul(bb, j));
-        ab = (float_mul(ab, j));
+//        const float j = 1.0 - as;
+//        rb = (float_mul(rb, j));
+//        gb = (float_mul(gb, j));
+//        bb = (float_mul(bb, j));
+//        ab = (float_mul(ab, j));
     }
 
     static const bool zero_alpha_has_effect = false;
@@ -353,21 +322,19 @@ class CompositeDestinationOut : public CompositeFunc
 class CompositeSourceAtop : public CompositeFunc
 {
   public:
-    inline void operator() (const float Rs, const float Gs,
-                            const float Bs, const float as,
-                            float &rb, float &gb,
-                            float &bb, float &ab) const
+    inline void operator() (float * const src,
+                            float * dst) const
     {
         // W3C spec:
         //   co = as*Cs*ab + ab*Cb*(1-as)
         // where
         //   Cs ∈ {Rs, Gs, Bs}         -- input is non-premultiplied
         //   cb ∈ {rb gb, bb} = ab*Cb  -- output is premultiplied by alpha
-        const float one_minus_as = 1.0 - as;
-        const float ab_mul_as = float_mul(as, ab);
-        rb = (float_sumprods(ab_mul_as, Rs, one_minus_as, rb));
-        gb = (float_sumprods(ab_mul_as, Gs, one_minus_as, gb));
-        bb = (float_sumprods(ab_mul_as, Bs, one_minus_as, bb));
+//        const float one_minus_as = 1.0 - as;
+//        const float ab_mul_as = float_mul(as, ab);
+//        rb = (float_sumprods(ab_mul_as, Rs, one_minus_as, rb));
+//        gb = (float_sumprods(ab_mul_as, Gs, one_minus_as, gb));
+//        bb = (float_sumprods(ab_mul_as, Bs, one_minus_as, bb));
         // W3C spec:
         //   ao = as*ab + ab*(1-as)
         //   ao = ab
@@ -387,25 +354,23 @@ class CompositeSourceAtop : public CompositeFunc
 class CompositeDestinationAtop : public CompositeFunc
 {
   public:
-    inline void operator() (const float Rs, const float Gs,
-                            const float Bs, const float as,
-                            float &rb, float &gb,
-                            float &bb, float &ab) const
+    inline void operator() (float * const src,
+                            float * dst) const
     {
         // W3C spec:
         //   co = as*Cs*(1-ab) + ab*Cb*as
         // where
         //   Cs ∈ {Rs, Gs, Bs}         -- input is non-premultiplied
         //   cb ∈ {rb gb, bb} = ab*Cb  -- output is premultiplied by alpha
-        const float one_minus_ab = 1.0 - ab;
-        const float as_mul_one_minus_ab = float_mul(as, one_minus_ab);
-        rb = (float_sumprods(as_mul_one_minus_ab, Rs, as, rb));
-        gb = (float_sumprods(as_mul_one_minus_ab, Gs, as, gb));
-        bb = (float_sumprods(as_mul_one_minus_ab, Bs, as, bb));
-        // W3C spec:
-        //   ao = as*(1-ab) + ab*as
-        //   ao = as
-        ab = as;
+//        const float one_minus_ab = 1.0 - ab;
+//        const float as_mul_one_minus_ab = float_mul(as, one_minus_ab);
+//        rb = (float_sumprods(as_mul_one_minus_ab, Rs, as, rb));
+//        gb = (float_sumprods(as_mul_one_minus_ab, Gs, as, gb));
+//        bb = (float_sumprods(as_mul_one_minus_ab, Bs, as, bb));
+//        // W3C spec:
+//        //   ao = as*(1-ab) + ab*as
+//        //   ao = as
+//        ab = as;
     }
 
     static const bool zero_alpha_has_effect = true;
@@ -421,15 +386,13 @@ class CompositeDestinationAtop : public CompositeFunc
 class CompositeLighter : public CompositeFunc
 {
   public:
-    inline void operator() (const float Rs, const float Gs,
-                            const float Bs, const float as,
-                            float &rb, float &gb,
-                            float &bb, float &ab) const
+    inline void operator() (float * const src,
+                            float * dst) const
     {
-        rb = (float_mul(Rs, as) + rb);
-        gb = (float_mul(Gs, as) + gb);
-        bb = (float_mul(Bs, as) + bb);
-        ab = (ab + as);
+//        rb = (float_mul(Rs, as) + rb);
+//        gb = (float_mul(Gs, as) + gb);
+//        bb = (float_mul(Bs, as) + bb);
+//        ab = (ab + as);
     }
 
     static const bool zero_alpha_has_effect = false;

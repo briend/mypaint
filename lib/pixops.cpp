@@ -635,7 +635,7 @@ class TileDataCombine : public TileDataCombineOp
     // The canonical name for the combine mode
     const char *name;
     // Alpha/nonalpha functors; must be members to keep GCC4.6 builds happy
-    static const int bufsize = MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE*4;
+    static const int bufsize = MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE*MYPAINT_NUM_CHANS;
     BufferCombineFunc<true, bufsize, B, C> combine_dstalpha;
     BufferCombineFunc<false, bufsize, B, C> combine_dstnoalpha;
 
