@@ -18,7 +18,7 @@ from lib import helpers
 from lib import brushsettings
 from lib.pycompat import unicode
 from lib.pycompat import PY3
-from lib.color import CAM16Color
+from lib.color import CAM16Color, PigmentColor, RGBColor
 import numpy as np
 
 if PY3:
@@ -222,7 +222,7 @@ class BrushInfo (object):
         # keep a conceptual color as CAM16 
         self.CAM16Color = CAM16Color(vsh=(50, 50, 50))
         # keep a raw color of N channels, RGB or spectral
-        self.brush_chans = np.zeros([mypaintlib.NUM_CHANS], dtype='float32')
+        self.brush_chans = PigmentColor(color=self.CAM16Color)
 
     def settings_changed_cb(self, settings):
         self.cache_str = None
@@ -580,12 +580,12 @@ class BrushInfo (object):
         try:
             rgb = helpers.hsv_to_rgb(*hsv)
             rgb = rgb[0]**tf, rgb[1]**tf, rgb[2]**tf
-            hsv = helpers.rgb_to_hsv(*rgb)
-            h, s, v = hsv
+            hsv2 = helpers.rgb_to_hsv(*rgb)
+            h, s, v = hsv2
             self.set_base_value('color_h', h)
             self.set_base_value('color_s', s)
             self.set_base_value('color_v', v)
-            self.brush_chans = np.array(rgb, dtype='float32')
+            self.brush_chans = PigmentColor(color=RGBColor(rgb=helpers.hsv_to_rgb(*hsv))).spd
         finally:
             self.end_atomic()
 

@@ -12,7 +12,7 @@
 
 #ifndef __HAVE_BLENDING
 #define __HAVE_BLENDING
-#define WGM_EPSILON 0.001
+#define WGM_EPSILON 0.0001
 #define NUM_WAVES 7
 
 #include "fix15.hpp"
@@ -60,7 +60,7 @@ rgb_to_spectral (float r, float g, float b, float *spectral_) {
   }
   //collapse into one spd
   for (int i=0; i<NUM_WAVES; i++) {
-    spectral_[i] += fastlog(spec_r[i] + spec_g[i] + spec_b[i]);
+    spectral_[i] += log2f(spec_r[i] + spec_g[i] + spec_b[i]);
   }
 
 }
@@ -69,9 +69,9 @@ void
 spectral_to_rgb (float *spectral, float *rgb_) {
   float offset = 1.0 - WGM_EPSILON;
   for (int i=0; i<NUM_WAVES; i++) {
-    rgb_[0] += T_MATRIX_SMALL[0][i] * fastexp(spectral[i]);
-    rgb_[1] += T_MATRIX_SMALL[1][i] * fastexp(spectral[i]);
-    rgb_[2] += T_MATRIX_SMALL[2][i] * fastexp(spectral[i]);
+    rgb_[0] += T_MATRIX_SMALL[0][i] * exp2f(spectral[i]);
+    rgb_[1] += T_MATRIX_SMALL[1][i] * exp2f(spectral[i]);
+    rgb_[2] += T_MATRIX_SMALL[2][i] * exp2f(spectral[i]);
   }
   for (int i=0; i<3; i++) {
     rgb_[i] = CLAMP((rgb_[i] - WGM_EPSILON) / offset, 0.0f, (1.0));
@@ -263,16 +263,16 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
                             const float opac,
                             const float * const opts) const
     {
-//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-//            const float Sa = float_mul(src[i+3], opac);
-//            const float one_minus_Sa = 1.0 - Sa;
-//            dst[i+0] = float_sumprods(src[i], opac, one_minus_Sa, dst[i]);
-//            dst[i+1] = float_sumprods(src[i+1], opac, one_minus_Sa, dst[i+1]);
-//            dst[i+2] = float_sumprods(src[i+2], opac, one_minus_Sa, dst[i+2]);
-//            if (DSTALPHA) {
-//                dst[i+3] = (Sa + float_mul(dst[i+3], one_minus_Sa));
-//            }
-//        }
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float one_minus_Sa = 1.0 - Sa;
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                dst[i+p] = float_sumprods(src[i+p], opac, one_minus_Sa, dst[i+p]);
+            }
+            if (DSTALPHA) {
+                dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
+            }
+        }
     }
 };
 

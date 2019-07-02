@@ -193,11 +193,16 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       // convert N channels to RGB
       // 8 bit buffer will always be 3 channels
-      
-      float rgba[MYPAINT_NUM_CHANS] = {0.0};
+
+
+      float spectral[MYPAINT_NUM_CHANS] = {0.0};
       for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
-          rgba[chan] = *src_p++;
+        spectral[chan] = *src_p++;
       }
+      
+      float rgba[4] = {0.0};
+      
+      spectral_to_rgb(spectral, rgba);
       
 //      if (a > 0.0) {
 //        printf("%f, %f, %f, %f\n", r, g, b, a);
@@ -335,11 +340,15 @@ tile_convert_rgbu16_to_rgbu8_c(const float* const src,
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       // convert from spectral to RGB here
       
-      float rgba[MYPAINT_NUM_CHANS] = {0.0};
-      
+      float spectral[MYPAINT_NUM_CHANS] = {0.0};
       for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
-        rgba[chan] = *src_p++;
+        spectral[chan] = *src_p++;
       }
+      
+      float rgba[4] = {0.0};
+      
+      spectral_to_rgb(spectral, rgba);
+      
 //      r = *src_p++;
 //      g = *src_p++;
 //      b = *src_p++;
@@ -357,9 +366,9 @@ tile_convert_rgbu16_to_rgbu8_c(const float* const src,
       // dithering
       //const float add = dithering_noise[noise_idx++];
 
-      *dst_p++ = (uint8_t)((((fastpow(fastexp(rgba[0]), 1.0/EOTF))) * 255));
-      *dst_p++ = (uint8_t)((((fastpow(fastexp(rgba[1]), 1.0/EOTF))) * 255));
-      *dst_p++ = (uint8_t)((((fastpow(fastexp(rgba[2]), 1.0/EOTF))) * 255));
+      *dst_p++ = (uint8_t)(fastpow(rgba[0], 1.0/EOTF) * 255);
+      *dst_p++ = (uint8_t)(fastpow(rgba[1], 1.0/EOTF) * 255);
+      *dst_p++ = (uint8_t)(fastpow(rgba[2], 1.0/EOTF) * 255);
       *dst_p++ = 255;
     }
 #ifdef HEAVY_DEBUG
@@ -442,19 +451,18 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       b = (float)(fastpow((float)b/255.0, EOTF));
       a = (float)a / 255.0;
       
-      float rgba[MYPAINT_NUM_CHANS] = {0.0};
+      float spectral[MYPAINT_NUM_CHANS] = {a};
       
-      rgba[0] = r*a;
-      rgba[1] = g*a;
-      rgba[2] = b*a;
-      rgba[3] = a;
+      rgb_to_spectral(r, g, b, spectral);
       
       //convert to spectral here
       
       
-      for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
-          *dst_p++ = rgba[chan];
+      for (int chan=0; chan<MYPAINT_NUM_CHANS-1; chan++) {
+          *dst_p++ = spectral[chan] * a;
       }
+      *dst_p++ = a;
+      
       // premultiply alpha (with rounding), save back
 //      *dst_p++ = r * a;
 //      *dst_p++ = g * a;

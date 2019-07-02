@@ -38,7 +38,6 @@ from lib import helpers
 from lib.pycompat import xrange
 from lib.pycompat import PY3
 
-
 ## Lightweight color objects
 
 
@@ -1539,28 +1538,29 @@ def RGB_to_Spectral(rgb):
     """
 
     r, g, b = rgb
-    r = max(r, _WGM_EPSILON)
-    g = max(g, _WGM_EPSILON)
-    b = max(b, _WGM_EPSILON)
+    offset = 1.0 - _WGM_EPSILON
+    r = r * offset + _WGM_EPSILON
+    g = g * offset + _WGM_EPSILON
+    b = b * offset + _WGM_EPSILON
     # Spectral primaries derived by an optimization routine devised by
     # Scott Allen Burns. Smooth curves <= 1.0 to match XYZ
 
     spectral_r = r * np.array([.014976989831103, 0.015163469993149,
                                0.024828861915840, 0.055372724024590,
                                0.311175941451513, 2.261540004074889,
-                               2.451861959778458])
+                               2.451861959778458], dtype='float32')
 
     spectral_g = g * np.array([0.060871084436057, 0.063645032450431,
                                0.344088900200936, 1.235198096662594,
                                0.145221682434442, 0.101106655125270,
-                               0.099848117829856])
+                               0.099848117829856], dtype='float32')
 
     spectral_b = b * np.array([0.777465337464873, 0.899749264722067,
                                0.258544195013949, 0.015623896354842,
                                0.004846585772726, 0.003989003708280,
-                               0.003962407615164])
+                               0.003962407615164], dtype='float32')
 
-    return np.log(np.sum([spectral_r, spectral_g, spectral_b], axis=0))
+    return np.log2(np.sum([spectral_r, spectral_g, spectral_b], axis=0))
 
 
 def Spectral_to_RGB(spd):
@@ -1580,9 +1580,9 @@ def Spectral_to_RGB(spd):
                            [0.028683360043884, 1.054907349924059,
                            0.116111201474362, -0.084435897516297,
                            -0.029621508810678, -0.002318568718824,
-                           -0.000070180490104]]))
+                           -0.000070180490104]], dtype='float32'))
 
-    r, g, b = np.sum(np.exp(spd) * T_MATRIX, axis=1)
+    r, g, b = np.sum(np.exp2(spd) * T_MATRIX, axis=1)
     return r, g, b
 
 
