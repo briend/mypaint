@@ -130,67 +130,96 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                             const float opac,
                             const float * const opts) const
     {
-//        const float Oren_rough = opts[0];
-//        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
-//        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
-//        const float Oren_exposure = 1.0 / Oren_A;
-//        const unsigned int stride = MYPAINT_TILE_SIZE * 4;
-//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-//            // Calcuate bump map 
-//            // Use alpha as  height-map
-//            float slope = 0.0;
-//            const int reach = 2;
-//            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
-//            for (int p=1; p<=reach; p++) {
-//                // North
-//                if (i >= stride * p) {
-//                    int o = i - stride * p;
-//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                } else {
-//                    int o = i + stride * p;
-//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                }
-//                // East
-//                if (i % stride < stride - 4 * p) {
-//                    int o = i + 4 * p;
-//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                } else {
-//                    int o = i - 4 * p;
-//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                }
-//                // West
-//                if (i % stride >= 4 * p) {
-//                    int o = i - 4 * p;
-//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                } else {
-//                    int o = i + 4 * p;
-//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                }
-//                // South
-//                if (i < BUFSIZE - stride * p) {
-//                    int o = i + stride * p;
-//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                } else {
-//                    int o = i - stride * p;
-//                    slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                }
-//            }
-//            
-//            // amplify slope with opacity control
-//            
-//            slope = slope / (4 * reach) /  fasterpow((1.0), opts[1]);
-//            // reduce slope for brighter colors to avoid harsh shadows
-//            //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1.0));
-//            // reduce slope when dst alpha is very high, like thick paint hiding texture
-//            //slope *= (1.0 - fastpow((float)dst[i+3] / (1.0), 32));
-//            float degrees = atan(slope);
-//            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1.0) * Oren_exposure;
-
-//            dst[i+0] = (float_mul(dst[i], lambert));
-//            dst[i+1] = (float_mul(dst[i+1], lambert));
-//            dst[i+2] = (float_mul(dst[i+2], lambert));
-//            dst[i+3] = (float_mul(dst[i+3], lambert));
-//        }
+        const float Oren_rough = opts[0];
+        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
+        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
+        const float Oren_exposure = 1.0 / Oren_A;
+        const unsigned int stride = MYPAINT_TILE_SIZE * MYPAINT_NUM_CHANS;
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            // Calcuate bump map 
+            // Use alpha as  height-map
+            float slope = 0.0;
+            const int reach = 1;
+            float center = 0.0;
+            for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+              center += src[i+c];
+            }
+            for (int p=1; p<=reach; p++) {
+                // North
+                if (i >= stride * p) {
+                    int o = i - stride * p;
+                    float _slope = 0.0;
+                    for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                      _slope += src[o+c];
+                    }
+                    slope += abs(_slope - center);
+                } else {
+                    int o = i + stride * p;
+                    float _slope = 0.0;
+                    for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                      _slope += src[o+c];
+                    }
+                    slope += abs(_slope - center);
+                }
+                // East
+                if (i % stride < stride - MYPAINT_NUM_CHANS * p) {
+                    int o = i + MYPAINT_NUM_CHANS * p;
+                    float _slope = 0.0;
+                    for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                      _slope += src[o+c];
+                    }
+                    slope += abs(_slope - center);
+                } else {
+                    int o = i - MYPAINT_NUM_CHANS * p;
+                    float _slope = 0.0;
+                    for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                      _slope += src[o+c];
+                    }
+                    slope += abs(_slope - center);
+                }
+                // West
+                if (i % stride >= MYPAINT_NUM_CHANS * p) {
+                    int o = i - MYPAINT_NUM_CHANS * p;
+                    float _slope = 0.0;
+                    for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                      _slope += src[o+c];
+                    }
+                    slope += abs(_slope - center);
+                } else {
+                    int o = i + MYPAINT_NUM_CHANS * p;
+                    float _slope = 0.0;
+                    for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                      _slope += src[o+c];
+                    }
+                    slope += abs(_slope - center);
+                }
+                // South
+                if (i < BUFSIZE - stride * p) {
+                    int o = i + stride * p;
+                    float _slope = 0.0;
+                    for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                      _slope += src[o+c];
+                    }
+                    slope += abs(_slope - center);
+                } else {
+                    int o = i - stride * p;
+                    float _slope = 0.0;
+                    for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                      _slope += src[o+c];
+                    }
+                    slope += abs(_slope - center);
+                }
+            }
+            
+            // amplify slope with options array
+            slope = slope / fasterpow(2, opts[1]);
+            float degrees = atan(slope);
+            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
+            
+            for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                dst[i+c] = (float_mul(dst[i+c], lambert));
+            }
+        }
     }
 };
 
@@ -204,49 +233,66 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                             const float opac,
                             const float * const opts) const
     {
-//        const float Oren_rough = opts[0];
-//        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
-//        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
-//        const float Oren_exposure = 1.0 / Oren_A;
-//        const unsigned int stride = MYPAINT_TILE_SIZE * 4;
-//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-//            // Calcuate bump map 
-//            // Use alpha as  height-map
-//            float slope = 0.0;
-//            const int reach = 1;
-//            int o = 0;
-//            float center = src[i+3] + src[i] + src[i+1] + src[i+2];
-//            for (int p=1; p<=reach; p++) {
-//                // North
-//                o = (i - stride * p) % BUFSIZE;
-//                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                // East
-//                o = (i + 4 * p) % stride;
-//                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                // West
-//                o = (i - 4 * p) % stride;
-//                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//                // South
-//                o = (i + stride * p) % BUFSIZE;
-//                slope += abs((src[o+3] + src[o] + src[o+1] + src[o+2]) - center);
-//            }
+        const float Oren_rough = opts[0];
+        const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
+        const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
+        const float Oren_exposure = 1.0 / Oren_A;
+        const unsigned int stride = MYPAINT_TILE_SIZE * MYPAINT_NUM_CHANS;
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            // Calcuate bump map 
+            // Use alpha as  height-map
+            float slope = 0.0;
+            const int reach = 1;
+            int o = 0;
+            float center = 0.0;
+            for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+              center += src[i+c];
+            }
+            for (int p=1; p<=reach; p++) {
+                // North
+                o = (i - stride * p) % BUFSIZE;
+                float _slope = 0.0;
+                for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                  _slope += src[o+c];
+                }
+                slope += abs(_slope - center);
+                // East
+                o = (i + MYPAINT_NUM_CHANS * p) % stride;
+                _slope = 0.0;
+                for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                  _slope += src[o+c];
+                }
+                slope += abs(_slope - center);
+                // West
+                o = (i - MYPAINT_NUM_CHANS * p) % stride;
+                _slope = 0.0;
+                for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                  _slope += src[o+c];
+                }
+                slope += abs(_slope - center);
+                // South
+                o = (i + stride * p) % BUFSIZE;
+                _slope = 0.0;
+                for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+                  _slope += src[o+c];
+                }
+                slope += abs(_slope - center);
+            }
 
-//            // amplify slope with opacity control
+            // amplify slope with options array
 
-//            slope = slope / (4 * reach) /  fasterpow((1.0), opts[1]);
-//            // reduce slope for brighter colors to avoid harsh shadows
-//            //slope *= 1.10 - (((float)src[i] + (float)src[i+1] + (float)src[i+2]) / 3 / (1.0));
-//            // reduce slope when dst alpha is very high, like thick paint hiding texture
-//            slope *= (1.0 - fastpow((float)dst[i+3] / (1.0), 16));
+            slope = slope / fasterpow(2, opts[1]);
 
-//            float degrees = atan(slope);
-//            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * (1.0) * Oren_exposure;
+            // reduce slope when dst alpha is very high, like thick paint hiding texture
+            slope *= (1.0 - fastpow((float)dst[i+MYPAINT_NUM_CHANS-1] / (1.0), 16));
 
-//            dst[i+0] = (float_mul(dst[i], lambert));
-//            dst[i+1] = (float_mul(dst[i+1], lambert));
-//            dst[i+2] = (float_mul(dst[i+2], lambert));
-//            dst[i+3] = (float_mul(dst[i+3], lambert));
-//        }
+            float degrees = atan(slope);
+            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
+
+            for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                dst[i+c] = (float_mul(dst[i+c], lambert));
+            }
+        }
     }
 };
 
