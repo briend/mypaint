@@ -195,93 +195,37 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
       // 8 bit buffer will always be 3 channels
 
 
+
       float spectral[MYPAINT_NUM_CHANS] = {0.0};
       for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
         spectral[chan] = *src_p++;
       }
-      
+
+
       float rgba[4] = {0.0};
-      
-      spectral_to_rgb(spectral, rgba);
-      
-//      if (a > 0.0) {
-//        printf("%f, %f, %f, %f\n", r, g, b, a);
-//      }
-#ifdef HEAVY_DEBUG
-      assert(a<=1.0);
-      assert(r<=1.0);
-      assert(g<=1.0);
-      assert(b<=1.0);
-      assert(r<=a);
-      assert(g<=a);
-      assert(b<=a);
-#endif
-       //un-premultiply alpha (with rounding)
-      if (rgba[3] != 0.0) {
-        rgba[0] = rgba[0] / rgba[3];
-        rgba[1] = rgba[1] / rgba[3];
-        rgba[2] = rgba[2] / rgba[3];
-      } else {
-        rgba[0] = 0.0;
-        rgba[1] = 0.0;
-        rgba[2] = 0.0;
+
+      rgba[3] = spectral[MYPAINT_NUM_CHANS-1];
+      if (rgba[3] > 0.0) {
+        for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
+          spectral[chan] /= rgba[3];
+        }
       }
+      spectral_to_rgb(spectral, rgba);
+
 #ifdef HEAVY_DEBUG
       assert(a<=1.0);
       assert(r<=1.0);
       assert(g<=1.0);
       assert(b<=1.0);
 #endif
-      /*
-      // Variant A) rounding
-      const uint32_t add_r = 1.0/2;
-      const uint32_t add_g = 1.0/2;
-      const uint32_t add_b = 1.0/2;
-      const uint32_t add_a = 1.0/2;
-      */
 
-      /*
-      // Variant B) naive dithering
-      // This can alter the alpha channel during a load->save cycle.
-      const uint32_t add_r = rand() % 1.0;
-      const uint32_t add_g = rand() % 1.0;
-      const uint32_t add_b = rand() % 1.0;
-      const uint32_t add_a = rand() % 1.0;
-      */
-
-      /*
-      // Variant C) slightly better dithering
-      // make sure we don't dither rounding errors (those did occur when converting 8bit-->16bit)
-      // this preserves the alpha channel, but we still add noise to the highly transparent colors
-      const uint32_t add_r = (rand() % 1.0) * 240/256 + 1.0 * 8/256;
-      const uint32_t add_g = add_r; // hm... do not produce too much color noise
-      const uint32_t add_b = add_r;
-      const uint32_t add_a = (rand() % 1.0) * 240/256 + 1.0 * 8/256;
-      // TODO: error diffusion might work better than random dithering...
-      */
-
-      // Variant C) but with precalculated noise (much faster)
-      //
-      //const float add_r = dithering_noise[noise_idx+0];
-      //const uint32_t add_g = add_r; // hm... do not produce too much color noise
-      //const uint32_t add_b = add_r;
-      //const uint32_t add_a = dithering_noise[noise_idx+1];
-      //noise_idx += 4;
-
-#ifdef HEAVY_DEBUG
-      //assert(add_a < 1.0);
-      //assert(add_a >= 0);
-      //assert(noise_idx <= dithering_noise_size);
-#endif
-
-      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)fastexp(rgba[0]), 1.0/EOTF)) * 255), 0, 255);
-      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)fastexp(rgba[1]), 1.0/EOTF)) * 255), 0, 255);
-      *dst_p++ = (uint8_t)CLAMP(((fastpow((float)fastexp(rgba[2]), 1.0/EOTF)) * 255), 0, 255);
-      *dst_p++ = (uint8_t)CLAMP(((rgba[3] * 255)), 0, 255);
-//      printf("%i\n",(uint8_t)((fastpow((float)r, 1.0/EOTF)) * 255));
-//      printf("%i\n",(uint8_t)((fastpow((float)g, 1.0/EOTF)) * 255));
-//      printf("%i\n",(uint8_t)((fastpow((float)b, 1.0/EOTF)) * 255));
-//      printf("a is %i\n",(uint8_t)((a * 255)));
+      for (int i=0; i<3; i++) {
+          *dst_p++ = (fastpow(rgba[i], 1.0/EOTF)) * 255;
+          if (spectral[MYPAINT_NUM_CHANS-1] > 0.0) {
+          }
+          
+      }
+      *dst_p++ = (rgba[3] * 255);
     }
     src_p += src_strides;
     dst_p += dst_strides;
@@ -455,19 +399,13 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       
       rgb_to_spectral(r, g, b, spectral);
       
-      //convert to spectral here
-      
-      
+      // convert to spectral here
+      // premultiply after log
       for (int chan=0; chan<MYPAINT_NUM_CHANS-1; chan++) {
           *dst_p++ = spectral[chan] * a;
       }
       *dst_p++ = a;
-      
-      // premultiply alpha (with rounding), save back
-//      *dst_p++ = r * a;
-//      *dst_p++ = g * a;
-//      *dst_p++ = b * a;
-//      *dst_p++ = a;
+
     }
   }
 }
@@ -530,7 +468,6 @@ void tile_flat2rgba(PyObject * dst_obj, PyObject * bg_obj) {
 
   float * dst_p  = (float*)PyArray_DATA(dst);
   float * bg_p  = (float*)PyArray_DATA(bg);
-  printf("flat2rgba\n");
   for (int i=0; i<MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE; i++) {
 
     // 1. calculate final dst.alpha

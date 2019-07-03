@@ -374,7 +374,9 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             return self.mipmap.blit_tile_into(dst, dst_has_alpha, tx, ty,
                                               mipmap_level)
 
-        assert dst.shape[2] == NUM_CHANS
+        
+        assert dst.shape[2] == NUM_CHANS or dst.shape[2] == 4
+        #print("blitting tile into", dst.shape, dst.dtype)
         if dst.dtype not in ('float32', 'uint8'):
             raise ValueError('Unsupported destination buffer type %r',
                              dst.dtype)
