@@ -509,14 +509,16 @@ class _Tile:
         return self.to_bytes()
 
     def write_to_surface_tile_array(self, rgba,
-                                    _c=(1 << 15) / 4, _a=(1 << 15) / 2):
+                                    _c=0.25, _a=0.5):
         """Write to a surface's RGBA tile."""
         # neutral gray, 50% opaque
+        # FIXME, needs to return NUM_CHAN array as log()
+        return
         if self._all:
             rgba[:] = (_c, _c, _c, _a)
         else:
             array = self.to_array()
-            rgba[:, :, 3] = array.astype('uint16') * _a
+            rgba[:, :, 3] = array.astype('float32') * _a
             rgba[:, :, 0] = rgba[:, :, 3] // 2
             rgba[:, :, 1] = rgba[:, :, 3] // 2
             rgba[:, :, 2] = rgba[:, :, 3] // 2

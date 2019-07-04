@@ -192,15 +192,11 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       // convert N channels to RGB
-      // 8 bit buffer will always be 3 channels
-
-
-
+      // 8 bit buffers will always be 3/4 channels
       float spectral[MYPAINT_NUM_CHANS] = {0.0};
       for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
         spectral[chan] = *src_p++;
       }
-
 
       float rgba[4] = {0.0};
 
@@ -220,10 +216,7 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
 #endif
 
       for (int i=0; i<3; i++) {
-          *dst_p++ = (fastpow(rgba[i], 1.0/EOTF)) * 255;
-          if (spectral[MYPAINT_NUM_CHANS-1] > 0.0) {
-          }
-          
+          *dst_p++ = (fastpow(rgba[i], 1.0/EOTF)) * 255; 
       }
       *dst_p++ = (rgba[3] * 255);
     }
@@ -389,14 +382,12 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       b = *src_p++;
       a = *src_p++;
 
-      // convert to float
       r = (float)(fastpow((float)r/255.0, EOTF));
       g = (float)(fastpow((float)g/255.0, EOTF));
       b = (float)(fastpow((float)b/255.0, EOTF));
       a = (float)a / 255.0;
       
-      float spectral[MYPAINT_NUM_CHANS] = {a};
-      
+      float spectral[MYPAINT_NUM_CHANS] = {0.0}; 
       rgb_to_spectral(r, g, b, spectral);
       
       // convert to spectral here
@@ -534,22 +525,22 @@ void tile_perceptual_change_strokemap(PyObject * a_obj, PyObject * b_obj, PyObje
   for (int y=0; y<MYPAINT_TILE_SIZE; y++) {
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
 
-      int32_t color_change = 0;
+      float color_change = 0;
       // We want to compare a.color with b.color, but we only know
       // (a.color * a.alpha) and (b.color * b.alpha).  We multiply
       // each component with the alpha of the other image, so they are
       // scaled the same and can be compared.
 
-      for (int i=0; i<3; i++) {
-        int32_t a_col = (uint32_t)a_p[i] * b_p[3] / 1.0; // a.color * a.alpha*b.alpha
-        int32_t b_col = (uint32_t)b_p[i] * a_p[3] / 1.0; // b.color * a.alpha*b.alpha
+      for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+        float a_col = a_p[i] * b_p[MYPAINT_NUM_CHANS-1] / 1.0; // a.color * a.alpha*b.alpha
+        float b_col = b_p[i] * a_p[MYPAINT_NUM_CHANS-1] / 1.0; // b.color * a.alpha*b.alpha
         color_change += abs(b_col - a_col);
       }
       // "color_change" is in the range [0, 3*a_a]
       // if either old or new alpha is (near) zero, "color_change" is (near) zero
 
-      int32_t alpha_old = a_p[3];
-      int32_t alpha_new = b_p[3];
+      float alpha_old = a_p[MYPAINT_NUM_CHANS-1];
+      float alpha_new = b_p[MYPAINT_NUM_CHANS-1];
 
       // Note: the thresholds below are arbitrary choices found to work okay
 
@@ -557,7 +548,7 @@ void tile_perceptual_change_strokemap(PyObject * a_obj, PyObject * b_obj, PyObje
       // well-defined (big enough alpha).
       bool is_perceptual_color_change = color_change > MAX(alpha_old, alpha_new)/16;
 
-      int32_t alpha_diff = alpha_new - alpha_old; // no abs() here (ignore erasers)
+      float alpha_diff = alpha_new - alpha_old; // no abs() here (ignore erasers)
       // We check the alpha increase relative to the previous alpha.
       bool is_perceptual_alpha_increase = alpha_diff > 1.0/4;
 

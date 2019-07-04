@@ -212,13 +212,14 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             }
             
             // amplify slope with options array
-            slope = slope / fasterpow(2, opts[1]);
+            slope = slope / fastpow(MYPAINT_NUM_CHANS, opts[1]);
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
             
             for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                dst[i+c] = (float_mul(dst[i+c], lambert));
+                dst[i+c] *= lambert;
             }
+            //dst[i+MYPAINT_NUM_CHANS-1] = (float_mul(dst[i+MYPAINT_NUM_CHANS-1], lambert));
         }
     }
 };
@@ -281,7 +282,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
 
             // amplify slope with options array
 
-            slope = slope / fasterpow(2, opts[1]);
+            slope = slope / fastpow(MYPAINT_NUM_CHANS, opts[1]);
 
             // reduce slope when dst alpha is very high, like thick paint hiding texture
             slope *= (1.0 - fastpow((float)dst[i+MYPAINT_NUM_CHANS-1] / (1.0), 16));
@@ -290,8 +291,9 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
 
             for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                dst[i+c] = (float_mul(dst[i+c], lambert));
+                dst[i+c] *= lambert;
             }
+            //dst[i+MYPAINT_NUM_CHANS-1] = (float_mul(dst[i+MYPAINT_NUM_CHANS-1], lambert));
         }
     }
 };
