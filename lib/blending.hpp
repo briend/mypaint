@@ -216,8 +216,10 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
             
-            for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                dst[i+c] *= lambert;
+            if (lambert != 0.0) {
+                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    dst[i+c] /= lambert;
+                }
             }
             //dst[i+MYPAINT_NUM_CHANS-1] = (float_mul(dst[i+MYPAINT_NUM_CHANS-1], lambert));
         }
@@ -290,8 +292,10 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
 
-            for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                dst[i+c] *= lambert;
+            if (lambert != 0.0) {
+                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    dst[i+c] /= lambert;
+                }
             }
             //dst[i+MYPAINT_NUM_CHANS-1] = (float_mul(dst[i+MYPAINT_NUM_CHANS-1], lambert));
         }
