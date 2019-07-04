@@ -191,11 +191,11 @@ class LayerBase (Renderable):
         self.bumpbg = lib.xml.xsd2bool(bumpbg)
         self.bumpself_rough = helpers.clamp(float(attrs.get('bumpself_rough', '0.5')),
                                      0.0, 1.0)
-        self.bumpself_amp = helpers.clamp(float(attrs.get('bumpself_amp', '0.8')),
+        self.bumpself_amp = helpers.clamp(float(attrs.get('bumpself_amp', '0.5')),
                                      0.0, 1.0)
         self.bumpbg_rough = helpers.clamp(float(attrs.get('bumpbg_rough', '0.5')),
                                      0.0, 1.0)
-        self.bumpbg_amp = helpers.clamp(float(attrs.get('bumpbg_amp', '0.8')),
+        self.bumpbg_amp = helpers.clamp(float(attrs.get('bumpbg_amp', '0.5')),
                                      0.0, 1.0)
         visible = attrs.get('visibility', 'visible').lower()
         self.visible = (visible != "hidden")

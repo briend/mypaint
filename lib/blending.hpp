@@ -212,7 +212,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             }
             
             // amplify slope with options array
-            slope = slope / fastpow(MYPAINT_NUM_CHANS, opts[1]);
+            slope /= fastpow(MYPAINT_NUM_CHANS, opts[1]);
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
             
@@ -284,10 +284,10 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
 
             // amplify slope with options array
 
-            slope = slope / fastpow(MYPAINT_NUM_CHANS, opts[1]);
+            slope /= fastpow(MYPAINT_NUM_CHANS, opts[1]);
 
             // reduce slope when dst alpha is very high, like thick paint hiding texture
-            slope *= (1.0 - fastpow((float)dst[i+MYPAINT_NUM_CHANS-1] / (1.0), 16));
+            slope *= (1.0 - fastpow(dst[i+MYPAINT_NUM_CHANS-1], 16));
 
             float degrees = atan(slope);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
