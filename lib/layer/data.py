@@ -26,6 +26,7 @@ from random import randint
 import uuid
 import struct
 import contextlib
+import numpy as np
 
 from lib.gettext import C_
 from lib.tiledsurface import N
@@ -344,6 +345,12 @@ class SurfaceBackedLayer (core.LayerBase, lib.autosave.Autosaveable):
         visible = self.visible
         mode = self.mode
         opacity = self.opacity
+        bm_rough = self.bumpself_rough
+        bm_amp = self.bumpself_amp
+        
+        opts = None
+        if mode == lib.mypaintlib.CombineBumpMap or mode == lib.mypaintlib.CombineBumpMapDst:
+            opts = np.array([bm_rough, bm_amp], dtype='float32')
 
         if spec.layers is not None:
             if self not in spec.layers:
@@ -364,16 +371,16 @@ class SurfaceBackedLayer (core.LayerBase, lib.autosave.Autosaveable):
         ops = []
         if (spec.current_overlay is not None) and (self is spec.current):
             # Temporary special effects, e.g. layer blink.
-            ops.append((rendering.Opcode.PUSH, None, None, None, None))
+            ops.append((rendering.Opcode.PUSH, None, None, None, opts))
             ops.append((
-                rendering.Opcode.COMPOSITE, self._surface, mode_default, 1.0, None,
+                rendering.Opcode.COMPOSITE, self._surface, mode_default, 1.0, opts,
             ))
             ops.extend(spec.current_overlay.get_render_ops(spec))
-            ops.append(rendering.Opcode.POP, None, mode, opacity, None)
+            ops.append(rendering.Opcode.POP, None, mode, opacity, opts)
         else:
             # The 99%+ case☺
             ops.append((
-                rendering.Opcode.COMPOSITE, self._surface, mode, opacity, None,
+                rendering.Opcode.COMPOSITE, self._surface, mode, opacity, opts,
             ))
         return ops
 

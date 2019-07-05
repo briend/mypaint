@@ -123,7 +123,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
 template <bool DSTALPHA, unsigned int BUFSIZE>
 class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
 {
-    // Apply bump map to SRC using itself.
+    // Apply bump map from SRC to DST.
   public:
     inline void operator() (const float * const src,
                             float * dst,
@@ -137,7 +137,6 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
         const unsigned int stride = MYPAINT_TILE_SIZE * MYPAINT_NUM_CHANS;
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             // Calcuate bump map 
-            // Use alpha as  height-map
             float slope = 0.0;
             const int reach = 1;
             float center = 0.0;
@@ -221,7 +220,6 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                     dst[i+c] /= lambert;
                 }
             }
-            //dst[i+MYPAINT_NUM_CHANS-1] = (float_mul(dst[i+MYPAINT_NUM_CHANS-1], lambert));
         }
     }
 };
@@ -230,6 +228,9 @@ template <bool DSTALPHA, unsigned int BUFSIZE>
 class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
 {
     // apply SRC as bump map to DST.
+    // optimize for Background tiles as SRC
+    // read pixels from opposite side of tile for edges
+    // introduces artifacts if BG texture is not TILE_SIZE
   public:
     inline void operator() (const float * const src,
                             float * dst,
@@ -243,7 +244,6 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
         const unsigned int stride = MYPAINT_TILE_SIZE * MYPAINT_NUM_CHANS;
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             // Calcuate bump map 
-            // Use alpha as  height-map
             float slope = 0.0;
             const int reach = 1;
             int o = 0;
@@ -283,7 +283,6 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             }
 
             // amplify slope with options array
-
             slope /= fastpow(MYPAINT_NUM_CHANS, opts[1]);
 
             // reduce slope when dst alpha is very high, like thick paint hiding texture
@@ -297,7 +296,6 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                     dst[i+c] /= lambert;
                 }
             }
-            //dst[i+MYPAINT_NUM_CHANS-1] = (float_mul(dst[i+MYPAINT_NUM_CHANS-1], lambert));
         }
     }
 };

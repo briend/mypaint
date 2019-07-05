@@ -788,13 +788,17 @@ class RootLayerStack (group.LayerStack):
             bg_surf = self._background_layer._surface
             ops.append((bg_opcode, bg_surf, None, None, None))
         for child_layer in reversed(self):
+            should_bump = (filter != "ByPass" and self._background_bumpmapped 
+                          and child_layer.mode != lib.mypaintlib.CombineBumpMap
+                          and child_layer.mode != lib.mypaintlib.CombineBumpMapDst 
+                          and (child_layer.bumpself or child_layer.bumpbg))
             if self._get_render_background(spec):
-                if filter != "ByPass" and self._background_bumpmapped and (child_layer.bumpself or child_layer.bumpbg):
+                if should_bump:
                     ops.append((3, None, None, 1.0, None))
             ops.extend(child_layer.get_render_ops(spec))
             if self._get_render_background(spec):
                 bg_surf = self._background_layer._surface
-                if filter != "ByPass" and self._background_bumpmapped and (child_layer.bumpself or child_layer.bumpbg):
+                if should_bump:
                     if hasattr(child_layer, '_surface') and child_layer.bumpself:
                         opts = np.array([child_layer.bumpself_rough, child_layer.bumpself_amp], dtype='float32')
                         ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMap, 1.0, opts))
