@@ -790,7 +790,9 @@ class RootLayerStack (group.LayerStack):
         for child_layer in reversed(self):
             should_bump = (filter != "ByPass" and self._background_bumpmapped 
                           and child_layer.mode != lib.mypaintlib.CombineBumpMap
-                          and child_layer.mode != lib.mypaintlib.CombineBumpMapDst 
+                          and child_layer.mode != lib.mypaintlib.CombineBumpMapDst
+                          and child_layer.mode != lib.mypaintlib.CombineDestinationIn
+                          and child_layer.mode != lib.mypaintlib.CombineDestinationOut
                           and (child_layer.bumpself or child_layer.bumpbg))
             if self._get_render_background(spec):
                 if should_bump:

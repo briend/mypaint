@@ -337,15 +337,16 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationIn>
                             const float opac,
                             const float * const opts) const
     {
-//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-//            const float Sa = float_mul(src[i+3], opac);
-//            dst[i+0] = float_mul(dst[i+0], Sa);
-//            dst[i+1] = float_mul(dst[i+1], Sa);
-//            dst[i+2] = float_mul(dst[i+2], Sa);
-//            if (DSTALPHA) {
-//                dst[i+3] = float_mul(Sa, dst[i+3]);
-//            }
-//        }
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float one_minus_Sa = 1.0 - Sa;
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                dst[i+p] *= Sa;
+            }
+            if (DSTALPHA) {
+                dst[i+MYPAINT_NUM_CHANS-1] *= Sa;
+            }
+        }
     }
 };
 
@@ -360,15 +361,16 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationOut
                             const float opac,
                             const float * const opts) const
     {
-//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-//            const float one_minus_Sa = 1.0-float_mul(src[i+3], opac);
-//            dst[i+0] = float_mul(dst[i+0], one_minus_Sa);
-//            dst[i+1] = float_mul(dst[i+1], one_minus_Sa);
-//            dst[i+2] = float_mul(dst[i+2], one_minus_Sa);
-//            if (DSTALPHA) {
-//                dst[i+3] = float_mul(one_minus_Sa, dst[i+3]);
-//            }
-//        }
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float one_minus_Sa = 1.0 - Sa;
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                dst[i+p] *= one_minus_Sa;
+            }
+            if (DSTALPHA) {
+                dst[i+MYPAINT_NUM_CHANS-1] *= one_minus_Sa;
+            }
+        }
     }
 };
 
@@ -384,30 +386,24 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceAtop>
                             const float opac,
                             const float * const opts) const
     {
-//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-//            const float as = float_mul(src[i+3], opac);
-//            const float ab = dst[i+3];
-//            const float one_minus_as = 1.0 - as;
-//            // W3C spec:
-//            //   co = as*Cs*ab + ab*Cb*(1-as)
-//            // where
-//            //   src[n] = as*Cs    -- premultiplied
-//            //   dst[n] = ab*Cb    -- premultiplied
-//            dst[i+0] = float_sumprods(float_mul(src[i+0], opac), ab,
-//                                      float_mul(dst[i+0], ab), one_minus_as);
-//            dst[i+1] = float_sumprods(float_mul(src[i+1], opac), ab,
-//                                      float_mul(dst[i+1], ab), one_minus_as);
-//            dst[i+2] = float_sumprods(float_mul(src[i+2], opac), ab,
-//                                      float_mul(dst[i+2], ab), one_minus_as);
-////            printf("%i, %i, %i\n", dst[i+0], dst[i+3], as);
-//            if (DSTALPHA) {
-//                float alpha = float_sumprods(as, ab, ab, one_minus_as);
-//            }
-//            // W3C spec:
-//            //   ao = as*ab + ab*(1-as)
-//            //   ao = ab
-//            // (leave output alpha unchanged)
-//        }
+
+            // W3C spec:
+            //   co = as*Cs*ab + ab*Cb*(1-as)
+            // where
+            //   src[n] = as*Cs    -- premultiplied
+            //   dst[n] = ab*Cb    -- premultiplied
+
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float one_minus_Sa = 1.0 - Sa;
+            const float Ba = dst[i+MYPAINT_NUM_CHANS-1];
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                dst[i+p] = float_sumprods(src[i+p] * opac, Ba, one_minus_Sa, dst[i+p] * Ba);
+            }
+            if (DSTALPHA) {
+                dst[i+MYPAINT_NUM_CHANS-1] = float_sumprods(Sa, Ba, Ba, one_minus_Sa);
+            }
+        }
     }
 };
 
@@ -422,28 +418,25 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationAto
                             const float opac,
                             const float * const opts) const
     {
-//        for (unsigned int i=0; i<BUFSIZE; i+=4) {
-//            const float as = float_mul(src[i+3], opac);
-//            const float ab = dst[i+3];
-//            const float one_minus_ab = 1.0 - ab;
-//            // W3C Spec:
-//            //   co = as*Cs*(1-ab) + ab*Cb*as
-//            // where
-//            //   src[n] = as*Cs    -- premultiplied
-//            //   dst[n] = ab*Cb    -- premultiplied
-//            dst[i+0] = float_sumprods(float_mul(src[i+0], opac), one_minus_ab,
-//                                      float_mul(dst[i+0], dst[i+3]), as);
-//            dst[i+1] = float_sumprods(float_mul(src[i+1], opac), one_minus_ab,
-//                                      float_mul(dst[i+1], dst[i+3]), as);
-//            dst[i+2] = float_sumprods(float_mul(src[i+2], opac), one_minus_ab,
-//                                      float_mul(dst[i+2], dst[i+3]), as);
-//            // W3C spec:
-//            //   ao = as*(1-ab) + ab*as
-//            //   ao = as
-//            if (DSTALPHA) {
-//                dst[i+3] = as;
-//            }
-//        }
+
+            // W3C Spec:
+            //   co = as*Cs*(1-ab) + ab*Cb*as
+            // where
+            //   src[n] = as*Cs    -- premultiplied
+            //   dst[n] = ab*Cb    -- premultiplied
+
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float Ba = dst[i+MYPAINT_NUM_CHANS-1];
+            const float one_minus_Ba = 1.0 - Ba;
+
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                dst[i+p] = float_sumprods(src[i+p] * opac, one_minus_Ba, dst[i+p] * dst[i+MYPAINT_NUM_CHANS-1], Sa);
+            }
+            if (DSTALPHA) {
+                dst[i+MYPAINT_NUM_CHANS-1] = Sa;
+            }
+        }
     }
 };
 

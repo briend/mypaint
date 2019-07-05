@@ -277,6 +277,9 @@ class CompositeDestinationIn : public CompositeFunc
     inline void operator() (float * const src,
                             float * dst) const
     {
+        for (int i=0; i<MYPAINT_NUM_CHANS; i++) {
+            dst[i] *= src[MYPAINT_NUM_CHANS-1];
+        }
 //        rb = (float_mul(rb, as));
 //        gb = (float_mul(gb, as));
 //        bb = (float_mul(bb, as));
@@ -299,11 +302,10 @@ class CompositeDestinationOut : public CompositeFunc
     inline void operator() (float * const src,
                             float * dst) const
     {
-//        const float j = 1.0 - as;
-//        rb = (float_mul(rb, j));
-//        gb = (float_mul(gb, j));
-//        bb = (float_mul(bb, j));
-//        ab = (float_mul(ab, j));
+        const float j = 1.0 - src[MYPAINT_NUM_CHANS-1];
+        for (int i=0; i<MYPAINT_NUM_CHANS; i++) {
+            dst[i] *= j;
+        }
     }
 
     static const bool zero_alpha_has_effect = false;
@@ -327,11 +329,11 @@ class CompositeSourceAtop : public CompositeFunc
         // where
         //   Cs ∈ {Rs, Gs, Bs}         -- input is non-premultiplied
         //   cb ∈ {rb gb, bb} = ab*Cb  -- output is premultiplied by alpha
-//        const float one_minus_as = 1.0 - as;
-//        const float ab_mul_as = float_mul(as, ab);
-//        rb = (float_sumprods(ab_mul_as, Rs, one_minus_as, rb));
-//        gb = (float_sumprods(ab_mul_as, Gs, one_minus_as, gb));
-//        bb = (float_sumprods(ab_mul_as, Bs, one_minus_as, bb));
+        const float one_minus_as = 1.0 - src[MYPAINT_NUM_CHANS-1];
+        const float ab_mul_as = src[MYPAINT_NUM_CHANS-1] * dst[MYPAINT_NUM_CHANS-1];
+        for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+            dst[i] = (float_sumprods(ab_mul_as, src[i], one_minus_as, dst[i]));
+        }
         // W3C spec:
         //   ao = as*ab + ab*(1-as)
         //   ao = ab
@@ -359,15 +361,15 @@ class CompositeDestinationAtop : public CompositeFunc
         // where
         //   Cs ∈ {Rs, Gs, Bs}         -- input is non-premultiplied
         //   cb ∈ {rb gb, bb} = ab*Cb  -- output is premultiplied by alpha
-//        const float one_minus_ab = 1.0 - ab;
-//        const float as_mul_one_minus_ab = float_mul(as, one_minus_ab);
-//        rb = (float_sumprods(as_mul_one_minus_ab, Rs, as, rb));
-//        gb = (float_sumprods(as_mul_one_minus_ab, Gs, as, gb));
-//        bb = (float_sumprods(as_mul_one_minus_ab, Bs, as, bb));
-//        // W3C spec:
-//        //   ao = as*(1-ab) + ab*as
-//        //   ao = as
-//        ab = as;
+
+        const float one_minus_ab = 1.0 - dst[MYPAINT_NUM_CHANS-1];
+        const float ab_mul_one_minus_ab = src[MYPAINT_NUM_CHANS-1] * one_minus_ab;
+        for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+            dst[i] = (float_sumprods(ab_mul_one_minus_ab, src[i], src[MYPAINT_NUM_CHANS-1], dst[i]));
+        }
+        // W3C spec:
+        //   ao = as*(1-ab) + ab*as
+        //   ao = as
     }
 
     static const bool zero_alpha_has_effect = true;
