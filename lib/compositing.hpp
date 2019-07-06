@@ -102,7 +102,7 @@ class BufferCombineFunc
         float Psrc[MYPAINT_NUM_CHANS];
         float Pdst[MYPAINT_NUM_CHANS];
         float one_minus_ab;
-//#pragma omp parallel for private(Psrc, Pdst, one_minus_ab)
+#pragma omp parallel for private(Psrc, Pdst, one_minus_ab)
         for (unsigned int i = 0; i < BUFSIZE; i += MYPAINT_NUM_CHANS)
         {
             // Calculate unpremultiplied source RGB values
@@ -388,6 +388,10 @@ class CompositeLighter : public CompositeFunc
     inline void operator() (float * const src,
                             float * dst) const
     {
+//        for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+//            dst[i] += src[i];
+//        }
+//        dst[MYPAINT_NUM_CHANS-1] += src[MYPAINT_NUM_CHANS-1];
 //        rb = (float_mul(Rs, as) + rb);
 //        gb = (float_mul(Gs, as) + gb);
 //        bb = (float_mul(Bs, as) + bb);

@@ -793,6 +793,7 @@ class RootLayerStack (group.LayerStack):
                           and child_layer.mode != lib.mypaintlib.CombineBumpMapDst
                           and child_layer.mode != lib.mypaintlib.CombineDestinationIn
                           and child_layer.mode != lib.mypaintlib.CombineDestinationOut
+                          and child_layer.mode != lib.mypaintlib.CombineLighter
                           and (child_layer.bumpself or child_layer.bumpbg))
             if self._get_render_background(spec):
                 if should_bump:

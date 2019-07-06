@@ -88,9 +88,25 @@ class BlendNormal : public BlendFunc
                             float * dst,
                             const float * const opts) const
     {
-//        dst_r = src_r;
-//        dst_g = src_g;
-//        dst_b = src_b;
+        for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+            dst[i] = src[i];
+        }
+    printf("%f", dst[0]);
+    }
+};
+
+// Multiply: http://www.w3.org/TR/compositing/#blendingmultiply
+
+class BlendMultiply : public BlendFunc
+{
+  public:
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float * const opts) const
+    {
+//        dst_r = float_mul(src_r, dst_r);
+//        dst_g = float_mul(src_g, dst_g);
+//        dst_b = float_mul(src_b, dst_b);
     }
 };
 
@@ -110,6 +126,67 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
             const float one_minus_Sa = 1.0 - Sa;
             for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
                 dst[i+p] = float_sumprods(src[i+p], opac, one_minus_Sa, dst[i+p]);
+            }
+            if (DSTALPHA) {
+                dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
+            }
+        }
+    }
+};
+
+
+template <bool DSTALPHA, unsigned int BUFSIZE>
+class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeLighter>
+{
+    // Partial specialization for normal painting layers (svg:src-over),
+    // working in premultiplied alpha for speed.
+  public:
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float opac,
+                            const float * const opts) const
+    {
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float one_minus_Sa = 1.0 - Sa;
+            const float alpha = Sa + dst[i+MYPAINT_NUM_CHANS-1];
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                if (alpha <= 0.0) return;
+                // unassociate alpha from the log data
+                if (dst[i+MYPAINT_NUM_CHANS-1] >0.0) {
+                    dst[i+p] /= dst[i+MYPAINT_NUM_CHANS-1];
+                }
+                float srcp = src[i+p];
+                if (src[i+MYPAINT_NUM_CHANS-1] >0.0) {
+                    srcp /= src[i+MYPAINT_NUM_CHANS-1];
+                }
+                // conv to linear, reassociate alpha and add.  re-log.
+                dst[i+p] = log2f((exp2f(dst[i+p]) * dst[i+MYPAINT_NUM_CHANS-1] 
+                + exp2f(srcp) * src[i+MYPAINT_NUM_CHANS-1] * opac)) * alpha;
+            }
+            if (DSTALPHA) {
+                dst[i+MYPAINT_NUM_CHANS-1] = alpha;
+            }
+        }
+    }
+};
+
+template <bool DSTALPHA, unsigned int BUFSIZE>
+class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendMultiply, CompositeSourceOver>
+{
+    // Partial specialization for normal painting layers (svg:src-over),
+    // working in premultiplied alpha for speed.
+  public:
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float opac,
+                            const float * const opts) const
+    {
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float one_minus_Sa = 1.0 - Sa;
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                dst[i+p] += src[i+p] * opac;
             }
             if (DSTALPHA) {
                 dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
@@ -440,21 +517,6 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeDestinationAto
     }
 };
 
-
-// Multiply: http://www.w3.org/TR/compositing/#blendingmultiply
-
-class BlendMultiply : public BlendFunc
-{
-  public:
-    inline void operator() (const float * const src,
-                            float * dst,
-                            const float * const opts) const
-    {
-//        dst_r = float_mul(src_r, dst_r);
-//        dst_g = float_mul(src_g, dst_g);
-//        dst_b = float_mul(src_b, dst_b);
-    }
-};
 
 
 
