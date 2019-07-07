@@ -582,6 +582,32 @@ class BlendDarken : public BlendFunc
     }
 };
 
+template <bool DSTALPHA, unsigned int BUFSIZE>
+class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendDarken, CompositeSourceOver>
+{
+    // Partial specialization for normal painting layers (svg:src-over),
+    // working in premultiplied alpha for speed.
+  public:
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float opac,
+                            const float * const opts) const
+    {
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float one_minus_Sa = 1.0 - Sa;
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                float dstp = dst[i+p];
+                if (dst[i+MYPAINT_NUM_CHANS-1] > 0.0) dstp /= dst[i+MYPAINT_NUM_CHANS-1];
+                if (src[i+p] / src[i+MYPAINT_NUM_CHANS-1] < dstp) dst[i+p] = src[i+p] * Sa + one_minus_Sa * dst[i+p];
+            }
+            if (DSTALPHA) {
+                dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
+            }
+        }
+    }
+};
+
 
 // Lighten: http://www.w3.org/TR/compositing/#blendinglighten
 
