@@ -149,7 +149,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeLighter>
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
             const float one_minus_Sa = 1.0 - Sa;
-            const float alpha = Sa + dst[i+MYPAINT_NUM_CHANS-1];
+            const float alpha = CLAMP(Sa + dst[i+MYPAINT_NUM_CHANS-1], 0.0, 1.0);
             for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
                 if (alpha <= 0.0) return;
                 // unassociate alpha from the log data
@@ -162,7 +162,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeLighter>
                 }
                 // conv to linear, reassociate alpha and add.  re-log.
                 dst[i+p] = log2f((exp2f(dst[i+p]) * dst[i+MYPAINT_NUM_CHANS-1] 
-                + exp2f(srcp) * src[i+MYPAINT_NUM_CHANS-1] * opac)) * alpha;
+                + exp2f(srcp) * Sa)) * alpha;
             }
             if (DSTALPHA) {
                 dst[i+MYPAINT_NUM_CHANS-1] = alpha;
@@ -599,7 +599,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendDarken, CompositeSourceOver>
             for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
                 float dstp = dst[i+p];
                 if (dst[i+MYPAINT_NUM_CHANS-1] > 0.0) dstp /= dst[i+MYPAINT_NUM_CHANS-1];
-                if (src[i+p] / src[i+MYPAINT_NUM_CHANS-1] < dstp) dst[i+p] = src[i+p] * Sa + one_minus_Sa * dst[i+p];
+                if (src[i+p] / src[i+MYPAINT_NUM_CHANS-1] < dstp) dst[i+p] = src[i+p] + one_minus_Sa * dst[i+p];
             }
             if (DSTALPHA) {
                 dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
@@ -624,6 +624,31 @@ class BlendLighten : public BlendFunc
     }
 };
 
+template <bool DSTALPHA, unsigned int BUFSIZE>
+class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendLighten, CompositeSourceOver>
+{
+    // Partial specialization for normal painting layers (svg:src-over),
+    // working in premultiplied alpha for speed.
+  public:
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float opac,
+                            const float * const opts) const
+    {
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float one_minus_Sa = 1.0 - Sa;
+            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+                float dstp = dst[i+p];
+                if (dst[i+MYPAINT_NUM_CHANS-1] > 0.0) dstp /= dst[i+MYPAINT_NUM_CHANS-1];
+                if (src[i+p] / src[i+MYPAINT_NUM_CHANS-1] > dstp) dst[i+p] = src[i+p] + one_minus_Sa * dst[i+p];
+            }
+            if (DSTALPHA) {
+                dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
+            }
+        }
+    }
+};
 
 
 // Hard Light: http://www.w3.org/TR/compositing/#blendinghardlight
