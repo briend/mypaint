@@ -101,13 +101,13 @@ def seeds_by_tile(seeds):
 def get_target_color(src, tx, ty, px, py):
     """Get the pixel color for the given tile/pixel coordinates"""
     with src.tile_request(tx, ty, readonly=True) as start:
-        targ_r, targ_g, targ_b, targ_a = [
-            int(c) for c in start[py][px]
+        targ_col = [
+            float(c) for c in start[py][px]
         ]
-    if targ_a == 0:
-        targ_r, targ_g, targ_b = 0, 0, 0
+    if targ_col[len(targ_col)-1] == 0.0:
+        targ_col = (0.0,) * len(targ_col)
 
-    return targ_r, targ_g, targ_b, targ_a
+    return targ_col
 
 
 # Main fill interface
@@ -305,7 +305,7 @@ def _flood_fill(src, args, dst, handler):
     tiles_bbox = fc.TileBoundingBox(args.bbox)
 
     # Basic safety clamping
-    tolerance = lib.helpers.clamp(args.tolerance, 0.0, 1.0)
+    tolerance = float(lib.helpers.clamp(args.tolerance, 0.0, 1.0))
     offset = lib.helpers.clamp(args.offset, -TILE_SIZE, TILE_SIZE)
     feather = lib.helpers.clamp(args.feather, 0, TILE_SIZE)
 
@@ -313,7 +313,10 @@ def _flood_fill(src, args, dst, handler):
     target_color = get_target_color(
         src, *starting_coordinates(*args.target_pos)
     )
-    filler = myplib.Filler(*(target_color + (tolerance,)))
+
+    targ_spectral = myplib.SpectralColor(target_color)
+
+    filler = myplib.Filler(targ_spectral, tolerance)
     seed_lists = seeds_by_tile(args.seeds)
 
     fill_args = (handler, src, seed_lists, tiles_bbox, filler)
@@ -369,11 +372,12 @@ def composite(
 
     handler.set_stage(handler.COMPOSITE, len(filled))
 
-    fill_col = fill_args.color
+    fill_col_rgb = fill_args.color
+    fill_col_spectral = myplib.SpectralColor(*fill_col_rgb)
 
     # Prepare opaque color rgba tile for copying
     full_rgba = myplib.rgba_tile_from_alpha_tile(
-        _FULL_TILE, *(fill_col + (0, 0, N-1, N-1)))
+        _FULL_TILE, fill_col_spectral, *(0, 0, N-1, N-1))
 
     # Bounding box of tiles that need updating
     dst_changed_bbox = None
@@ -431,22 +435,21 @@ def composite(
                 else:
                     tile_bounds = (0, 0, N-1, N-1)
                 src_tile_rgba = myplib.rgba_tile_from_alpha_tile(
-                    src_tile, *(fill_col + tile_bounds)
+                    src_tile, fill_col_spectral, *tile_bounds
                 )
-
-            # unassociate the alpha (straightened)
-            src_tile_rgba[:,:,0] = src_tile_rgba[:,:,0] / (src_tile_rgba[:,:,3] / (1<<15))
-            src_tile_rgba[:,:,1] = src_tile_rgba[:,:,1] / (src_tile_rgba[:,:,3] / (1<<15))
-            src_tile_rgba[:,:,2] = src_tile_rgba[:,:,2] / (src_tile_rgba[:,:,3] / (1<<15))
             # If alpha locking is enabled in combination with a mode other than
             # CombineNormal, we need to copy the dst tile to mask the result
             if lock_alpha and mode != myplib.CombineSourceAtop:
                 mask = np.copy(dst_tile)
                 mask_mode = myplib.CombineDestinationAtop
-                tile_combine(mode, src_tile_rgba, dst_tile, True, opacity, None)
+                tile_combine(
+                    mode, src_tile_rgba, dst_tile, True, opacity, None
+                )
                 tile_combine(mask_mode, mask, dst_tile, True, 1.0, None)
             else:
-                tile_combine(mode, src_tile_rgba, dst_tile, True, opacity, None)
+                tile_combine(
+                    mode, src_tile_rgba, dst_tile, True, opacity, None
+                )
 
     # Handle dst-out and dst-atop: clear untouched tiles
     if mode in [myplib.CombineDestinationIn, myplib.CombineDestinationAtop]:

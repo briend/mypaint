@@ -9,8 +9,37 @@
 
 #include "floodfill.hpp"
 
+#include "../blending.hpp"
 #include <cmath>
 #include <vector>
+#include <exception>
+
+SpectralColor::SpectralColor(PyObject* targ_col)
+{
+    Py_ssize_t num_chans;
+    bool valid_targ_col =
+        PySequence_Check(targ_col) &&
+        (num_chans = PySequence_Size(targ_col)) == MYPAINT_NUM_CHANS;
+    if (!valid_targ_col) throw std::invalid_argument("Invalid target color");
+
+    for (Py_ssize_t i = 0; i < num_chans; ++i) {
+        // Borrowed ref, don't decrement refcount
+        PyObject* chan_val_ob = PySequence_Fast_GET_ITEM(targ_col, i);
+        float chan_val = static_cast<float>(PyFloat_AsDouble(chan_val_ob));
+        color_representation.channels[i] = chan_val;
+    }
+}
+
+SpectralColor::SpectralColor(double r, double g, double b)
+{
+    rgb_to_spectral(r, g, b, color_representation.channels);
+    color_representation.channels[MYPAINT_NUM_CHANS - 1] = 1.0;
+}
+
+Color SpectralColor::representation()
+{
+    return color_representation;
+}
 
 /*
   Returns a list [(start, end)] of segments corresponding
@@ -59,27 +88,33 @@ to_seeds(const bool edge[N])
     return seg_list;
 }
 
-static inline chan_t
-clamped_div(chan_t a, chan_t b)
+/*
+Distance metric for two colors w. spectral representations.
+Call with straightened (linear + unassociated) color values
+*/
+static inline float
+distance(Color& a, Color& b)
 {
-    return fix15_short_clamp(fix15_div(fix15_short_clamp(a), b));
+    float a1 = a.alpha();
+    float a2 = b.alpha();
+    float alpha_diff = fabs(a1 - a2);
+    float alpha_avg = (a1 + a2) / 2.0f;
+    float accum_spectral_diff = 0.0;
+    for (int i = 0; i < MYPAINT_NUM_CHANS-1; ++i) {
+        float chan_diff = fabs(a.channels[i] - b.channels[i]);
+        accum_spectral_diff += chan_diff;
+    }
+    accum_spectral_diff /= SPECTRAL_WEIGHTS_SUM;
+    float color_factor = alpha_avg * (1.0f - alpha_diff);
+    float alpha_factor = 1.0f - color_factor;
+
+    return color_factor * accum_spectral_diff + alpha_factor * alpha_diff;
 }
 
-static inline rgba
-straightened(int targ_r, int targ_g, int targ_b, int targ_a)
-{
-    if (targ_a <= 0)
-        return rgba((chan_t)0, 0, 0, 0);
-    else
-        return rgba(
-            clamped_div(targ_r, targ_a), clamped_div(targ_g, targ_a),
-            clamped_div(targ_b, targ_a), targ_a);
-}
-
-Filler::Filler(int targ_r, int targ_g, int targ_b, int targ_a, double tol)
-    : target_color(rgba((chan_t)targ_r, targ_g, targ_b, targ_a)),
-      target_color_premultiplied(rgba((chan_t)fix15_mul(targ_r, targ_a), fix15_mul(targ_g, targ_a), fix15_mul(targ_b, targ_a), targ_a)),
-      tolerance((fix15_t)(MIN(1.0, MAX(0.0, tol)) * fix15_one))
+Filler::Filler(SpectralColor& targ_col, double tol)
+    : target_color(targ_col.representation()),
+      target_color_straight(targ_col.representation().straightened()),
+      tolerance(tol)
 {
 }
 
@@ -92,31 +127,31 @@ Filler::Filler(int targ_r, int targ_g, int targ_b, int targ_a, double tol)
   should be filled.
 */
 chan_t
-Filler::pixel_fill_alpha(const rgba& px)
+Filler::pixel_fill_alpha(const Color& px)
 {
-    fix15_t dist;
+    float dist;
 
-    if ((target_color.alpha | px.alpha) == 0)
+    if (target_color.alpha() == 0.0 && px.alpha() == 0.0)
         return fix15_one;
     else if (tolerance == 0) {
-        return fix15_one * (target_color_premultiplied == px);
+        return fix15_one * (target_color == px);
     }
 
-    if (target_color.alpha == 0)
-        dist = px.alpha;
-    else
-        dist = target_color.max_diff(
-            rgba((chan_t)px.red, px.green, px.blue, px.alpha));
+    if (target_color.alpha() == 0)
+        dist = px.alpha();
+    else {
+        Color src_straight = px.straightened();
+        dist = distance(target_color_straight, src_straight);
+    }
 
     // Compare with adjustable tolerance of mismatches.
-    static const fix15_t onepointfive = fix15_one + fix15_halve(fix15_one);
-    dist = fix15_div(dist, tolerance);
-    if (dist > onepointfive) { // aa < 0, but avoid underflow
+    dist = dist / tolerance;
+    if (dist > 1.0) {
         return 0;
     } else {
-        fix15_t aa = onepointfive - dist;
-        if (aa < fix15_halve(fix15_one))
-            return fix15_short_clamp(fix15_double(aa));
+        float aa = 1.0 - dist;
+        if (aa < 0.5)
+            return fix15_short_clamp(fix15_one * (aa * 2));
         else
             return fix15_one;
     }
@@ -133,7 +168,7 @@ Filler::pixel_fill_alpha(const rgba& px)
 */
 bool
 Filler::check_enqueue(
-    const int x, const int y, bool check, const rgba& src_pixel,
+    const int x, const int y, bool check, const Color& src_pixel,
     const chan_t& dst_pixel)
 {
     if (dst_pixel != 0) return true;
@@ -155,11 +190,11 @@ PyObject*
 Filler::tile_uniformity(bool empty_tile, PyObject* src_arr)
 {
     if (empty_tile) {
-        chan_t alpha = pixel_fill_alpha(rgba((chan_t)0, 0, 0, 0));
+        chan_t alpha = pixel_fill_alpha(Color());
         return Py_BuildValue("i", alpha);
     }
 
-    PixelBuffer<rgba> src = PixelBuffer<rgba>(src_arr);
+    PixelBuffer<Color> src = PixelBuffer<Color>(src_arr);
 
     if (src.is_uniform()) {
         chan_t alpha = pixel_fill_alpha(src(0, 0));
@@ -172,7 +207,7 @@ Filler::tile_uniformity(bool empty_tile, PyObject* src_arr)
 
 void
 Filler::queue_seeds(
-    PyObject* seeds, PixelBuffer<rgba>& src, PixelBuffer<chan_t> dst)
+    PyObject* seeds, PixelBuffer<Color>& src, PixelBuffer<chan_t> dst)
 {
     Py_ssize_t num_seeds = PySequence_Size(seeds);
     for (Py_ssize_t i = 0; i < num_seeds; ++i) {
@@ -197,7 +232,7 @@ Filler::queue_seeds(
 */
 void
 Filler::queue_ranges(
-    edge origin, PyObject* seeds, bool input_marks[N], PixelBuffer<rgba>& src,
+    edge origin, PyObject* seeds, bool input_marks[N], PixelBuffer<Color>& src,
     PixelBuffer<chan_t>& dst)
 {
 #ifdef HEAVY_DEBUG
@@ -280,7 +315,7 @@ Filler::fill(
     if (max_x > (N - 1)) max_x = (N - 1);
     if (max_y > (N - 1)) max_y = (N - 1);
 
-    PixelBuffer<rgba> src(src_o);
+    PixelBuffer<Color> src(src_o);
     PixelBuffer<chan_t> dst(dst_o);
 
 #ifdef HEAVY_DEBUG
@@ -322,7 +357,7 @@ Filler::fill(
                 x0 + i; // include starting coordinate when moving left
             const int x_delta = i * 2 - 1; // first scan left, then right
 
-            PixelRef<rgba> src_px = src.get_pixel(x_start, y);
+            PixelRef<Color> src_px = src.get_pixel(x_start, y);
             PixelRef<chan_t> dst_px = dst.get_pixel(x_start, y);
 
             for (int x = x_start; x >= min_x && x <= max_x;
@@ -377,7 +412,7 @@ Filler::fill(
 void
 Filler::flood(PyObject* src_arr, PyObject* dst_arr)
 {
-    PixelRef<rgba> src_px = PixelBuffer<rgba>(src_arr).get_pixel(0, 0);
+    PixelRef<Color> src_px = PixelBuffer<Color>(src_arr).get_pixel(0, 0);
     PixelRef<chan_t> dst_px = PixelBuffer<chan_t>(dst_arr).get_pixel(0, 0);
     for (int i = 0; i < N * N; ++i, src_px.move_x(1), dst_px.move_x(1)) {
         dst_px.write(pixel_fill_alpha(src_px.read()));
@@ -386,21 +421,30 @@ Filler::flood(PyObject* src_arr, PyObject* dst_arr)
 
 PyObject*
 rgba_tile_from_alpha_tile(
-    PyObject* src, double fill_r, double fill_g, double fill_b, int min_x,
-    int min_y, int max_x, int max_y)
+    PyObject* src, SpectralColor& color,
+    int min_x, int min_y, int max_x, int max_y)
 {
-    npy_intp dims[] = {N, N, 4};
+    npy_intp dims[] = {N, N, MYPAINT_NUM_CHANS};
     // A zeroed array is used instead of an empty, since
     // less than the entire output tile may be written to.
-    PyObject* dst_arr = PyArray_ZEROS(3, dims, NPY_USHORT, 0);
-    PixelBuffer<rgba> dst_buf(dst_arr);
+    PyObject* dst_arr = PyArray_ZEROS(3, dims, NPY_FLOAT, 0);
+    PixelBuffer<Color> dst_buf(dst_arr);
     PixelBuffer<chan_t> src_buf(src);
     for (int y = min_y; y <= max_y; ++y) {
         int x = min_x;
         PixelRef<chan_t> src_px = src_buf.get_pixel(x, y);
-        PixelRef<rgba> dst_px = dst_buf.get_pixel(x, y);
+        PixelRef<Color> dst_px = dst_buf.get_pixel(x, y);
         for (; x <= max_x; ++x, src_px.move_x(1), dst_px.move_x(1)) {
-            dst_px.write(rgba(fill_r, fill_g, fill_b, src_px.read()));
+            fix15_t alpha = src_px.read();
+            if (alpha != 0){
+                float alpha_f = static_cast<float>(src_px.read()) / fix15_one;
+                // Copy-construction
+                Color out_col = color.representation();
+                out_col.set_alpha(alpha_f);
+                if (alpha < fix15_one)
+                    out_col.premultiply();
+                dst_px.write(out_col);
+            }
         }
     }
     return dst_arr;

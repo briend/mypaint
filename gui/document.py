@@ -1617,8 +1617,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             cam16_color = CAM16Color(color=HSVColor(hsv=hsv))
 
         # apply needed colors
-        self.app.brush.set_cam16_color(cam16_color)
-        self.app.brush.set_color_hsv(hsv)
+        self.app.brush_color_manager.set_color(cam16_color)
+        #self.app.brush.set_cam16_color(cam16_color)
+        #self.app.brush.set_color_hsv(hsv)
 
     def _should_throttle(self, action_time, last_action_time):
         # NOTE: remove after debouncing/throttling implemented

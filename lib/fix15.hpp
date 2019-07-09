@@ -77,6 +77,36 @@ float_div (const float a, const float b)
 }
 
 
+// Multiplication of two fix15_t.
+static inline fix15_t
+fix15_mul (const fix15_t a, const fix15_t b)
+{
+    return (a * b) >> _fix15_fracbits;
+}
+
+// Sum of two fix15_t products.
+static inline fix15_t
+fix15_sumprods (const fix15_t a1, const fix15_t a2,
+                const fix15_t b1, const fix15_t b2)
+{
+    return ((a1 * a2) + (b1 * b2)) >> _fix15_fracbits;
+}
+
+static inline fix15_t
+fix15_halve (const fix15_t n) {
+    return n>>1;
+}
+
+
+
+// Division of one fix15_t by another.
+static inline fix15_t
+fix15_div (const fix15_t a, const fix15_t b)
+{
+    return (a << _fix15_fracbits) / b;
+}
+
+
 /* int15_sqrt:
 
 Square root using the http://en.wikipedia.org/wiki/Babylonian_method . For

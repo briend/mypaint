@@ -21,6 +21,7 @@
 #include "fastapprox/fasttrig.h"
 #include "compositing.hpp"
 #include <math.h>
+#include <cstdio>
 
 static const float T_MATRIX_SMALL[3][NUM_WAVES] = {{0.004727862039458, 0.082644899379487, -0.322515894576622, -0.064320292139570,
 1.064746457514018, 0.288869101686002, 0.010454417702711},
@@ -38,8 +39,13 @@ static const float spectral_g_small[NUM_WAVES] = {0.060871084436057, 0.063645032
 static const float spectral_b_small[NUM_WAVES] = {0.777465337464873, 0.899749264722067, 0.258544195013949, 0.015623896354842,
 0.004846585772726, 0.003989003708280, 0.003962407615164};
 
+/*
+  The sum of all channel coefficients - this _should be_ a compile-time
+  constant, but that is tricky to implement nicely for floats without C++14
+*/
+constexpr float SPECTRAL_WEIGHTS_SUM = 9.14908021086103;
 
-void
+inline void
 rgb_to_spectral (float r, float g, float b, float *spectral_) {
   float offset = 1.0 - WGM_EPSILON;
   r = r * offset + WGM_EPSILON;
@@ -65,7 +71,7 @@ rgb_to_spectral (float r, float g, float b, float *spectral_) {
 
 }
 
-void
+inline void
 spectral_to_rgb (float *spectral, float *rgb_) {
   float offset = 1.0 - WGM_EPSILON;
   for (int i=0; i<NUM_WAVES; i++) {

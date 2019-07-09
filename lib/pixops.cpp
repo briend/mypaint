@@ -388,6 +388,7 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       a = (float)a / 255.0;
       
       float spectral[MYPAINT_NUM_CHANS] = {0.0}; 
+
       rgb_to_spectral(r, g, b, spectral);
       
       // convert to spectral here

@@ -26,19 +26,38 @@ struct edges {
 typedef edges::edge edge;
 
 /*
+  Structure for python-managed wrapper object
+  storing actual color representation
+*/
+class SpectralColor {
+  public:
+    /*
+      Create a spectral representation based on a python tuple
+      of floating point numbers, one for each channel, including alpha.
+      Tuple values are assumed to be log2-scaled w. associated alpha
+    */
+    explicit SpectralColor(PyObject* targ_col);
+    // Create a spectral representation based on an rgb triple
+    SpectralColor(double r, double g, double b);
+    Color representation();
+  private:
+    Color color_representation;
+};
+
+/*
   Implements the pixel threshold test function and uses it in the
   fill, alpha flooding, and tile uniformity/fillability methods
 */
 class Filler
 {
   private:
-    const rgba target_color;
-    const rgba target_color_premultiplied;
-    const fix15_t tolerance;
+    Color target_color;
+    Color target_color_straight;
+    const float tolerance;
     std::queue<coord> seed_queue;
 
   public:
-    Filler(int targ_r, int targ_g, int targ_b, int targ_a, double tol);
+    Filler(SpectralColor& target_color, double tol);
     // Perform a scanline fill based on the rgba src tile and seed coordinates,
     // writing the resulting fill alphas to the dst tile and returning
     // any new overflows
@@ -57,22 +76,22 @@ class Filler
     // Pixel threshold test - the return value indicates the alpha value of the
     // filled pixel, where an alpha of 0 indicates that the pixel should not be
     // filled (and the fill not propagated through that pixel).
-    chan_t pixel_fill_alpha(const rgba& src_px);
+    chan_t pixel_fill_alpha(const Color& src_px);
     // Queue seeds from a python list of (x, y) coordinate tuples
     void queue_seeds(
-        PyObject* seeds, PixelBuffer<rgba>& src, PixelBuffer<chan_t> dst);
+        PyObject* seeds, PixelBuffer<Color>& src, PixelBuffer<chan_t> dst);
     // Queue seeds from a python list of [start, end] range tuples
     // paired with an input origin direction indicating the side of
     // the tile that the ranges apply to.
     // Ranges are left->right, top->down, and end-inclusive.
     void queue_ranges(
         edge direction, PyObject* seeds, bool marks[N],
-        PixelBuffer<rgba>& src, PixelBuffer<chan_t>& dst);
+        PixelBuffer<Color>& src, PixelBuffer<chan_t>& dst);
     // Check if a pixel is a valid fill candidate (unfilled & within threshold)
     // Put it in the seed queue if true.
     // Return value means: "enqueue valid neighbours on same row".
     bool check_enqueue(
-        const int x, const int y, bool check, const rgba& src_px,
+        const int x, const int y, bool check, const Color& src_px,
         const chan_t& dst_px);
 };
 
@@ -105,7 +124,7 @@ class GapClosingFiller
   and a N x N tile of alpha values
 */
 PyObject* rgba_tile_from_alpha_tile(
-    PyObject* src, double fill_r, double fill_g, double fill_b, int min_x,
-    int min_y, int max_x, int max_y);
+    PyObject* src, SpectralColor& color,
+    int min_x, int min_y, int max_x, int max_y);
 
 #endif //FLOODFILL_HPP

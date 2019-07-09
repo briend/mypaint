@@ -18,6 +18,7 @@
 #include <vector>
 #include <future>
 #include <mutex>
+#include <cmath>
 
 #include "../common.hpp"
 
@@ -50,53 +51,64 @@ struct coord {
 };
 
 /*
-  Convenience struct corresponding to a chan_t[4],
-  but with nicer creation and accessors
+  Convenience struct corresponding to float[MYPAINT_NUM_CHANS]
 */
-struct rgba {
-    chan_t red;
-    chan_t green;
-    chan_t blue;
-    chan_t alpha;
+struct Color {
+    float channels[MYPAINT_NUM_CHANS] = {0,};
 
-    rgba() : red(0), green(0), blue(0), alpha(0) {}
-    rgba(const rgba& v)
-        : red(v.red), green(v.green), blue(v.blue), alpha(v.alpha)
+    Color() {}
+    Color(const Color& src)
     {
+        memcpy(channels, src.channels, sizeof(float) * MYPAINT_NUM_CHANS);
     }
-    rgba(double r, double g, double b, chan_t a)
+    explicit Color(float chans[MYPAINT_NUM_CHANS])
     {
-        red = fix15_short_clamp(r * a);
-        green = fix15_short_clamp(g * a);
-        blue = fix15_short_clamp(b * a);
-        alpha = a;
-    };
-    rgba(chan_t r, chan_t g, chan_t b, chan_t a)
-    {
-        red = r;
-        green = g;
-        blue = b;
-        alpha = a;
-    };
-
-    inline fix15_t max_diff(const rgba& b) const
-    {
-        chan_t dr = DFF(red, b.red);
-        chan_t db = DFF(blue, b.blue);
-        chan_t dg = DFF(green, b.green);
-        return MAX(dr, MAX(db, MAX(dg, DFF(alpha, b.alpha))));
+        memcpy(channels, chans, sizeof(float) * MYPAINT_NUM_CHANS);
     }
 
-    inline bool operator!=(const rgba& b) const
+    inline float alpha() const { return channels[MYPAINT_NUM_CHANS - 1]; }
+    inline void set_alpha(float alpha)
     {
-        return red != b.red || green != b.green || blue != b.blue ||
-               alpha != b.alpha;
+        channels[MYPAINT_NUM_CHANS - 1] = alpha;
     }
 
-    inline bool operator==(const rgba& b) const
+    inline void premultiply()
     {
-        return red == b.red && green == b.green && blue == b.blue &&
-               alpha == b.alpha;
+        float alpha = this->alpha();
+        for (int i = 0; i < MYPAINT_NUM_CHANS - 1; ++i) {
+            channels[i] *= alpha;
+        }
+    }
+    /*
+      When called on an instance with associated-alpha
+      log2-scaled values this returns an unassociated linear version.
+    */
+    Color straightened() const
+    {
+        Color straight;
+        float alpha = this->alpha();
+        if (alpha >= 0.0001) {
+            for (int i = 0; i < MYPAINT_NUM_CHANS - 1; ++i) {
+                float log_val = channels[i];
+                straight.channels[i] = (float)exp2f(log_val / alpha);
+            }
+            straight.set_alpha(alpha);
+        }
+        return straight;
+    }
+
+    inline bool operator!=(const Color& b) const
+    {
+        int res =
+            memcmp(channels, b.channels, sizeof(float) * MYPAINT_NUM_CHANS);
+        return res != 0;
+    }
+
+    inline bool operator==(const Color& b) const
+    {
+        int res =
+            memcmp(channels, b.channels, sizeof(float) * MYPAINT_NUM_CHANS);
+        return res == 0;
     }
 };
 

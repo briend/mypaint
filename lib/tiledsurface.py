@@ -32,7 +32,7 @@ from .errors import FileHandlingError
 import lib.fileutils
 import lib.modes
 import lib.feedback
-# import lib.floodfill
+import lib.floodfill
 from lib.pycompat import xrange
 from lib.pycompat import PY3
 
@@ -374,7 +374,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             return self.mipmap.blit_tile_into(dst, dst_has_alpha, tx, ty,
                                               mipmap_level)
 
-        
+
         assert dst.shape[2] == NUM_CHANS or dst.shape[2] == 4
         #print("blitting tile into", dst.shape, dst.dtype)
         if dst.dtype not in ('float32', 'uint8'):
