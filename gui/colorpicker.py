@@ -114,9 +114,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
         # if we're interactively blending, set the brushcolor when leaving
         if self.blending_color is not None:
             app = self.doc.app
-            app.brush.set_color_hsv(self.blending_color.get_hsv())
-            app.brush.set_cam16_color(CAM16Color(
-                                      color=self.blending_color))
+            self.app.brush_color_manager.set_color(self.blending_color)
         super(ColorPickMode, self).leave(**kwds)
 
     def button_press_cb(self, tdw, event):
@@ -239,9 +237,8 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 # reset the brush color with the same color
                 # under the new illuminant
                 brushcolor.illuminant = ill
+                self.app.brush_color_manager.set_color(brushcolor)
 
-                app.brush.set_color_hsv(brushcolor.get_hsv())
-                app.brush.set_cam16_color(brushcolor)
             elif mode == "PickandBlend":
                 alloc = self.doc.tdw.get_allocation()
                 size = max(int(p['color.preview_size'] * .01 * alloc.height),
@@ -299,8 +296,7 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                     elif mode == "PickChroma":
                         brushcolornew.s = pickcolor.s
 
-                app.brush.set_color_hsv(brushcolornew.get_hsv())
-                app.brush.set_cam16_color(CAM16Color(color=brushcolornew))
+                self.app.brush_color_manager.set_color(brushcolornew)
 
         return None
 

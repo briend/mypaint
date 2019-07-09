@@ -1617,9 +1617,10 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             cam16_color = CAM16Color(color=HSVColor(hsv=hsv))
 
         # apply needed colors
-        self.app.brush_color_manager.set_color(cam16_color)
-        #self.app.brush.set_cam16_color(cam16_color)
-        #self.app.brush.set_color_hsv(hsv)
+        # self.app.brush_color_manager.set_color(cam16_color)
+        # don't call set_color or we lose last_color_target
+        self.app.brush.set_cam16_color(cam16_color)
+        self.app.brush.set_color_hsv(hsv)
 
     def _should_throttle(self, action_time, last_action_time):
         # NOTE: remove after debouncing/throttling implemented
@@ -1826,8 +1827,7 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             whitelinearRGB = colour.XYZ_to_sRGB(
                 brushcolor_start.illuminant/100,
                 apply_encoding_cctf=False)
-            blacksRGB = colour.models.oetf_sRGB(0.01 * whitelinearRGB
-                                                / max(whitelinearRGB))
+            blacksRGB = colour.models.oetf_sRGB(0.001 * whitelinearRGB)
             brushcolor_end_pig = PigmentColor(color=RGBColor(rgb=blacksRGB))
             brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig,
                                                   min(step_size / 50, 1.0))
@@ -1848,6 +1848,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         """Clockwise hue rotation ("IncreaseHue" action)."""
         t, x, y, p = self.get_last_event_info(self.tdw)
         mgr = self.app.brush_color_manager
+        
+        def roundPartial (value, resolution):
+            return round (value / resolution) * resolution
 
         if t <= self.last_increase_hue:
             t = (time.time() * 1000)
@@ -1873,22 +1876,23 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             h = (h + step_size / 360) % 1.0
             brushcolor = HCYColor(h, c, yy)
 
-        elif tune_model in ('CAM16', 'Pigment'):
+        elif tune_model in ('CAM16'):
             self.last_color_target = None
             brushcolor = copy.copy(self.app.brush.CAM16Color)
             brushcolor.h = (brushcolor.h + step_size) % 360
             brushcolor.cachedrgb = None
 
-#        elif tune_model == 'Pigment':
-#            brushcolor_start = copy.copy(self.app.brush.CAM16Color)
-#            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
-#            brushcolor_start.h = (brushcolor_start.h + 60) % 360
-#            brushcolor_start.cachedrgb = None
-#            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
-#            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig,
-#                                                  min(step_size / 50, 1.0))
-#            brushcolor = CAM16Color(color=brushcolor,
-#                                     illuminant=brushcolor_start.illuminant)
+        elif tune_model == 'Pigment':
+            brushcolor_start = copy.copy(self.app.brush.CAM16Color)
+            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+            brushcolor_start.h = (roundPartial(brushcolor_start.h + 20, 20)) % 360
+            brushcolor_start.cachedrgb = None
+            # self.last_color_target = brush_color_start
+            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
+            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig,
+                                                  min(step_size / 50, 1.0))
+            brushcolor = CAM16Color(color=brushcolor,
+                                     illuminant=brushcolor_start.illuminant)
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
             mgr.palette.keep_position = False
@@ -1906,6 +1910,9 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         """Anticlockwise hue rotation ("DecreaseHue" action)."""
         t, x, y, p = self.get_last_event_info(self.tdw)
         mgr = self.app.brush_color_manager
+
+        def roundPartial (value, resolution):
+            return round (value / resolution) * resolution
 
         if t <= self.last_decrease_hue:
             t = (time.time() * 1000)
@@ -1931,22 +1938,23 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
             h = (h - step_size / 360) % 1.0
             brushcolor = HCYColor(h, c, yy)
 
-        elif tune_model in ('CAM16', 'Pigment'):
+        elif tune_model in ('CAM16'):
             self.last_color_target = None
             brushcolor = copy.copy(self.app.brush.CAM16Color)
             brushcolor.h = (brushcolor.h - step_size) % 360
             brushcolor.cachedrgb = None
 
-#        elif tune_model == 'Pigment':
-#            brushcolor_start = copy.copy(self.app.brush.CAM16Color)
-#            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
-#            brushcolor_start.h = (brushcolor_start.h - 60) % 360
-#            brushcolor_start.cachedrgb = None
-#            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
-#            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig,
-#                                                  min(step_size / 100, 1.0))
-#            brushcolor = CAM16Color(color=brushcolor,
-#                                     illuminant=brushcolor_start.illuminant)
+        elif tune_model == 'Pigment':
+            brushcolor_start = copy.copy(self.app.brush.CAM16Color)
+            brushcolor_start_pig = PigmentColor(color=brushcolor_start)
+            brushcolor_start.h = (roundPartial(brushcolor_start.h - 20, 20)) % 360
+            brushcolor_start.cachedrgb = None
+            # self.last_color_target = brush_color_start
+            brushcolor_end_pig = PigmentColor(color=brushcolor_start)
+            brushcolor = brushcolor_start_pig.mix(brushcolor_end_pig,
+                                                  min(step_size / 50, 1.0))
+            brushcolor = CAM16Color(color=brushcolor,
+                                     illuminant=brushcolor_start.illuminant)
         else:
             logger.error('Incorrect color model "%s"' % tune_model)
             mgr.palette.keep_position = False
