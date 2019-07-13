@@ -54,25 +54,6 @@ void tile_convert_rgbu16_to_rgbu8(PyObject *src, PyObject *dst, const float EOTF
 void tile_convert_rgba8_to_rgba16(PyObject *src, PyObject *dst, const float EOTF);
 
 
-// Flatten a premultiplied rgba layer, using "bg" as background.
-// (bg is assumed to be flat, bg.alpha is ignored)
-//
-// dst.color = dst OVER bg.color
-// dst.alpha = unmodified
-
-void tile_rgba2flat(PyObject *dst_obj, PyObject *bg_obj);
-
-
-// Make a flat layer translucent again. When calculating the new color
-// and alpha, it is assumed that the layer will be displayed OVER the
-// background "bg". Alpha is increased where required.
-//
-// dst.alpha = MIN(dst.alpha, minimum alpha required for correct result)
-// dst.color = calculated such that (dst_output OVER bg = dst_input.color)
-
-void tile_flat2rgba(PyObject * dst_obj, PyObject * bg_obj);
-
-
 // Calculates a 1-bit bitmap of the stroke shape using two snapshots of the
 // layer (the layer before and after the stroke). Used in strokemap.py
 //

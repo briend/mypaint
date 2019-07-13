@@ -128,13 +128,22 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSourceOver>
                             const float * const opts) const
     {
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
-            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float Sa = src[i+MYPAINT_NUM_CHANS-1] * opac;
+            if (Sa <= 0.0) continue;
             const float one_minus_Sa = 1.0 - Sa;
+            const float alpha = CLAMP(Sa + one_minus_Sa * dst[i+MYPAINT_NUM_CHANS-1], 0.0, 1.0);
             for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
-                dst[i+p] = float_sumprods(src[i+p], opac, one_minus_Sa, dst[i+p]);
+                float dstp = dst[i+p];
+                float srcp = src[i+p];
+                if (dst[i+MYPAINT_NUM_CHANS-1] > 0.0) dstp /= dst[i+MYPAINT_NUM_CHANS-1];
+                if (src[i+MYPAINT_NUM_CHANS-1] > 0.0) srcp /= src[i+MYPAINT_NUM_CHANS-1];
+                float res = exp2f(srcp) * Sa + exp2f(dstp) * dst[i+MYPAINT_NUM_CHANS-1] * one_minus_Sa;
+                if (alpha > 0.0) res /= alpha;
+                dst[i+p] = log2f(res) * alpha;
+                
             }
             if (DSTALPHA) {
-                dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
+                dst[i+MYPAINT_NUM_CHANS-1] = alpha;
             }
         }
     }
@@ -153,22 +162,19 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeLighter>
                             const float * const opts) const
     {
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
-            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float Sa = src[i+MYPAINT_NUM_CHANS-1] * opac;
+            if (Sa <= 0.0) continue;
             const float one_minus_Sa = 1.0 - Sa;
             const float alpha = CLAMP(Sa + dst[i+MYPAINT_NUM_CHANS-1], 0.0, 1.0);
             for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
-                if (alpha <= 0.0) return;
-                // unassociate alpha from the log data
-                if (dst[i+MYPAINT_NUM_CHANS-1] >0.0) {
-                    dst[i+p] /= dst[i+MYPAINT_NUM_CHANS-1];
-                }
+                float dstp = dst[i+p];
                 float srcp = src[i+p];
-                if (src[i+MYPAINT_NUM_CHANS-1] >0.0) {
-                    srcp /= src[i+MYPAINT_NUM_CHANS-1];
-                }
-                // conv to linear, reassociate alpha and add.  re-log.
-                dst[i+p] = log2f((exp2f(dst[i+p]) * dst[i+MYPAINT_NUM_CHANS-1] 
-                + exp2f(srcp) * Sa)) * alpha;
+                if (dst[i+MYPAINT_NUM_CHANS-1] > 0.0) dstp /= dst[i+MYPAINT_NUM_CHANS-1];
+                if (src[i+MYPAINT_NUM_CHANS-1] > 0.0) srcp /= src[i+MYPAINT_NUM_CHANS-1];
+                float res = exp2f(srcp) * Sa + exp2f(dstp) * dst[i+MYPAINT_NUM_CHANS-1];
+                if (alpha > 0.0) res /= alpha;
+                dst[i+p] = log2f(res) * alpha;
+                
             }
             if (DSTALPHA) {
                 dst[i+MYPAINT_NUM_CHANS-1] = alpha;
@@ -601,13 +607,20 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendDarken, CompositeSourceOver>
     {
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            //if (Sa <= 0.0 || dst[i+MYPAINT_NUM_CHANS-1] <= 0.0) continue;
             const float one_minus_Sa = 1.0 - Sa;
+            bool was_darker = false;
             for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
                 float dstp = dst[i+p];
+                float srcp = src[i+p];
                 if (dst[i+MYPAINT_NUM_CHANS-1] > 0.0) dstp /= dst[i+MYPAINT_NUM_CHANS-1];
-                if (src[i+p] / src[i+MYPAINT_NUM_CHANS-1] < dstp) dst[i+p] = src[i+p] + one_minus_Sa * dst[i+p];
+                if (src[i+MYPAINT_NUM_CHANS-1] > 0.0) srcp /= src[i+MYPAINT_NUM_CHANS-1];
+                if (srcp < dstp) {
+                    dst[i+p] = src[i+p] * opac + one_minus_Sa * dst[i+p];
+                    was_darker = true;
+                }
             }
-            if (DSTALPHA) {
+            if (DSTALPHA && was_darker) {
                 dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
             }
         }
@@ -642,15 +655,22 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendLighten, CompositeSourceOver>
                             const float * const opts) const
     {
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
-            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float Sa = src[i+MYPAINT_NUM_CHANS-1] * opac;
+            if (Sa <= 0.0 || dst[i+MYPAINT_NUM_CHANS-1] <= 0.0) continue;
             const float one_minus_Sa = 1.0 - Sa;
+            bool was_lighter = false;
             for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
                 float dstp = dst[i+p];
+                float srcp = src[i+p];
                 if (dst[i+MYPAINT_NUM_CHANS-1] > 0.0) dstp /= dst[i+MYPAINT_NUM_CHANS-1];
-                if (src[i+p] / src[i+MYPAINT_NUM_CHANS-1] > dstp) dst[i+p] = src[i+p] + one_minus_Sa * dst[i+p];
+                if (src[i+MYPAINT_NUM_CHANS-1] > 0.0) srcp /= src[i+MYPAINT_NUM_CHANS-1];
+                if (srcp > dstp) {
+                    dst[i+p] = src[i+p] * opac + one_minus_Sa * dst[i+p];
+                    was_lighter = true;
+                }
             }
-            if (DSTALPHA) {
-                dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
+            if (DSTALPHA && was_lighter) {
+                dst[i+MYPAINT_NUM_CHANS-1] = (Sa + dst[i+MYPAINT_NUM_CHANS-1] * one_minus_Sa);
             }
         }
     }

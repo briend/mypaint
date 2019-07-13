@@ -793,7 +793,6 @@ class RootLayerStack (group.LayerStack):
                           and child_layer.mode != lib.mypaintlib.CombineBumpMapDst
                           and child_layer.mode != lib.mypaintlib.CombineDestinationIn
                           and child_layer.mode != lib.mypaintlib.CombineDestinationOut
-                          and child_layer.mode != lib.mypaintlib.CombineLighter
                           and child_layer.mode != lib.mypaintlib.CombineLighten
                           and (child_layer.bumpself or child_layer.bumpbg))
             if self._get_render_background(spec):
@@ -2019,14 +2018,14 @@ class RootLayerStack (group.LayerStack):
         if not srclayer.visible:
             return data.PaintingLayer(name=srclayer.name)
 
-        if isinstance(srclayer, data.PaintingLayer):
-            if srclayer.mode == lib.mypaintlib.CombineSpectralWGM:
-                return deepcopy(srclayer)
+#        if isinstance(srclayer, data.PaintingLayer):
+#            if srclayer.mode == lib.mypaintlib.CombineSpectralWGM:
+#                return deepcopy(srclayer)
 
         # Backdrops need removing if they combine with this layer's data.
         # Surface-backed layers' tiles can just be used as-is if they're
         # already fairly normal.
-        needs_backdrop_removal = True
+        needs_backdrop_removal = False
         if (srclayer.mode == lib.mypaintlib.CombineNormal
             and srclayer.opacity == 1.0):
 
@@ -2062,10 +2061,10 @@ class RootLayerStack (group.LayerStack):
                 dstlayer.strokes[:0] = layer.strokes
 
         # Might need to render the backdrop, in order to subtract it.
-        bd_ops = []
-        if needs_backdrop_removal:
-            bd_spec = self._get_backdrop_render_spec_for_layer(path)
-            bd_ops = self.get_render_ops(bd_spec, filter="ByPass")
+#        bd_ops = []
+#        if needs_backdrop_removal:
+#            bd_spec = self._get_backdrop_render_spec_for_layer(path)
+#            bd_ops = self.get_render_ops(bd_spec, filter="ByPass")
 
         # Need to render the layer to be normalized too.
         # The ops are processed on top of the tiles bd_ops will render.
@@ -2086,12 +2085,12 @@ class RootLayerStack (group.LayerStack):
         for tx, ty in tiles:
             bd = np.zeros(tiledims, dtype='float32')
             with dstsurf.tile_request(tx, ty, readonly=False) as dst:
-                self._process_ops_list(bd_ops, bd, True, tx, ty, 0)
-                lib.mypaintlib.tile_copy_rgba16_into_rgba16(bd, dst)
+#                self._process_ops_list(bd_ops, bd, True, tx, ty, 0)
+#                lib.mypaintlib.tile_copy_rgba16_into_rgba16(bd, dst)
                 self._process_ops_list(src_ops, dst, True, tx, ty, 0)
-                if bd_ops:
-                    dst[:, :, 3] = 0  # minimize alpha (discard original)
-                    lib.mypaintlib.tile_flat2rgba(dst, bd)
+#                if bd_ops:
+#                    dst[:, :, 3] = 0  # minimize alpha (discard original)
+#                    lib.mypaintlib.tile_flat2rgba(dst, bd)
 
         return dstlayer
 
@@ -2163,18 +2162,18 @@ class RootLayerStack (group.LayerStack):
             raise ValueError("Invalid path for Merge Down")
         # Normalize input
         merge_layers = []
+        # the resulting mode will match the bottom's mode
+        bottom_mode = None
         for p in [target_path, path]:
             assert p is not None
-            layer = self.layer_new_normalized(p)
+            layer = self.deepget(p)
             merge_layers.append(layer)
+            if bottom_mode is None:
+                bottom_mode = layer.mode
         assert None not in merge_layers
         # Build output strokemap, determine set of data tiles to merge
         dstlayer = data.PaintingLayer()
-        srclayer = self.deepget(path)
-        if srclayer.mode == lib.mypaintlib.CombineSpectralWGM:
-            dstlayer.mode = srclayer.mode 
-        else:
-            dstlayer.mode = lib.mypaintlib.CombineNormal
+        dstlayer.mode = bottom_mode
         tiles = set()
         for layer in merge_layers:
             tiles.update(layer.get_tile_coords())
@@ -2198,13 +2197,11 @@ class RootLayerStack (group.LayerStack):
             with dstsurf.tile_request(tx, ty, readonly=False) as dst:
                 for layer in merge_layers:
                     mode = layer.mode
-                    if mode != lib.mypaintlib.CombineSpectralWGM:
-                        mode = lib.mypaintlib.CombineNormal
                     layer._surface.composite_tile(
                         dst, True,
                         tx, ty, mipmap_level=0,
                         mode=mode, opacity=layer.opacity,
-                        opts=np.array([0.5, 0.5], dtype='float32')
+                        opts=None
                     )
         return dstlayer
 

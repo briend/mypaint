@@ -82,19 +82,19 @@ void tile_copy_rgba16_into_rgba16(PyObject * src, PyObject * dst) {
   assert(PyArray_Check(dst));
   assert(PyArray_DIM(dst_arr, 0) == MYPAINT_TILE_SIZE);
   assert(PyArray_DIM(dst_arr, 1) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(dst_arr, 2) == 4);
-  assert(PyArray_TYPE(dst_arr) == NPY_UINT16);
+  assert(PyArray_DIM(dst_arr, 2) == MYPAINT_NUM_CHANS);
+  assert(PyArray_TYPE(dst_arr) == NPY_FLOAT32);
   assert(PyArray_ISCARRAY(dst_arr));
-  assert(PyArray_STRIDES(dst_arr)[1] == 4*sizeof(float));
+  assert(PyArray_STRIDES(dst_arr)[1] == MYPAINT_NUM_CHANS*sizeof(float));
   assert(PyArray_STRIDES(dst_arr)[2] ==   sizeof(float));
 
   assert(PyArray_Check(src));
   assert(PyArray_DIM(src_arr, 0) == MYPAINT_TILE_SIZE);
   assert(PyArray_DIM(src_arr, 1) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(src_arr, 2) == 4);
-  assert(PyArray_TYPE(src_arr) == NPY_UINT16);
+  assert(PyArray_DIM(src_arr, 2) == MYPAINT_NUM_CHANS);
+  assert(PyArray_TYPE(src_arr) == NPY_FLOAT32);
   assert(PyArray_ISCARRAY(src_arr));
-  assert(PyArray_STRIDES(src_arr)[1] == 4*sizeof(float));
+  assert(PyArray_STRIDES(src_arr)[1] == MYPAINT_NUM_CHANS*sizeof(float));
   assert(PyArray_STRIDES(src_arr)[2] ==   sizeof(float));
 #endif
 
@@ -399,107 +399,6 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       *dst_p++ = a;
 
     }
-  }
-}
-
-
-void tile_rgba2flat(PyObject * dst_obj, PyObject * bg_obj) {
-  PyArrayObject* bg = ((PyArrayObject*)bg_obj);
-  PyArrayObject* dst = ((PyArrayObject*)dst_obj);
-
-#ifdef HEAVY_DEBUG
-  assert(PyArray_Check(dst_obj));
-  assert(PyArray_DIM(dst, 0) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(dst, 1) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(dst, 2) == 4);
-  assert(PyArray_TYPE(dst) == NPY_UINT16);
-  assert(PyArray_ISCARRAY(dst));
-
-  assert(PyArray_Check(bg_obj));
-  assert(PyArray_DIM(bg, 0) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(bg, 1) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(bg, 2) == 4);
-  assert(PyArray_TYPE(bg) == NPY_UINT16);
-  assert(PyArray_ISCARRAY(bg));
-#endif
-
-  float * dst_p  = (float*)PyArray_DATA(dst);
-  float * bg_p  = (float*)PyArray_DATA(bg);
-  for (int i=0; i<MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE; i++) {
-    // resultAlpha = 1.0 (thus it does not matter if resultColor is premultiplied alpha or not)
-    // resultColor = topColor + (1.0 - topAlpha) * bottomColor
-    const uint32_t one_minus_top_alpha = 1.0 - dst_p[3];
-    dst_p[0] += ((uint32_t)bg_p[0]);
-    dst_p[1] += ((uint32_t)bg_p[1]);
-    dst_p[2] += ((uint32_t)bg_p[2]);
-    dst_p += 4;
-    bg_p += 4;
-  }
-}
-
-
-void tile_flat2rgba(PyObject * dst_obj, PyObject * bg_obj) {
-
-  PyArrayObject *dst = (PyArrayObject *)dst_obj;
-  PyArrayObject *bg = (PyArrayObject *)bg_obj;
-#ifdef HEAVY_DEBUG
-  assert(PyArray_Check(dst_obj));
-  assert(PyArray_DIM(dst, 0) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(dst, 1) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(dst, 2) == 4);
-  assert(PyArray_TYPE(dst) == NPY_UINT16);
-  assert(PyArray_ISCARRAY(dst));
-
-  assert(PyArray_Check(bg_obj));
-  assert(PyArray_DIM(bg, 0) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(bg, 1) == MYPAINT_TILE_SIZE);
-  assert(PyArray_DIM(bg, 2) == 4);
-  assert(PyArray_TYPE(bg) == NPY_UINT16);
-  assert(PyArray_ISCARRAY(bg));
-#endif
-
-  float * dst_p  = (float*)PyArray_DATA(dst);
-  float * bg_p  = (float*)PyArray_DATA(bg);
-  for (int i=0; i<MYPAINT_TILE_SIZE*MYPAINT_TILE_SIZE; i++) {
-
-    // 1. calculate final dst.alpha
-    float final_alpha = dst_p[3];
-    for (int i=0; i<3;i++) {
-      int32_t color_change = (int32_t)dst_p[i] - bg_p[i];
-      float minimal_alpha;
-      if (color_change > 0) {
-        minimal_alpha = (int64_t)color_change*1.0 / (1.0 - bg_p[i]);
-      } else if (color_change < 0) {
-        minimal_alpha = (int64_t)-color_change*1.0 / bg_p[i];
-      } else {
-        minimal_alpha = 0;
-      }
-      final_alpha = MAX(final_alpha, minimal_alpha);
-#ifdef HEAVY_DEBUG
-      assert(minimal_alpha <= 1.0);
-      assert(final_alpha   <= 1.0);
-#endif
-    }
-
-    // 2. calculate dst.color and update dst
-    dst_p[3] = final_alpha;
-    if (final_alpha > 0) {
-      for (int i=0; i<3;i++) {
-        int32_t color_change = (int32_t)dst_p[i] - bg_p[i];
-        int64_t res = bg_p[i] + (int64_t)color_change*1.0 / final_alpha;
-        res = CLAMP(res, 0, 1.0); // fix rounding errors
-        dst_p[i] = res;
-#ifdef HEAVY_DEBUG
-        assert(dst_p[i] <= dst_p[3]);
-#endif
-      }
-    } else {
-      dst_p[0] = 0;
-      dst_p[1] = 0;
-      dst_p[2] = 0;
-    }
-    dst_p += 4;
-    bg_p += 4;
   }
 }
 
