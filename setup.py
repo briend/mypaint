@@ -407,9 +407,6 @@ class BuildExt (build_ext):
                 "-O0",
             ])
             print("debug enabled")
-        else:
-            linkflags.append("-O3")
-            ccflags.append("-O3")
 
         return build_ext.build_extension(self, ext)
 
