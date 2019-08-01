@@ -229,6 +229,9 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             float slope = 0.0;
             const int reach = 1;
             float center = 0.0;
+            if (src[i+MYPAINT_NUM_CHANS-1] <= 0.0) {
+              continue;
+            }
             for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
               center += src[i+c];
             }
@@ -237,80 +240,97 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                 if (i >= stride * p) {
                     int o = i - stride * p;
                     float _slope = 0.0;
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-                    if (_slope > center) {
-                      slope += abs(_slope - center);
+                    float _slope_a = src[o+MYPAINT_NUM_CHANS-1];
+                    if (_slope_a > 0.0) {
+                      for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                        _slope += src[o+c];
+                      }
+                      if (_slope < center) {
+                        slope += abs(_slope - center);
+                      }
                     }
                 } else {
                     int o = i + stride * p;
                     float _slope = 0.0;
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-                    if (_slope > center) {
-                      slope += abs(_slope - center);
+                    if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
+                      for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                        _slope += src[o+c];
+                      }
+                      if (_slope < center) {
+                        slope += abs(_slope - center);
+                      }
                     }
                 }
                 // East
                 if (i % stride < stride - MYPAINT_NUM_CHANS * p) {
                     int o = i + MYPAINT_NUM_CHANS * p;
                     float _slope = 0.0;
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-                    if (_slope > center) {
-                      slope += abs(_slope - center);
+                    if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
+                      for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                        _slope += src[o+c];
+                      }
+                      if (_slope < center) {
+                        slope += abs(_slope - center);
+                      }
                     }
                 } else {
                     int o = i - MYPAINT_NUM_CHANS * p;
                     float _slope = 0.0;
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-                    if (_slope > center) {
-                      slope += abs(_slope - center);
+                    if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
+                      for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                        _slope += src[o+c];
+                      }
+                      if (_slope < center) {
+                        slope += abs(_slope - center);
+                      }
                     }
                 }
                 // West
                 if (i % stride >= MYPAINT_NUM_CHANS * p) {
                     int o = i - MYPAINT_NUM_CHANS * p;
                     float _slope = 0.0;
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-                    if (_slope < center) {
-                      slope += abs(_slope - center);
+                    if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
+                      for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                        _slope += src[o+c];
+                      }
+                      if (_slope > center) {
+                        slope += abs(_slope - center);
+                      }
                     }
                 } else {
                     int o = i + MYPAINT_NUM_CHANS * p;
                     float _slope = 0.0;
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-                    if (_slope < center) {
-                      slope += abs(_slope - center);
+                    if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
+                      for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                        _slope += src[o+c];
+                      }
+                      if (_slope > center) {
+                        slope += abs(_slope - center);
+                      }
                     }
                 }
                 // South
                 if (i < BUFSIZE - stride * p) {
                     int o = i + stride * p;
                     float _slope = 0.0;
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-                    if (_slope < center) {
-                      slope += abs(_slope - center);
+                    if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
+                      for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                        _slope += src[o+c];
+                      }
+                      if (_slope > center) {
+                        slope += abs(_slope - center);
+                      }
                     }
                 } else {
                     int o = i - stride * p;
                     float _slope = 0.0;
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-                    if (_slope < center) {
-                      slope += abs(_slope - center);
+                    if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
+                      for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                        _slope += src[o+c];
+                      }
+                      if (_slope > center) {
+                        slope += abs(_slope - center);
+                      }
                     }
                 }
             }
