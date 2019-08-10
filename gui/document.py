@@ -1569,12 +1569,12 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         """``MoreOpaque`` GtkAction callback"""
         # FIXME: hm, looks this slider should be logarithmic?
         adj = self.app.brush_adjustment['opaque']
-        adj.set_value(adj.get_value() * 1.8)
+        adj.set_value(adj.get_value() * 1.1)
 
     def less_opaque_cb(self, action):
         """``MoreOpaque`` GtkAction callback"""
         adj = self.app.brush_adjustment['opaque']
-        adj.set_value(adj.get_value() / 1.8)
+        adj.set_value(adj.get_value() / 1.1)
 
     def _place_overlay(self, x, y, r, g, b):
         if self._color_overlay is None:
