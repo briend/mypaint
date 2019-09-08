@@ -20,6 +20,7 @@ import logging
 
 from gettext import gettext as _
 import numpy as np
+import pickle
 
 from . import mypaintlib
 from . import helpers
@@ -501,6 +502,9 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
         bbox = lib.surface.get_tiles_bbox(dirty_tiles)
         self.notify_observers(*bbox)
 
+    def load_from_pickle(self, pickle):
+        self._load_tiledict(pickle)
+
     def load_from_numpy(self, arr, x, y):
         """Loads tile data from a numpy array
 
@@ -656,13 +660,14 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             kwargs['single_tile_pattern'] = True
         lib.surface.save_as_png(self, filename, *args, **kwargs)
 
-    def save_as_npy(self, filename, *args, **kwargs):
+    def save_as_pkl(self, filename, *args, **kwargs):
         if 'alpha' not in kwargs:
             kwargs['alpha'] = True
 
         if len(self.tiledict) == 1 and self.looped:
             kwargs['single_tile_pattern'] = True
-        np.save(filename, self.tiledict)
+        with open(filename, 'wb') as outfile:
+            pickle.dump(self.tiledict, outfile, protocol=pickle.HIGHEST_PROTOCOL)
 
     def get_bbox(self):
         return lib.surface.get_tiles_bbox(self.tiledict)

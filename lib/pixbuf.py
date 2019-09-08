@@ -29,6 +29,8 @@ import lib.feedback
 
 import logging
 import os
+import numpy as np
+import pickle
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +174,17 @@ def load_from_zipfile(datazip, filename, progress=None):
     if progress.items is not None:
         raise ValueError("progress argument must be unsized")
 
+    # try to load the pickled npy sidecar data first
+    src_rootname, src_ext = os.path.splitext(filename)
+    pklfile = src_rootname + '.pkl'
+    pickledata = None
+    try:
+        datafp = datazip.open(pklfile, mode='r')
+        info = datazip.getinfo(pklfile)
+        pickledata = pickle.load(datafp)
+    except Exception:
+        logger.warning('no pickle data for layer %r', pklfile)
+
     try:
         datafp = datazip.open(filename, mode='r')
         info = datazip.getinfo(filename)
@@ -189,7 +202,7 @@ def load_from_zipfile(datazip, filename, progress=None):
     pixbuf = load_from_stream(datafp, progress=progress)
     datafp.close()
     progress.close()
-    return pixbuf
+    return {'pixbuf': pixbuf, 'pickledata': pickledata}
 
 
 ## Module testing

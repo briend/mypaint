@@ -2519,7 +2519,7 @@ class RootLayerStack (group.LayerStack):
                     filename=bg_src,
                     progress=progress,
                 )
-                self.set_background(bg_pixbuf)
+                self.set_background(bg_pixbuf['pixbuf'])
                 self._no_background = False
                 return
             except tiledsurface.BackgroundError as e:

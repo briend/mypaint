@@ -120,6 +120,10 @@ class SurfaceBackedLayer (core.LayerBase, lib.autosave.Autosaveable):
         """Load the backing surface image's tiles from another surface"""
         self._surface.load_from_surface(surface)
 
+    def load_from_pickle(self, pickle):
+        self._surface.load_from_pickle(pickle)
+        self.strokes = []
+
     def load_from_strokeshape(self, strokeshape, bbox=None, center=None):
         """Load image tiles from a stroke shape object.
 
@@ -292,10 +296,12 @@ class SurfaceBackedLayer (core.LayerBase, lib.autosave.Autosaveable):
 
     def load_surface_from_pixbuf(self, pixbuf, x=0, y=0):
         """Loads the layer's surface from a GdkPixbuf"""
-        arr = helpers.gdkpixbuf2numpy(pixbuf)
+        arr = helpers.gdkpixbuf2numpy(pixbuf['pixbuf'])
         surface = tiledsurface.Surface()
         bbox = surface.load_from_numpy(arr, x, y)
         self.load_from_surface(surface)
+        if pixbuf['pickledata'] is not None:
+            self.load_from_pickle(pixbuf['pickledata'])
         return bbox
 
     def clear(self):
@@ -472,21 +478,21 @@ class SurfaceBackedLayer (core.LayerBase, lib.autosave.Autosaveable):
         """Internal: saves a rectangle of the surface to an ORA zip"""
         # Write PNG data via a tempfile
         pngname = self._make_refname(prefix, path, ".png")
-        npyname = self._make_refname(prefix, path, ".npy")
+        pklname = self._make_refname(prefix, path, ".pkl")
         pngpath = os.path.join(tmpdir, pngname)
-        npypath = os.path.join(tmpdir, npyname)
+        pklpath = os.path.join(tmpdir, pklname)
         t0 = time.time()
         self._surface.save_as_png(pngpath, *rect, progress=progress, **kwargs)
-        self._surface.save_as_npy(npypath, *rect, progress=progress, **kwargs)
+        self._surface.save_as_pkl(pklpath, *rect, progress=progress, **kwargs)
         t1 = time.time()
         logger.debug('%.3fs surface saving %r', t1 - t0, pngname)
         # Archive and remove
         storepath = "data/%s" % (pngname,)
         orazip.write(pngpath, storepath)
-        storepath = "data/%s" % (npyname,)
-        orazip.write(npypath, storepath)
+        storepath_pkl = "data/%s" % (pklname,)
+        orazip.write(pklpath, storepath_pkl)
         os.remove(pngpath)
-        os.remove(npypath)
+        os.remove(pklpath)
         # Return details
         png_bbox = tuple(rect)
         png_x, png_y = png_bbox[0:2]
@@ -1456,6 +1462,10 @@ class StrokemappedPaintingLayer (SimplePaintingLayer):
     def load_from_surface(self, surface):
         """Load the surface image's tiles from another surface"""
         super(StrokemappedPaintingLayer, self).load_from_surface(surface)
+        self.strokes = []
+
+    def load_from_pickle(self, pickle):
+        super(StrokemappedPaintingLayer, self).load_from_pickle(pickle)
         self.strokes = []
 
     def load_from_openraster(self, orazip, elem, cache_dir, progress,
