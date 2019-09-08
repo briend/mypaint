@@ -472,15 +472,21 @@ class SurfaceBackedLayer (core.LayerBase, lib.autosave.Autosaveable):
         """Internal: saves a rectangle of the surface to an ORA zip"""
         # Write PNG data via a tempfile
         pngname = self._make_refname(prefix, path, ".png")
+        npyname = self._make_refname(prefix, path, ".npy")
         pngpath = os.path.join(tmpdir, pngname)
+        npypath = os.path.join(tmpdir, npyname)
         t0 = time.time()
         self._surface.save_as_png(pngpath, *rect, progress=progress, **kwargs)
+        self._surface.save_as_npy(npypath, *rect, progress=progress, **kwargs)
         t1 = time.time()
         logger.debug('%.3fs surface saving %r', t1 - t0, pngname)
         # Archive and remove
         storepath = "data/%s" % (pngname,)
         orazip.write(pngpath, storepath)
+        storepath = "data/%s" % (npyname,)
+        orazip.write(npypath, storepath)
         os.remove(pngpath)
+        os.remove(npypath)
         # Return details
         png_bbox = tuple(rect)
         png_x, png_y = png_bbox[0:2]

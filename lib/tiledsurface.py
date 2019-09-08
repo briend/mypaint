@@ -656,6 +656,14 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             kwargs['single_tile_pattern'] = True
         lib.surface.save_as_png(self, filename, *args, **kwargs)
 
+    def save_as_npy(self, filename, *args, **kwargs):
+        if 'alpha' not in kwargs:
+            kwargs['alpha'] = True
+
+        if len(self.tiledict) == 1 and self.looped:
+            kwargs['single_tile_pattern'] = True
+        np.save(filename, self.tiledict)
+
     def get_bbox(self):
         return lib.surface.get_tiles_bbox(self.tiledict)
 
