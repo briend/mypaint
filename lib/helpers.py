@@ -374,7 +374,7 @@ def get_pixbuf(filename):
         thumb_entry = "Thumbnails/thumbnail.png"
         try:
             with zipfile.ZipFile(filename) as orazip:
-                pixbuf = lib.pixbuf.load_from_zipfile(orazip, thumb_entry)
+                pixbuf = lib.pixbuf.load_from_zipfile(orazip, thumb_entry)['pixbuf']
         except Exception:
             logger.exception(
                 "Failed to read %r entry of %r",
