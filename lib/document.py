@@ -2012,7 +2012,7 @@ def _save_layers_to_new_orazip(root_stack, filename, bbox=None,
 
     orazip = zipfile.ZipFile(
         filename, 'w',
-        compression=zipfile.ZIP_STORED,
+        compression=zipfile.ZIP_DEFLATED,
     )
 
     # The mimetype entry must be first

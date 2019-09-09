@@ -299,9 +299,10 @@ class SurfaceBackedLayer (core.LayerBase, lib.autosave.Autosaveable):
         arr = helpers.gdkpixbuf2numpy(pixbuf['pixbuf'])
         surface = tiledsurface.Surface()
         bbox = surface.load_from_numpy(arr, x, y)
-        self.load_from_surface(surface)
         if pixbuf['pickledata'] is not None:
             self.load_from_pickle(pixbuf['pickledata'])
+        else:
+            self.load_from_surface(surface)
         return bbox
 
     def clear(self):
