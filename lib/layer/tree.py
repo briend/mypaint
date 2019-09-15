@@ -223,6 +223,10 @@ class RootLayerStack (group.LayerStack):
         self.current_path = ()
         self._render_cache_clear()
 
+    def clear_cache(self):
+        """Clear the cache"""
+        self._render_cache_clear()
+
     def ensure_populated(self, layer_class=None):
         """Ensures that the stack is non-empty by making a new layer if needed
 

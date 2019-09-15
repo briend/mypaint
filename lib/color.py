@@ -28,9 +28,6 @@ import numpy as np
 import math
 from scipy.cluster.vq import kmeans2
 import colour
-from collections import namedtuple
-import sys
-import random
 
 from gi.repository import GdkPixbuf
 from lib import helpers
@@ -1546,18 +1543,11 @@ def CAM16_to_RGB(self):
 _WGM_EPSILON = 0.0001
 
 
-from colour.colorimetry import (STANDARD_OBSERVERS_CMFS,
-                                SpectralDistribution, SpectralShape,
-                                sd_ones, sd_zeros)
-from colour.utilities import (to_domain_1, from_range_100, CaseInsensitiveMapping, as_float_array,
-                              filter_kwargs, from_range_100, runtime_warning, tsplit)
-
-from colour import (
-    STANDARD_OBSERVERS_CMFS,
-    SpectralDistribution,
-    SpectralShape,
-    sd_ones,
-    colorimetry)
+from colour.colorimetry import (
+                                SpectralDistribution,
+                                sd_ones)
+from colour.utilities import (to_domain_1, from_range_100,
+                               tsplit)
 
 from scipy.optimize import minimize, Bounds
 
@@ -1653,7 +1643,7 @@ def sd_to_XYZ_integration(
     return from_range_100(XYZ)
 
 
-def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=0.5, min_refl=0.0001):
+def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=1.0, min_refl=0.0001):
 
     global spec_r, spec_g, spec_b, T_MATRIX
     # This is our target display colourspace
@@ -1683,10 +1673,17 @@ def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=0.5
     # CMFS that match the wavelengths from the spectral_space
     CMFS = colour.colorimetry.XYZ_ColourMatchingFunctions(colour.CMFS['cie_2_1931'][spectral_space.wavelengths])
     CMFS_transposed = CMFS.values.transpose() # transpose the CMFS
-
+    from gui.application import get_app
+    app = get_app()
+    p = app.preferences
     if illuminant_XYZ is None:
+        if p['color.dimension_illuminant'] == "custom_XYZ":
+                illuminant_XYZ  = p['color.dimension_illuminant_XYZ']
+        else:
+                illuminant_XYZ  = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931'][p['color.dimension_illuminant']])
         # illuminant_XYZ = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65'])
-        illuminant_XYZ = colour.xy_to_XYZ(colour.CCT_to_xy('5500'))
+        # illuminant_XYZ = colour.xy_to_XYZ(colour.CCT_to_xy('5500'))
+    print("illuminant is ", illuminant_XYZ)
 
     # create a "template" for the illuminant.  We need to create an SPD from the given wavelengths to produce the XYZ
     illuminant_template = colour.SpectralDistribution(np.repeat(1.0, spectral_space.wavelengths.shape), spectral_space.wavelengths)
@@ -1707,8 +1704,7 @@ def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=0.5
     # generate matrix for spectral->RGB conversion
     T_MATRIX = np.ascontiguousarray(np.matmul(XYZ_to_RGB_m, np.matmul(CMFS_transposed, np.diag(illuminant_SPD.values)) # weight for whitepoint
                                    / np.matmul(CMFS_transposed[1], illuminant_SPD.values)), dtype='float32')
-    print("t_matrix is", T_MATRIX)
-    print("blue is", spec_b)
+
     # update the C++ extensions as well
     mypaintlib.update_spectral(spec_r, spec_g, spec_b, T_MATRIX);
 

@@ -455,7 +455,7 @@ class Application (object):
             except AttributeError:
                 pass
 
-        self.apply_settings()
+        self.apply_settings(startup=True)
         self.drawWindow.present()
 
         # Handle fullscreen command line option
@@ -482,11 +482,16 @@ class Application (object):
         with open(settingspath, 'wb') as f:
             f.write(json_data)
 
-    def apply_settings(self):
+    def apply_settings(self, startup=False):
         """Applies the current settings.
 
         Called at startup and from the prefs dialog.
         """
+        if not startup:
+            # set up colorspace
+            lib.color.Generate_Spectral_Tables()
+            doc = self.doc.model
+            doc.layer_stack.clear_cache()
         self._apply_pressure_mapping_settings()
         self._apply_button_mapping_settings()
         self._apply_autosave_settings()
@@ -606,7 +611,7 @@ class Application (object):
             'color.dimension_illuminant_XYZ': '',
             'color.limit_purity': -1.0,
             'color.reset_intent_after_gamut_map': False,
-            'color.average_use_dominant': True,
+            'color.average_use_dominant': False,
             'color.pick_blend_reverse': False,
             'color.pick_blend_use_pressure': False,
             'color.adjuster_min_wait': 300,
