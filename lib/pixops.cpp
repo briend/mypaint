@@ -10,7 +10,7 @@
 #include "pixops.hpp"
 
 #include "common.hpp"
-#include "compositing.hpp"
+//#include "compositing.hpp"
 #include "blending.hpp"
 #include "fastapprox/fastpow.h"
 
@@ -25,6 +25,43 @@
 
 #include <stdlib.h>
 #include <math.h>
+
+
+float T_MATRIX[3][NUM_WAVES] = {0.0f};
+
+float spectral_r[NUM_WAVES] = {0.0f};
+
+float spectral_g[NUM_WAVES] = {0.0f};
+
+float spectral_b[NUM_WAVES] = {0.0f};
+
+float SPECTRAL_WEIGHTS_SUM = 0.0f;
+
+void
+update_spectral_c(const float * spec_r, const float * spec_g, const float * spec_b, const float * t_matrix_new) {
+
+  for (int i=0;i<NUM_WAVES;i++) {
+    for (int j=0;j<3;j++) {
+      T_MATRIX[j][i] = t_matrix_new[(j * (NUM_WAVES)) + i];
+    }
+    spectral_r[i] = spec_r[i];
+    spectral_g[i] = spec_g[i];
+    spectral_b[i] = spec_b[i];
+    SPECTRAL_WEIGHTS_SUM += spec_r[i] + spec_g[i] + spec_b[i];
+  }
+}
+
+void
+update_spectral(PyObject *spec_r, PyObject *spec_g, PyObject *spec_b, PyObject *t_matrix_new) {
+
+  PyArrayObject* spec_r_arr = ((PyArrayObject*)spec_r);
+  PyArrayObject* spec_g_arr = ((PyArrayObject*)spec_g);
+  PyArrayObject* spec_b_arr = ((PyArrayObject*)spec_b);
+  PyArrayObject* t_matrix_arr = ((PyArrayObject*)t_matrix_new);
+
+  update_spectral_c((float*)PyArray_DATA(spec_r_arr), (float*)PyArray_DATA(spec_g_arr), (float*)PyArray_DATA(spec_b_arr), (float*)PyArray_DATA(t_matrix_arr));
+
+}
 
 void
 tile_downscale_rgba16_c(const float *src, int src_strides, float *dst,
@@ -533,6 +570,7 @@ combine_mode_get_info(enum CombineMode mode)
             "name", op->get_name()
         );
 }
+
 
 
 

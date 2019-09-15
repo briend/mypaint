@@ -23,27 +23,20 @@
 #include <math.h>
 #include <cstdio>
 
-static const float T_MATRIX_SMALL[3][NUM_WAVES] = {{0.088688384631047, -0.033324923719516, -0.002151997579192,
-  -0.007051952965538, -0.632215054562246, 1.382222884885893, 0.103544620506161},
- {-0.079153682170459, -0.004289508134047, 0.001818332974765, 0.008633447437121,
-  1.220255539120574, -0.103597442877585, -0.011093719072566},
- {0.568628558510617, 0.525725695518964, 0.002166526642066, 0.000067954428273,
-  -0.108086836427399, -0.015075717909452, -0.000714640619377}};
 
-static const float spectral_r_small[NUM_WAVES] = {0.015118827139972, 0.018244753356220, 0.028028111807405, 0.043179460050345,
- 0.067154869563762, 0.686709823363608, 0.897219406952636};
+extern float T_MATRIX[3][NUM_WAVES];
 
-static const float spectral_g_small[NUM_WAVES] = {0.075714499304728, 0.104056445141605, 0.210008756476146, 0.424904304806374,
- 0.855639860506995, 0.365637159759551, 0.345332969547009};
+extern float spectral_r[NUM_WAVES];
 
-static const float spectral_b_small[NUM_WAVES] = {0.816231569276521, 1.024805860576951, 1.024805685467384, 1.024803703202828,
- 0.047862925501399, 0.001000080038470, 0.001000000000000};
+extern float spectral_g[NUM_WAVES];
+
+extern float spectral_b[NUM_WAVES];
 
 /*
   The sum of all channel coefficients - this _should be_ a compile-time
   constant, but that is tricky to implement nicely for floats without C++14
 */
-constexpr float SPECTRAL_WEIGHTS_SUM = 9.14908021086103;
+extern float SPECTRAL_WEIGHTS_SUM;
 
 inline void
 rgb_to_spectral (float r, float g, float b, float *spectral_) {
@@ -54,15 +47,15 @@ rgb_to_spectral (float r, float g, float b, float *spectral_) {
   //upsample rgb to spectral primaries
   float spec_r[NUM_WAVES] = {0};
   for (int i=0; i < NUM_WAVES; i++) {
-    spec_r[i] = spectral_r_small[i] * r;
+    spec_r[i] = spectral_r[i] * r;
   }
   float spec_g[NUM_WAVES] = {0};
   for (int i=0; i < NUM_WAVES; i++) {
-    spec_g[i] = spectral_g_small[i] * g;
+    spec_g[i] = spectral_g[i] * g;
   }
   float spec_b[NUM_WAVES] = {0};
   for (int i=0; i < NUM_WAVES; i++) {
-    spec_b[i] = spectral_b_small[i] * b;
+    spec_b[i] = spectral_b[i] * b;
   }
   //collapse into one spd
   for (int i=0; i<NUM_WAVES; i++) {
@@ -75,9 +68,9 @@ inline void
 spectral_to_rgb (float *spectral, float *rgb_) {
   float offset = 1.0 - WGM_EPSILON;
   for (int i=0; i<NUM_WAVES; i++) {
-    rgb_[0] += T_MATRIX_SMALL[0][i] * exp2f(spectral[i]);
-    rgb_[1] += T_MATRIX_SMALL[1][i] * exp2f(spectral[i]);
-    rgb_[2] += T_MATRIX_SMALL[2][i] * exp2f(spectral[i]);
+    rgb_[0] += T_MATRIX[0][i] * exp2f(spectral[i]);
+    rgb_[1] += T_MATRIX[1][i] * exp2f(spectral[i]);
+    rgb_[2] += T_MATRIX[2][i] * exp2f(spectral[i]);
   }
   for (int i=0; i<3; i++) {
     rgb_[i] = CLAMP((rgb_[i] - WGM_EPSILON) / offset, 0.0f, (1.0));

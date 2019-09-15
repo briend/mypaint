@@ -279,6 +279,9 @@ class Application (object):
         self._preferences = lib.observable.ObservableDict()
         self.load_settings()
 
+        # set up colorspace
+        lib.color.Generate_Spectral_Tables()
+
         # Unmanaged main brush.
         # Always the same instance (we can attach settings_observers).
         # This brush is where temporary changes (color, size...) happen.

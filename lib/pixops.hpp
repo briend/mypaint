@@ -14,6 +14,12 @@
 #include <Python.h>
 
 
+// Updates the spectral conversion tables
+
+void
+update_spectral(PyObject *spec_r, PyObject *spec_g, PyObject *spec_b, PyObject *t_matrix);
+
+
 // Downscales a tile to half its size using bilinear interpolation.  Used for
 // generating mipmaps for tiledsurface and background.
 
@@ -52,7 +58,6 @@ void tile_convert_rgbu16_to_rgbu8(PyObject *src, PyObject *dst, const float EOTF
 // used mainly for loading layers (transparent PNG)
 
 void tile_convert_rgba8_to_rgba16(PyObject *src, PyObject *dst, const float EOTF);
-
 
 // Calculates a 1-bit bitmap of the stroke shape using two snapshots of the
 // layer (the layer before and after the stroke). Used in strokemap.py

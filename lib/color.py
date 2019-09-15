@@ -34,9 +34,27 @@ import random
 
 from gi.repository import GdkPixbuf
 from lib import helpers
+from . import mypaintlib
 
 from lib.pycompat import xrange
 from lib.pycompat import PY3
+
+
+spec_r = np.array([0.015118827139972, 0.018244753356220, 0.028028111807405, 0.043179460050345,
+                          0.067154869563762, 0.686709823363608, 0.897219406952636], dtype='float32')
+
+spec_g = np.array([0.075714499304728, 0.104056445141605, 0.210008756476146, 0.424904304806374,
+                          0.855639860506995, 0.365637159759551, 0.345332969547009], dtype='float32')
+
+spec_b = np.array([0.816231569276521, 1.024805860576951, 1.024805685467384, 1.024803703202828,
+                              0.047862925501399, 0.001000080038470, 0.001000000000000], dtype='float32')
+
+T_MATRIX = (np.array([[0.088688384631047, -0.033324923719516, -0.002151997579192,
+                      -0.007051952965538, -0.632215054562246, 1.382222884885893, 0.103544620506161],
+                     [-0.079153682170459, -0.004289508134047, 0.001818332974765, 0.008633447437121,
+                      1.220255539120574, -0.103597442877585, -0.011093719072566],
+                     [0.568628558510617, 0.525725695518964, 0.002166526642066, 0.000067954428273,
+                      -0.108086836427399, -0.015075717909452, -0.000714640619377]], dtype='float32'))
 
 ## Lightweight color objects
 
@@ -1527,9 +1545,172 @@ def CAM16_to_RGB(self):
 # weighted geometric mean must avoid absolute zero
 _WGM_EPSILON = 0.0001
 
-# These spectral reflection curves do not sum to 1.0.
-# but CMFs have been weighted w/ D65 SPD
 
+from colour.colorimetry import (STANDARD_OBSERVERS_CMFS,
+                                SpectralDistribution, SpectralShape,
+                                sd_ones, sd_zeros)
+from colour.utilities import (to_domain_1, from_range_100, CaseInsensitiveMapping, as_float_array,
+                              filter_kwargs, from_range_100, runtime_warning, tsplit)
+
+from colour import (
+    STANDARD_OBSERVERS_CMFS,
+    SpectralDistribution,
+    SpectralShape,
+    sd_ones,
+    colorimetry)
+
+from scipy.optimize import minimize, Bounds
+
+#DEFINE OUR XYZ-->Spectral Solver
+
+def XYZ_to_spectral(
+        XYZ,
+        cmfs=colour.STANDARD_OBSERVERS_CMFS['CIE 1931 2 Degree Standard Observer'],
+        tolerance=1e-15,
+        maximum_iterations=25000,
+        illuminant=sd_ones(),
+        max_refl=1.0,
+        min_refl=0.0):
+
+    XYZ = to_domain_1(XYZ)
+    spd = colour.SpectralDistribution(np.repeat(np.log(0.0001), illuminant.wavelengths.shape), illuminant.wavelengths)
+
+    def function_objective(a):
+        """
+        Objective function.
+        """
+        #return np.linalg.norm(a) / 21.
+        return np.sum(np.gradient(np.exp(a), 2))
+
+    def function_constraint(a):
+        """
+        Function defining the constraint for XYZ=XYZ.
+        """
+
+        spd[:] = np.exp(a)
+        #spd[:] = (a)
+
+        return (XYZ -
+                (sd_to_XYZ_integration(
+                    spd, cmfs=cmfs, illuminant=illuminant)))
+
+    def function_constraint2(a):
+        """
+        Function defining constraint on emission/reflectance
+        """
+        if max_refl <= 0.0:
+            return 0.0
+        return max_refl - np.exp(np.max(a)) * 100.
+        #return max_refl - np.max(a) * 100.
+
+    wavelengths = spd.wavelengths
+    # set bounds to avoid incredibly dark black holes
+    bounds = Bounds(np.repeat(np.log(min_refl), illuminant.wavelengths.shape), np.repeat(np.log(max_refl), illuminant.wavelengths.shape))
+    #bounds = Bounds(np.repeat(min_refl, illuminant.wavelengths.shape), np.repeat(max_refl, illuminant.wavelengths.shape))
+    print(bounds)
+    constraints = ({'type': 'eq', 'fun': function_constraint},
+                   {'type': 'ineq', 'fun': function_constraint2})
+
+    result = minimize(
+        function_objective,
+        spd.values,
+        method='SLSQP',
+        constraints=constraints,
+        bounds=bounds,
+        options={
+            'ftol': tolerance,
+            'maxiter': maximum_iterations,
+            'disp': True
+        })
+
+    # return the result in linear form instead of log
+    return SpectralDistribution(
+        (from_range_100(np.exp(result.x) * 100)),
+        #(from_range_100(result.x * 100)),
+        wavelengths,
+        name='Meng (2015) - {0}'.format(XYZ))
+
+
+def sd_to_XYZ_integration(
+      sd,
+      cmfs=None,
+      illuminant=sd_ones(),
+      k=None):
+
+    S = illuminant.values
+    x_bar, y_bar, z_bar = tsplit(cmfs.values)
+    R = sd.values
+
+    dw = cmfs.shape.interval  #what is this for?
+
+    k = 100 / (np.sum(y_bar * S) * dw) if k is None else k
+
+    X_p = R * x_bar * S * dw
+    Y_p = R * y_bar * S * dw
+    Z_p = R * z_bar * S * dw
+
+    XYZ = k * np.sum(np.array([X_p, Y_p, Z_p]), axis=-1)
+    return from_range_100(XYZ)
+
+
+def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=0.5, min_refl=0.0001):
+
+    global spec_r, spec_g, spec_b, T_MATRIX
+    # This is our target display colourspace
+    colorspacetarget = colour.models.sRGB_COLOURSPACE
+
+    # this is our model colorspace
+    colorspace =  colour.models.sRGB_COLOURSPACE
+
+    colorspace.use_derived_transformation_matrices(True)
+    colorspacetarget.use_derived_transformation_matrices(True)
+
+    RGB_to_XYZ_m = colorspace.RGB_to_XYZ_matrix
+
+    XYZ_to_RGB_m = colorspacetarget.XYZ_to_RGB_matrix
+
+    if wavelengths is None:
+        wavelengths = {
+                420: 0.0,
+                467: 0.0,
+                490: 0.0,
+                514: 0.0,
+                532: 0.0,
+                630: 0.0,
+                680: 0.0
+               }
+    spectral_space = SpectralDistribution(wavelengths)
+    # CMFS that match the wavelengths from the spectral_space
+    CMFS = colour.colorimetry.XYZ_ColourMatchingFunctions(colour.CMFS['cie_2_1931'][spectral_space.wavelengths])
+    CMFS_transposed = CMFS.values.transpose() # transpose the CMFS
+
+    if illuminant_XYZ is None:
+        # illuminant_XYZ = colour.xy_to_XYZ(colour.ILLUMINANTS['cie_2_1931']['D65'])
+        illuminant_XYZ = colour.xy_to_XYZ(colour.CCT_to_xy('5500'))
+
+    # create a "template" for the illuminant.  We need to create an SPD from the given wavelengths to produce the XYZ
+    illuminant_template = colour.SpectralDistribution(np.repeat(1.0, spectral_space.wavelengths.shape), spectral_space.wavelengths)
+    # generate the SPD to produce the illuminant XYZ (D65 or whatever)
+    illuminant_SPD = XYZ_to_spectral(illuminant_XYZ, cmfs=CMFS, illuminant=illuminant_template, max_refl=1.0, min_refl = 0.0001)
+
+    # generate primaries for r, g, b
+    red_XYZ = np.sum([1.,0.,0.] * RGB_to_XYZ_m, axis=1)
+    #red_spd = XYZ_to_spectral(target_XYZ, cmfs=CMFS.align(shape), illuminant=illuminant_SPD, interval=interval, tolerance=tol, max_refl=max_refl)
+    spec_r = np.ascontiguousarray(XYZ_to_spectral(red_XYZ, cmfs=CMFS, illuminant=illuminant_SPD, max_refl=max_refl, min_refl=min_refl).values, dtype='float32')
+
+    green_XYZ = np.sum([0.,1.,0.] * RGB_to_XYZ_m, axis=1)
+    spec_g = np.ascontiguousarray(XYZ_to_spectral(green_XYZ, cmfs=CMFS, illuminant=illuminant_SPD, max_refl=max_refl, min_refl=min_refl).values, dtype='float32')
+
+    blue_XYZ = np.sum([0.,0.,1.] * RGB_to_XYZ_m, axis=1)
+    spec_b = np.ascontiguousarray(XYZ_to_spectral(blue_XYZ, cmfs=CMFS, illuminant=illuminant_SPD, max_refl=max_refl, min_refl=min_refl).values, dtype='float32')
+
+    # generate matrix for spectral->RGB conversion
+    T_MATRIX = np.ascontiguousarray(np.matmul(XYZ_to_RGB_m, np.matmul(CMFS_transposed, np.diag(illuminant_SPD.values)) # weight for whitepoint
+                                   / np.matmul(CMFS_transposed[1], illuminant_SPD.values)), dtype='float32')
+    print("t_matrix is", T_MATRIX)
+    print("blue is", spec_b)
+    # update the C++ extensions as well
+    mypaintlib.update_spectral(spec_r, spec_g, spec_b, T_MATRIX);
 
 def RGB_to_Spectral(rgb):
     """Converts RGB to 10 segments spectral power distribution curve.
@@ -1542,122 +1723,8 @@ def RGB_to_Spectral(rgb):
     r = r * offset + _WGM_EPSILON
     g = g * offset + _WGM_EPSILON
     b = b * offset + _WGM_EPSILON
-    # Spectral primaries derived by an optimization routine devised by
-    # Scott Allen Burns. Smooth curves <= 1.0 to match XYZ
-    
-#    import colour
-#    import numpy as np
-#    from scipy.optimize import minimize
-#    from colour.colorimetry import (STANDARD_OBSERVERS_CMFS,
-#                                SpectralShape,
-#                                sd_ones, sd_to_XYZ_integration, sd_zeros,
-#                                colorimetry)
-#    from colour.colorimetry.spectrum import SpectralDistribution                         
-#    
-#    from colour.utilities import to_domain_1, from_range_100
 
-#    def XYZ_to_spectral(
-#            XYZ,
-#            cmfs=colour.STANDARD_OBSERVERS_CMFS['CIE 1931 2 Degree Standard Observer'],
-#            interval=5,
-#            tolerance=1e-15,
-#            maximum_iterations=5000,
-#            illuminant=sd_ones(),
-#            max_refl=1.0):
-#        XYZ = to_domain_1(XYZ)
-#        shape = SpectralShape(cmfs.shape.start, cmfs.shape.end, interval)
-#        cmfs = cmfs.copy().align(shape)
-#        illuminant = illuminant.copy().align(shape)
-#        spd = sd_zeros(shape)
-
-#        # this makes smooth curves
-#        def function_objective(a):
-#            """
-#            Objective function.
-#            """ 
-#            return np.sum(np.diff(a)**2)
-
-#        # this finds a solution in log space; negatives won't matter
-#        def function_constraint(a):
-#            """
-#            Function defining the constraint for XYZ=XYZ.
-#            """ 
-#            spd[:] = np.exp(a)
-#            return (XYZ -
-#                    (colour.colorimetry.sd_to_XYZ_integration(
-#                        spd, cmfs=cmfs, illuminant=illuminant)))
-
-#        # this ensures results do not exceed the maximum reflectance/transmission  
-#        def function_constraint2(a):
-#            """
-#            Function defining constraint on emission/reflectance
-#            """
-#            if max_refl <= 0.0:
-#                return 0.0
-#            return max_refl - np.exp(np.max(a)) * 100.
-
-#        wavelengths = spd.wavelengths
-#        bins = wavelengths.size
-#        constraints = ({'type': 'eq', 'fun': function_constraint})
-#                       #{'type': 'ineq', 'fun': function_constraint2})
-
-#        result = minimize(
-#            function_objective,
-#            spd.values,
-#            method='SLSQP',
-#            constraints=constraints,
-#            options={
-#                'ftol': tolerance,
-#                'maxiter': maximum_iterations,
-#                'disp': True
-#            })
-
-#        if not result.success:
-#            raise RuntimeError(
-#                'Optimization failed for {0} after {1} iterations: "{2}".'.format(
-#                    XYZ, result.nit, result.message))
-
-#        # return the result in linear form instead of log
-#        return SpectralDistribution(
-#            (from_range_100(np.exp(result.x) * 100)),
-#            wavelengths,
-#            name='Meng (2015) - {0}'.format(XYZ))
-#    CMFS = colour.CMFS['cie_2_1931']
-#    D65_SPD = colour.ILLUMINANTS_SDS['D65']/100.
-#    illuminant_SPD = D65_SPD
-
-
-#    # This is our target colourspace
-#    colorspacetarget = colour.models.sRGB_COLOURSPACE
-#    #colorspace = colour.models.P3_D65_COLOURSPACE
-#    colorspace =  colour.models.sRGB_COLOURSPACE
-#    #colorspace = colour.models.BT2020_COLOURSPACE
-#    colorspace.use_derived_transformation_matrices(True)
-#    colorspacetarget.use_derived_transformation_matrices(True)
-#    RGB_to_XYZ_m = colorspace.RGB_to_XYZ_matrix
-#    XYZ_to_RGB_m = colorspacetarget.XYZ_to_RGB_matrix
-#    
-#    interval=50
-#    tol = 1e-10
-#    max_refl = 1.
-#    shape = colour.SpectralShape(400.0, 700.0, interval)
-#    CMFS_ = CMFS.align(shape).values.transpose() # align and transpose the CMFS
-#    illuminant_SPD_ = illuminant_SPD.align(shape).values # align illuminant vector
-#    
-#    target_XYZ = np.sum([r, g, b] * RGB_to_XYZ_m, axis=1)
-#    spd = XYZ_to_spectral(target_XYZ, cmfs=CMFS.align(shape), illuminant=illuminant_SPD, interval=interval, tolerance=tol, max_refl=max_refl)
-
-    spectral_r = r * np.array([0.015118827139972, 0.018244753356220, 0.028028111807405, 0.043179460050345,
-                              0.067154869563762, 0.686709823363608, 0.897219406952636], dtype='float32')
-
-    spectral_g = g * np.array([0.075714499304728, 0.104056445141605, 0.210008756476146, 0.424904304806374,
-                              0.855639860506995, 0.365637159759551, 0.345332969547009], dtype='float32')
-
-    spectral_b = b * np.array([0.816231569276521, 1.024805860576951, 1.024805685467384, 1.024803703202828,
-                              0.047862925501399, 0.001000080038470, 0.001000000000000], dtype='float32')
-
-#    return np.log2(np.array(spd.values, dtype='float32'))
-    return np.log2(np.sum([spectral_r, spectral_g, spectral_b], axis=0))
+    return np.log2(np.sum([spec_r * r, spec_g * g, spec_b * b], axis=0))
 
 def Spectral_to_RGB(spd):
     """Converts 10 segments spectral power distribution curve to RGB.
@@ -1665,13 +1732,6 @@ def Spectral_to_RGB(spd):
     """
 
     # Spectral_to_XYZ CMFS premultiplied with XYZ to RGB matrix
-    T_MATRIX = (np.array([[0.088688384631047, -0.033324923719516, -0.002151997579192,
-                          -0.007051952965538, -0.632215054562246, 1.382222884885893, 0.103544620506161],
-                         [-0.079153682170459, -0.004289508134047, 0.001818332974765, 0.008633447437121,
-                          1.220255539120574, -0.103597442877585, -0.011093719072566],
-                         [0.568628558510617, 0.525725695518964, 0.002166526642066, 0.000067954428273,
-                          -0.108086836427399, -0.015075717909452, -0.000714640619377]], dtype='float32'))
-
     r, g, b = np.sum(np.exp2(spd) * T_MATRIX, axis=1)
     return r, g, b
 
