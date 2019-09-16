@@ -1098,17 +1098,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
                                         CAM16LimitChromaSlider,
                                         CAM16HueNormSlider)
         if isinstance(self, (CAM16TempSlider)):
-            # push illuminant to prefs and return new color
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
-#            fac = 1/illuminant[1]*100
             illuminant *= 100
-            self.p['color.dimension_illuminant'] = "custom_XYZ"
-            self.p['color.dimension_illuminant_XYZ'] = (
-                illuminant[0],
-                illuminant[1],
-                illuminant[2])
-            # update pref ui
-            self.app.preferences_window.update_ui()
             col = self._get_app_brush_color()
             col.illuminant = illuminant
         if isinstance(self, (CAM16LimitChromaSlider)):
@@ -1124,11 +1115,6 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             if limit_purity >= 0.0:
                 col.limit_purity = max(0.0, limit_purity)
             col.cachedrgb = None
-        if isinstance(self, (CAM16HueNormSlider)):
-            # reset illuminant pref to D65
-            self.p['color.dimension_illuminant'] = 'D65'
-            # update pref ui
-            self.app.preferences_window.update_ui()
         return col
 
     def _get_app_brush_color(self):
@@ -1207,17 +1193,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
                                         CAM16LimitChromaSlider,
                                         CAM16HueNormSlider)
         if isinstance(self, (CAM16TempSlider)):
-            # push illuminant to prefs and return new color
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
-#            fac = 1/illuminant[1]*100
             illuminant *= 100
-            self.p['color.dimension_illuminant'] = "custom_XYZ"
-            self.p['color.dimension_illuminant_XYZ'] = (
-                illuminant[0],
-                illuminant[1],
-                illuminant[2])
-            # update pref ui
-            self.app.preferences_window.update_ui()
             col = self._get_app_brush_color()
             col.illuminant = illuminant
         if isinstance(self, (CAM16LimitChromaSlider)):
@@ -1233,11 +1210,6 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             if limit_purity >= 0.0:
                 col.limit_purity = max(0.0, limit_purity)
             col.cachedrgb = None
-        if isinstance(self, (CAM16HueNormSlider)):
-            # reset illuminant pref to D65
-            self.p['color.dimension_illuminant'] = 'D65'
-            # update pref ui
-            self.app.preferences_window.update_ui()
         self.set_managed_color(col)
         return True
 

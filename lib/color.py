@@ -1556,8 +1556,8 @@ from scipy.optimize import minimize, Bounds
 def XYZ_to_spectral(
         XYZ,
         cmfs=colour.STANDARD_OBSERVERS_CMFS['CIE 1931 2 Degree Standard Observer'],
-        tolerance=1e-15,
-        maximum_iterations=25000,
+        tolerance=1e-8,
+        maximum_iterations=5000,
         illuminant=sd_ones(),
         max_refl=1.0,
         min_refl=0.0):
@@ -1643,7 +1643,7 @@ def sd_to_XYZ_integration(
     return from_range_100(XYZ)
 
 
-def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=1.0, min_refl=0.0001):
+def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=0.9, min_refl=0.0001):
 
     global spec_r, spec_g, spec_b, T_MATRIX
     # This is our target display colourspace

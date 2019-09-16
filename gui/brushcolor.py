@@ -41,17 +41,6 @@ class BrushColorManager (colors.ColorManager):
         if not self.__in_callback:
 
             if not isinstance(color, lib.color.CAM16Color):
-#                prefs = self.get_prefs()
-#                illuminant = prefs['color.dimension_illuminant']
-
-#                if illuminant == "custom_XYZ":
-#                    illuminant = prefs['color.dimension_illuminant_XYZ']
-#                else:
-#                    illuminant = colour.xy_to_XYZ(
-#                        colour.ILLUMINANTS['cie_2_1931'][illuminant]) * 100.0
-#                # standard sRGB view environment except adjustable illuminant
-#                cieaxes = prefs['color.dimension_value'] + \
-#                    prefs['color.dimension_purity'] + "h"
                 color = lib.color.CAM16Color(color=color,
                     illuminant=self.__brush.CAM16Color.illuminant)
             self._app.doc.last_color_target = None

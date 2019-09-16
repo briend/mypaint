@@ -1657,14 +1657,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         # values below 1904 are outside sRGB gamut
         cct = max(cct - step_size, 3000)
         illuminant = colour.sRGB_to_XYZ(CCT_to_RGB(cct))*100
-
-        self.app.preferences['color.dimension_illuminant'] = "custom_XYZ"
-        self.app.preferences['color.dimension_illuminant_XYZ'] = (
-            illuminant[0],
-            illuminant[1],
-            illuminant[2])
-        # update pref ui
-        self.app.preferences_window.update_ui()
         brushcolor.illuminant = illuminant
         brushcolor.cachedrgb = None
 
@@ -1703,13 +1695,6 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         cct = min(cct + step_size, 16500)
         illuminant = colour.sRGB_to_XYZ(CCT_to_RGB(cct))*100
 
-        self.app.preferences['color.dimension_illuminant'] = "custom_XYZ"
-        self.app.preferences['color.dimension_illuminant_XYZ'] = (
-            illuminant[0],
-            illuminant[1],
-            illuminant[2])
-        # update pref ui
-        self.app.preferences_window.update_ui()
         brushcolor.illuminant = illuminant
         brushcolor.cachedrgb = None
 

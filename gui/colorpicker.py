@@ -189,15 +189,8 @@ class ColorPickMode (gui.mode.OneshotDragMode):
 
         cm = app.brush_color_manager
         prefs = cm.get_prefs()
-        illuminant = prefs['color.dimension_illuminant']
+        illuminant = self.app.brush.CAM16Color.illuminant
         tune_model = prefs['color.tune_model']
-
-        if illuminant == "custom_XYZ":
-            illuminant = prefs['color.dimension_illuminant_XYZ']
-        else:
-            illuminant = (colour.xy_to_XYZ(
-                colour.ILLUMINANTS['cie_2_1931'][illuminant])
-                * 100.0)
 
         doc.last_colorpick_time = t
         pickcolor = tdw.pick_color(x, y, size=int(3/tdw.renderer.scale))
@@ -223,14 +216,6 @@ class ColorPickMode (gui.mode.OneshotDragMode):
                 ill = colour.sRGB_to_XYZ(np.array(pickcolor_rgb))*100
                 if ill[1] <= 0:
                     return
-                # fac = 1/ill[1]*100
-
-                p['color.dimension_illuminant'] = "custom_XYZ"
-                p['color.dimension_illuminant_XYZ'] = (
-                    ill[0],
-                    ill[1],
-                    ill[2]
-                )
                 # update pref ui
                 app.preferences_window.update_ui()
 
@@ -578,9 +563,7 @@ class ColorPickPreviewOverlay (Overlay):
             x, y, w, h = area
             # if we're picking an illuminant splash that instead of brush color
             if self._pickmode == "PickIlluminant":
-                p = self.app.preferences
-                xyz = p['color.dimension_illuminant_XYZ']
-                ill = colour.XYZ_to_sRGB(np.array(xyz)/100.0)
+                ill = colour.XYZ_to_sRGB(self._color.illuminant/100.0)
                 cr.set_source_rgb(*ill)
             elif self.blending_color is not None:
                 cr.set_source_rgb(*self.blending_color.get_rgb())
