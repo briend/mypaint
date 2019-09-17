@@ -1570,7 +1570,7 @@ def XYZ_to_spectral(
         Objective function.
         """
         #return np.linalg.norm(a) / 21.
-        return np.sum(np.gradient(np.exp(a), 2))
+        return np.sum(np.diff(a) ** 2)
 
     def function_constraint(a):
         """
