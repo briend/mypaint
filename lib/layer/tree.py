@@ -787,34 +787,48 @@ class RootLayerStack (group.LayerStack):
         """Get rendering instructions."""
         # Render each layer with an optional bump map effect
         ops = []
+        first_child_mode = None
+        bumpbg = False
+        bumpbg_amp = None
+        bumpbg_rough = None
+        bg_surf = None
+        
         if self._get_render_background(spec):
             bg_opcode = rendering.Opcode.BLIT
             bg_surf = self._background_layer._surface
             ops.append((bg_opcode, bg_surf, None, None, None))
+        # render layers separate from the background, so we can apply bg bumpmap
+        ops.append((3, None, None, 1.0, None))
         for child_layer in reversed(self):
-            should_bump = (filter != "ByPass" and self._background_bumpmapped 
+            # use the bgbump settings from the first layer in the stack
+            if first_child_mode == None:
+                first_child_mode = child_layer.mode
+                bumpbg = child_layer.bumpbg
+                bumpbg_amp = child_layer.bumpbg_amp
+                bumpbg_rough = child_layer.bumpbg_rough
+            should_bump = (filter != "ByPass"
                           and child_layer.mode != lib.mypaintlib.CombineBumpMap
                           and child_layer.mode != lib.mypaintlib.CombineBumpMapDst
                           and child_layer.mode != lib.mypaintlib.CombineDestinationIn
                           and child_layer.mode != lib.mypaintlib.CombineDestinationOut
                           and child_layer.mode != lib.mypaintlib.CombineLighten
-                          and (child_layer.bumpself or child_layer.bumpbg))
-            if self._get_render_background(spec):
-                if should_bump:
-                    ops.append((3, None, None, 1.0, None))
+                          and child_layer.bumpself)
+            if should_bump:
+                # render separately so we can apply the bumpself effect
+                ops.append((3, None, None, 1.0, None))
             ops.extend(child_layer.get_render_ops(spec))
-            if self._get_render_background(spec):
-                bg_surf = self._background_layer._surface
-                if should_bump:
-                    if hasattr(child_layer, '_surface') and child_layer.bumpself:
-                        opts = np.array([child_layer.bumpself_rough, child_layer.bumpself_amp], dtype='float32')
-                        ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMap, 1.0, opts))
-                    if child_layer.bumpbg:
-                        opts = np.array([child_layer.bumpbg_rough, child_layer.bumpbg_amp], dtype='float32')
-                        ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 1.0, opts))
-                    ops.append((4, None, child_layer.mode, 1.0, None))
+            if should_bump:
+                if hasattr(child_layer, '_surface') and child_layer.bumpself:
+                    opts = np.array([child_layer.bumpself_rough, child_layer.bumpself_amp], dtype='float32')
+                    ops.append((rendering.Opcode.COMPOSITE, child_layer._surface, lib.mypaintlib.CombineBumpMap, 1.0, opts))
+                ops.append((4, None, child_layer.mode, 1.0, None))
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))
+        if self._get_render_background(spec) and bumpbg:
+            opts = np.array([bumpbg_rough, bumpbg_amp], dtype='float32')
+            ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 1.0, opts))
+        # render all the layers onto the background using the
+        ops.append((4, None, first_child_mode, 1.0, None))
         return ops
 
     ## Symmetry axis
