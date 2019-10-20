@@ -105,6 +105,10 @@ class LayersTool (SizedVBoxToolWidget):
     # TRANSLATORS: note that "%%" turns into "%"
     # TRANSLATORS: most of the time this can just be copied, or left alone
     OPACITY_LABEL_TEXT_TEMPLATE = _(u"%d%%")
+    BUMPMAP_AMP_SCALE_TOOLTIP_TEXT_TEMPLATE = _("Background BumpMap Amplification: %d%%")
+    BUMPMAP_AMP_LABEL_TEXT_TEMPLATE = _(u"%d%%")
+    BUMPMAP_ROUGH_SCALE_TOOLTIP_TEXT_TEMPLATE = _("Background BumpMap Roughness: %d%%")
+    BUMPMAP_ROUGH_LABEL_TEXT_TEMPLATE = _(u"%d%%")
 
     __gtype_name__ = 'MyPaintLayersTool'
 
@@ -236,8 +240,54 @@ class LayersTool (SizedVBoxToolWidget):
         change_bg_btn = widgets.borderless_button(action=change_bg_act)
         show_bg_act = self.app.find_action("ShowBackgroundToggle")
         show_bg_btn.set_related_action(show_bg_act)
-        grid.attach(show_bg_btn, 0, row, 5, 1)
+        grid.attach(show_bg_btn, 0, row, 1, 1)
         grid.attach(change_bg_btn, 5, row, 1, 1)
+
+        # Background texture controls
+        # Bumpmap on or off toggle
+        row += 1
+        bump_bg_btn = Gtk.CheckButton("Background Textured")
+        bump_bg_btn.connect("toggled", self.app.doc.background_bump_toggle_cb)
+        self._bumpmap_bg_btn = bump_bg_btn
+        grid.attach(bump_bg_btn, 0, row, 1, 1)
+
+        # Bumpmap Amplification
+        adj = Gtk.Adjustment(lower=0, upper=100,
+                             step_incr=0.1, page_incr=10)
+        adj.connect("value-changed", self.app.doc.background_bump_amp_cb)
+        sbut = Gtk.ScaleButton()
+        sbut.set_adjustment(adj)
+        sbut.remove(sbut.get_child())
+        sbut.set_hexpand(False)
+        sbut.set_vexpand(False)
+        label_text_widest = self.BUMPMAP_AMP_LABEL_TEXT_TEMPLATE % (100,)
+        label = Gtk.Label(label_text_widest)
+        label.set_width_chars(len(label_text_widest))
+        sbut.add(label)
+        self._bumpmap_amp_scale_button = sbut
+        self._bumpmap_amp_label = label
+        self._bumpmap_amp_adj = adj
+        grid.attach(sbut, 4, row, 1, 1)
+        
+
+        # BumpMap Roughness
+        adj = Gtk.Adjustment(lower=0, upper=100,
+                             step_incr=0.1, page_incr=10)
+        adj.connect("value-changed", self.app.doc.background_bump_rough_cb)
+        sbut = Gtk.ScaleButton()
+        sbut.set_adjustment(adj)
+        sbut.remove(sbut.get_child())
+        sbut.set_hexpand(False)
+        sbut.set_vexpand(False)
+        label_text_widest = self.BUMPMAP_ROUGH_LABEL_TEXT_TEMPLATE % (100,)
+        label = Gtk.Label(label_text_widest)
+        label.set_width_chars(len(label_text_widest))
+        sbut.add(label)
+        self._bumpmap_rough_scale_button = sbut
+        self._bumpmap_rough_label = label
+        self._bumpmap_rough_adj = adj
+        grid.attach(sbut, 5, row, 1, 1)
+        
 
         # Pack
         self.pack_start(grid, False, True, 0)
@@ -249,6 +299,8 @@ class LayersTool (SizedVBoxToolWidget):
                                        self._layer_mode_combo_changed_cb)
         rootstack = docmodel.layer_stack
         rootstack.layer_properties_changed += self._layer_propchange_cb
+        rootstack.background_bumpmap_amp_changed += self._bumpmap_amp_adj_changed_cb
+        rootstack.background_bumpmap_rough_changed += self._bumpmap_rough_adj_changed_cb
         rootstack.current_path_updated += self._current_path_updated_cb
         # Initial update
         self.connect("show", self._show_cb)
@@ -286,6 +338,7 @@ class LayersTool (SizedVBoxToolWidget):
         self._update_context_menu()
         self._update_layer_mode_combo()
         self._update_opacity_widgets()
+        self._update_bumpmap_widgets()
 
     def _update_layer_mode_combo(self):
         """Updates the layer mode combo's value from the model"""
@@ -313,6 +366,53 @@ class LayersTool (SizedVBoxToolWidget):
             description = lib.xml.escape(desc),
         )
         combo.set_tooltip_markup(tooltip)
+
+    def _update_bumpmap_widgets(self):
+        """Updates the bumpmap widgets from the model"""
+        #assert self._processing_model_updates
+        
+        rootstack = self.app.doc.model.layer_stack
+        bg_bump_active = rootstack.background_bumpmapped
+        self._bumpmap_bg_btn.set_active(bg_bump_active)
+
+        sbut = self._bumpmap_amp_scale_button
+        rootstack = self.app.doc.model.layer_stack
+
+        # Update labels, scales etc.
+        bumpbg_amp = rootstack.background_bumpmap_amp
+
+        percentage = (1.0 - bumpbg_amp) * 100
+        adj = self._bumpmap_amp_adj
+        adj.set_value(percentage)
+
+        template = self.BUMPMAP_AMP_SCALE_TOOLTIP_TEXT_TEMPLATE
+        tooltip = template % (percentage,)
+        sbut.set_tooltip_text(tooltip)
+
+        label = self._bumpmap_amp_label
+        template = self.BUMPMAP_AMP_LABEL_TEXT_TEMPLATE
+        text = template % (percentage,)
+        label.set_text(text)
+        
+        #Roughness
+        sbut = self._bumpmap_rough_scale_button
+        rootstack = self.app.doc.model.layer_stack
+
+        # Update labels, scales etc.
+        bumpbg_rough = rootstack.background_bumpmap_rough
+
+        percentage = bumpbg_rough * 100
+        adj = self._bumpmap_rough_adj
+        adj.set_value(percentage)
+
+        template = self.BUMPMAP_ROUGH_SCALE_TOOLTIP_TEXT_TEMPLATE
+        tooltip = template % (percentage,)
+        sbut.set_tooltip_text(tooltip)
+
+        label = self._bumpmap_rough_label
+        template = self.BUMPMAP_ROUGH_LABEL_TEXT_TEMPLATE
+        text = template % (percentage,)
+        label.set_text(text)
 
     def _update_opacity_widgets(self):
         """Updates the opacity widgets from the model"""
@@ -398,6 +498,22 @@ class LayersTool (SizedVBoxToolWidget):
         docmodel = self.app.doc.model
         docmodel.set_current_layer_opacity(opacity)
         self._treeview.scroll_to_current_layer()
+
+    def _bumpmap_amp_adj_changed_cb(self, *ignore):
+        if self._processing_model_updates:
+            return
+        bumpbg_amp = (100. - self._bumpmap_amp_adj.get_value()) / 100.0
+        rootstack = self.app.doc.model.layer_stack
+        rootstack.background_bumpmap_amp = bumpbg_amp
+        self._update_bumpmap_widgets()
+
+    def _bumpmap_rough_adj_changed_cb(self, *ignore):
+        if self._processing_model_updates:
+            return
+        bumpbg_rough = self._bumpmap_rough_adj.get_value() / 100.0
+        rootstack = self.app.doc.model.layer_stack
+        rootstack.background_bumpmap_rough = bumpbg_rough
+        self._update_bumpmap_widgets()
 
     def _layer_mode_combo_changed_cb(self, *ignored):
         """Propagate the user's choice of layer mode to the model"""

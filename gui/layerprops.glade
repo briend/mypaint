@@ -1,24 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.0 -->
+<!-- Generated with glade 3.22.1 -->
 <interface domain="mypaint">
   <requires lib="gtk+" version="3.12"/>
-  <object class="GtkAdjustment" id="layer-bumpbg-amp-adjustment">
-    <property name="upper">1</property>
-    <property name="value">0.50000000000000004</property>
-    <property name="step_increment">0.01</property>
-    <property name="page_increment">0.10000000000000001</property>
-    <signal name="value-changed" handler="_v_layer_bumpbg_amp_adjustment_value_changed_cb" swapped="no"/>
-  </object>
-  <object class="GtkAdjustment" id="layer-bumpbg-rough-adjustment">
-    <property name="upper">1</property>
-    <property name="value">0.5</property>
-    <property name="step_increment">0.01</property>
-    <property name="page_increment">0.5</property>
-    <signal name="value-changed" handler="_v_layer_bumpbg_rough_adjustment_value_changed_cb" swapped="no"/>
-  </object>
   <object class="GtkAdjustment" id="layer-bumpself-amp-adjustment">
     <property name="upper">1</property>
-    <property name="value">0.50000000000000004</property>
+    <property name="value">0.5</property>
     <property name="step_increment">0.01</property>
     <property name="page_increment">0.10000000000000001</property>
     <signal name="value-changed" handler="_v_layer_bumpself_amp_adjustment_value_changed_cb" swapped="no"/>
@@ -43,6 +29,23 @@
     <property name="border_width">18</property>
     <property name="row_spacing">12</property>
     <property name="column_spacing">12</property>
+    <child>
+      <object class="GtkImage" id="layer-preview-image">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="halign">start</property>
+        <property name="valign">end</property>
+        <property name="hexpand">False</property>
+        <property name="vexpand">False</property>
+        <property name="pixel_size">256</property>
+        <property name="icon_name">image-missing</property>
+        <property name="icon_size">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">0</property>
+      </packing>
+    </child>
     <child>
       <object class="GtkGrid" id="layer-properties-grid">
         <property name="visible">True</property>
@@ -263,84 +266,10 @@ A curved line indicates that the current layer will apply some bump map effect t
                 <property name="position">2</property>
               </packing>
             </child>
-            <child>
-              <object class="GtkToggleButton" id="layer-bumpbg-togglebutton">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="tooltip_text" translatable="yes" context="Layer properties widget → Flags → bumpmap background togglebutton → tooltip">Layer bumpmapped with the background or not
-
-A wavy line above the wavy base indicates that the texture from the background will be applied to this layer.  A straight line above the wavy base indicates that the background does not affect the layer.</property>
-                <property name="hexpand">False</property>
-                <property name="vexpand">False</property>
-                <signal name="toggled" handler="_v_layer_bumpbg_togglebutton_toggled_cb" swapped="no"/>
-                <child>
-                  <object class="GtkImage" id="layer-bumpbg-image">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="icon_name">mypaint-object-unlocked-symbolic</property>
-                    <property name="icon_size">3</property>
-                  </object>
-                </child>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">3</property>
-              </packing>
-            </child>
           </object>
           <packing>
             <property name="left_attach">1</property>
             <property name="top_attach">3</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="layer-bumpbg_rough-label">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="tooltip_text" translatable="yes" context="Layer properties widget → BG Roughness → label tooltip">How rough the background canvas is
-
-At 0%, the bg is perfectly smooth, at 100% it is very rough.
-Rought surfaces reflect more light despite steep slopes.</property>
-            <property name="halign">end</property>
-            <property name="label" translatable="yes" context="Layer properties widget → &lt;category labels&gt;">BG Rough</property>
-          </object>
-          <packing>
-            <property name="left_attach">0</property>
-            <property name="top_attach">4</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkScale" id="layer-bumpbg-rough-scale">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="hexpand">True</property>
-            <property name="vexpand">False</property>
-            <property name="adjustment">layer-bumpbg-rough-adjustment</property>
-            <property name="round_digits">0</property>
-            <property name="digits">2</property>
-            <property name="value_pos">right</property>
-          </object>
-          <packing>
-            <property name="left_attach">1</property>
-            <property name="top_attach">4</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkScale" id="layer-bumpbg-amp-scale">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="hexpand">True</property>
-            <property name="vexpand">False</property>
-            <property name="adjustment">layer-bumpbg-amp-adjustment</property>
-            <property name="round_digits">0</property>
-            <property name="digits">2</property>
-            <property name="value_pos">right</property>
-          </object>
-          <packing>
-            <property name="left_attach">1</property>
-            <property name="top_attach">5</property>
           </packing>
         </child>
         <child>
@@ -356,7 +285,38 @@ Rought surfaces reflect more light despite steep slopes.</property>
           </object>
           <packing>
             <property name="left_attach">1</property>
-            <property name="top_attach">6</property>
+            <property name="top_attach">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="layer-bumpself-rough-label">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="tooltip_text" translatable="yes" context="Layer properties widget → Current Rough → label tooltip">How rough the paint is
+
+At 0%, the paint is perfectly smooth, at 100% it is very rough.
+Rough surfaces reflect more light and appear more flat.  Like flat paint.</property>
+            <property name="halign">end</property>
+            <property name="label" translatable="yes" context="Layer properties widget → &lt;category labels&gt;">Bump Rough</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="layer-bumpself-amp-label">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="tooltip_text" translatable="yes" context="Layer properties widget → Self Slope → label tooltip">How amplified the paint slope is
+
+At 0%, the slope is not amplified.  Greater values make the texture more pronounced</property>
+            <property name="halign">end</property>
+            <property name="label" translatable="yes" context="Layer properties widget → &lt;category labels&gt;">Bump Amp</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">5</property>
           </packing>
         </child>
         <child>
@@ -372,75 +332,12 @@ Rought surfaces reflect more light despite steep slopes.</property>
           </object>
           <packing>
             <property name="left_attach">1</property>
-            <property name="top_attach">7</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="layer-bumpbg-amp-label">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="tooltip_text" translatable="yes" context="Layer properties widget → BG Slope → label tooltip">How amplified the BG texture slope is
-
-At 0%, the slope is not amplified.  Greater values make the texture more pronounced</property>
-            <property name="halign">end</property>
-            <property name="label" translatable="yes" context="Layer properties widget → &lt;category labels&gt;">BG Amp</property>
-          </object>
-          <packing>
-            <property name="left_attach">0</property>
             <property name="top_attach">5</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="layer-bumpself-rough-label">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="tooltip_text" translatable="yes" context="Layer properties widget → Current Rough → label tooltip">How rough the current layer canvas is
-
-At 0%, the current layer is perfectly smooth, at 100% it is very rough.
-Rought surfaces reflect more light despite steep slopes.</property>
-            <property name="halign">end</property>
-            <property name="label" translatable="yes" context="Layer properties widget → &lt;category labels&gt;">Self Rough</property>
-          </object>
-          <packing>
-            <property name="left_attach">0</property>
-            <property name="top_attach">6</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="layer-bumpself-amp-label">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="tooltip_text" translatable="yes" context="Layer properties widget → Self Slope → label tooltip">How amplified the Current layer texture slope is
-
-At 0%, the slope is not amplified.  Greater values make the texture more pronounced</property>
-            <property name="halign">end</property>
-            <property name="label" translatable="yes" context="Layer properties widget → &lt;category labels&gt;">Self Amp</property>
-          </object>
-          <packing>
-            <property name="left_attach">0</property>
-            <property name="top_attach">7</property>
           </packing>
         </child>
       </object>
       <packing>
         <property name="left_attach">1</property>
-        <property name="top_attach">0</property>
-      </packing>
-    </child>
-    <child>
-      <object class="GtkImage" id="layer-preview-image">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <property name="halign">start</property>
-        <property name="valign">end</property>
-        <property name="hexpand">False</property>
-        <property name="vexpand">False</property>
-        <property name="pixel_size">256</property>
-        <property name="icon_name">image-missing</property>
-        <property name="icon_size">0</property>
-      </object>
-      <packing>
-        <property name="left_attach">0</property>
         <property name="top_attach">0</property>
       </packing>
     </child>

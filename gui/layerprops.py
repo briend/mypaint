@@ -99,16 +99,6 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
                 "mypaint-object-bumpselfon-symbolic",
             ],
         ),
-        _LayerFlagUIInfo(
-            togglebutton="layer-bumpbg-togglebutton",
-            image="layer-bumpbg-image",
-            property="bumpbg",
-            togglebutton_active=[True, False],
-            image_icon_name=[
-                "mypaint-object-bumpbgoff-symbolic",
-                "mypaint-object-bumpbgon-symbolic",
-            ],
-        ),
     ]
     _FLAG_ICON_SIZE = Gtk.IconSize.LARGE_TOOLBAR
 
@@ -171,10 +161,6 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
             self._m2v_mode()
         if "opacity" in changed:
             self._m2v_opacity()
-        if "bumpbg_rough" in changed:
-            self._m2v_bumpbg_rough()
-        if "bumpbg_amp" in changed:
-            self._m2v_bumpbg_amp()
         if "bumpself_rough" in changed:
             self._m2v_bumpself_rough()
         if "bumpself_amp" in changed:
@@ -193,9 +179,6 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
             info = [i for i in self._BOOL_PROPERTIES
                     if (i.property == "bumpself")][0]
             self._m2v_layer_flag(info)
-        if "bumpbg" in changed:
-            info = [i for i in self._BOOL_PROPERTIES
-                    if (i.property == "bumpbg")][0]
             self._m2v_layer_flag(info)
 
     @gui.mvp.view_updater
@@ -214,8 +197,6 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
         self._m2v_name()
         self._m2v_mode()
         self._m2v_opacity()
-        self._m2v_bumpbg_rough()
-        self._m2v_bumpbg_amp()
         self._m2v_bumpself_rough()
         self._m2v_bumpself_amp()
         for info in self._BOOL_PROPERTIES:
@@ -283,38 +264,6 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
 
         percentage = layer.opacity * 100
         adj.set_value(percentage)
-
-    def _m2v_bumpbg_rough(self):
-        adj = self.view.layer_bumpbg_rough_adjustment
-        scale = self.view.layer_bumpbg_rough_scale
-        layer = self._layer
-
-        bumpbg_rough_is_adjustable = not (
-            layer is None
-            or layer is self._docmodel.layer_stack
-            or layer.mode == PASS_THROUGH_MODE
-        )
-        scale.set_sensitive(bumpbg_rough_is_adjustable)
-        if not bumpbg_rough_is_adjustable:
-            return
-
-        adj.set_value(layer.bumpbg_rough)
-
-    def _m2v_bumpbg_amp(self):
-        adj = self.view.layer_bumpbg_amp_adjustment
-        scale = self.view.layer_bumpbg_amp_scale
-        layer = self._layer
-
-        bumpbg_amp_is_adjustable = not (
-            layer is None
-            or layer is self._docmodel.layer_stack
-            or layer.mode == PASS_THROUGH_MODE
-        )
-        scale.set_sensitive(bumpbg_amp_is_adjustable)
-        if not bumpbg_amp_is_adjustable:
-            return
-
-        adj.set_value(1.0 - layer.bumpbg_amp)
 
     def _m2v_bumpself_rough(self):
         adj = self.view.layer_bumpself_rough_adjustment
@@ -418,20 +367,6 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
         self._docmodel.set_current_layer_opacity(opacity)
 
     @gui.mvp.model_updater
-    def _v_layer_bumpbg_rough_adjustment_value_changed_cb(self, adjustment, *etc):
-        if not self._layer:
-            return
-        bumpbg_rough = adjustment.get_value()
-        self._layer.bumpbg_rough = bumpbg_rough
-
-    @gui.mvp.model_updater
-    def _v_layer_bumpbg_amp_adjustment_value_changed_cb(self, adjustment, *etc):
-        if not self._layer:
-            return
-        bumpbg_amp = 1.0 - adjustment.get_value()
-        self._layer.bumpbg_amp = bumpbg_amp
-
-    @gui.mvp.model_updater
     def _v_layer_bumpself_rough_adjustment_value_changed_cb(self, adjustment, *etc):
         if not self._layer:
             return
@@ -461,12 +396,6 @@ class LayerPropertiesUI (gui.mvp.BuiltUIPresenter, object):
     def _v_layer_bumpself_togglebutton_toggled_cb(self, btn):
         info = [i for i in self._BOOL_PROPERTIES
                 if (i.property == "bumpself")][0]
-        self._v2m_layer_flag(info)
-
-    @gui.mvp.model_updater
-    def _v_layer_bumpbg_togglebutton_toggled_cb(self, btn):
-        info = [i for i in self._BOOL_PROPERTIES
-                if (i.property == "bumpbg")][0]
         self._v2m_layer_flag(info)
 
     def _v2m_layer_flag(self, info):

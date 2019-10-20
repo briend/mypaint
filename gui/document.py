@@ -1302,6 +1302,24 @@ class Document (CanvasController):  # TODO: rename to "DocumentController"
         if bool(layers.background_visible) != bool(action.get_active()):
             layers.background_visible = action.get_active()
 
+    def background_bump_toggle_cb(self, widget, data = None):
+        """``BackgroundBumpToggle`` GtkToggleAction callback"""
+        layers = self.model.layer_stack
+        if bool(layers.background_bumpmapped) != bool(widget.get_active()):
+            layers.background_bumpmapped = widget.get_active()
+
+    def background_bump_amp_cb(self, widget, data = None):
+        """``BackgroundBumpAmp`` GtkToggleAction callback"""
+        layers = self.model.layer_stack
+        if layers.background_bumpmap_amp != widget.get_value():
+            layers.background_bumpmap_amp = widget.get_value() / 100.
+
+    def background_bump_rough_cb(self, widget, data = None):
+        """``BackgroundBumpRough`` GtkToggleAction callback"""
+        layers = self.model.layer_stack
+        if layers.background_bumpmap_rough != widget.get_value():
+            layers.background_bumpmap_rough = widget.get_value() / 100.
+
     def _update_show_background_toggle(self, *_ignored):
         """Updates the Show Background toggle action from the model"""
         root = self.model.layer_stack

@@ -147,7 +147,11 @@ class RootLayerStack (group.LayerStack):
         try:
             self._background_bumpmap_amplify = self.app.preferences['document.bumpmap_amplify']
         except:
-            self._background_bumpmap_amplify = 0.9
+            self._background_bumpmap_amplify = 0.5
+        try:
+            self._background_bumpmap_roughness = self.app.preferences['document.bumpmap_roughness']
+        except:
+            self._background_bumpmap_roughness = 0.5
         # Symmetry
         self._symmetry_x = None
         self._symmetry_y = None
@@ -800,12 +804,12 @@ class RootLayerStack (group.LayerStack):
         # render layers separate from the background, so we can apply bg bumpmap
         ops.append((3, None, None, 1.0, None))
         for child_layer in reversed(self):
-            # use the bgbump settings from the first layer in the stack
+            # use the composite mode from the first layer in the stack for
             if first_child_mode == None:
                 first_child_mode = child_layer.mode
-                bumpbg = child_layer.bumpbg
-                bumpbg_amp = child_layer.bumpbg_amp
-                bumpbg_rough = child_layer.bumpbg_rough
+            bumpbg = self._background_bumpmapped
+            bumpbg_amp = self._background_bumpmap_amplify
+            bumpbg_rough = self._background_bumpmap_roughness
             should_bump = (filter != "ByPass"
                           and child_layer.mode != lib.mypaintlib.CombineBumpMap
                           and child_layer.mode != lib.mypaintlib.CombineBumpMapDst
@@ -827,7 +831,7 @@ class RootLayerStack (group.LayerStack):
         if self._get_render_background(spec) and bumpbg:
             opts = np.array([bumpbg_rough, bumpbg_amp], dtype='float32')
             ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 1.0, opts))
-        # render all the layers onto the background using the
+        # render all the layers onto the background using the first child's mode
         ops.append((4, None, first_child_mode, 1.0, None))
         return ops
 
@@ -1171,11 +1175,60 @@ class RootLayerStack (group.LayerStack):
         self._background_bumpmapped = value
         if value != old_value:
             self.background_visible_changed()
+            self.background_bumpmapped_changed()
             self.layer_content_changed(self, 0, 0, 0, 0)
 
     @event
     def background_bumpmapped_changed(self):
-        """Event: the background bumpmap flag has changed"""
+        """Event: the background bumpmapped toggle has changed"""
+
+    @property
+    def background_bumpmap_amp(self):
+        """Background bumpmap texture amplification
+
+        Accepts float 0-1.  Changing
+        the background bumpmapped amp valueissues a full redraw for the root
+        layer, and also issues the `background_changed` event.
+        """
+        return self._background_bumpmap_amplify
+
+    @background_bumpmap_amp.setter
+    def background_bumpmap_amp(self, value):
+        value = value
+        old_value = self._background_bumpmap_amplify
+        self._background_bumpmap_amplify = value
+        if value != old_value:
+            self.background_visible_changed()
+            self.background_bumpmap_amp_changed()
+            self.layer_content_changed(self, 0, 0, 0, 0)
+
+    @event
+    def background_bumpmap_amp_changed(self):
+        """Event: the background bumpmapped amp has changed"""
+
+    @property
+    def background_bumpmap_rough(self):
+        """Background bumpmap texture roughness
+
+        Accepts float 0-1.  Changing the 
+        background bumpmapped roughness valueissues a full redraw for the root
+        layer, and also issues the `background_changed` event.
+        """
+        return self._background_bumpmap_roughness
+
+    @background_bumpmap_rough.setter
+    def background_bumpmap_rough(self, value):
+        value = value
+        old_value = self._background_bumpmap_roughness
+        self._background_bumpmap_roughness = value
+        if value != old_value:
+            self.background_visible_changed()
+            self.background_bumpmap_rough_changed()
+            self.layer_content_changed(self, 0, 0, 0, 0)
+
+    @event
+    def background_bumpmap_rough_changed(self):
+        """Event: the background bumpmapped roughness has changed"""
 
     ## Temporary overlays for the current layer (not saved)
 
