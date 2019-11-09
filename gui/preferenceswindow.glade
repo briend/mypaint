@@ -1372,7 +1372,7 @@ Different traditions have different color harmonies.</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="label41">
+                  <object class="GtkLabel" id="label45">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="hexpand">True</property>
@@ -1408,7 +1408,7 @@ before you start painting.</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="label42">
+                  <object class="GtkLabel" id="label46">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="tooltip_text" translatable="yes" context="Prefs Dialog|Color|Color Adjusters">When using the color adjusters it can be useful to

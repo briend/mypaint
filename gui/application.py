@@ -657,7 +657,6 @@ class Application (object):
                 bp = bp.replace("ButtonTMP", "Button3")
                 default_config["input.button_mapping"][bp] = actname
 
->>>>>>> CIECAM Color Adjusters and Pickers
         self.preferences.clear()
         self.preferences.update(default_config.copy())
         user_config = gui.userconfig.get_json_config(self.user_confpath)
