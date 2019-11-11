@@ -586,8 +586,6 @@ class PaintingModeOptionsWidgetBase (Gtk.Grid):
         ('hardness', _("Sharp:")),
         # TRANSLATORS:"Additional pressure gain" for the options panel. Short.
         ('pressure_gain_log', _("Gain:")),
-        # TRANSLATORS:"Paint Pigment Mode" for the options panel. Short.
-        ('paint_mode', _("Pigment:")),
     ]
 
     def __init__(self):
