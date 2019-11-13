@@ -107,6 +107,10 @@ class ComponentSlidersAdjusterPage (CombinedAdjusterPage, IconRenderable):
                 'CAM16LimitChromaSlider',
                 0,
             ), (
+                C_("color sliders panel: Limit Brightness: slider label", "brightness limit"),
+                'CAM16LimitLumaSlider',
+                0,
+            ), (
                 C_("color sliders panel: hue/chroma/luma: slider label",
                    "reset"),
                 'CAM16HueNormSlider',
@@ -521,6 +525,62 @@ class CAM16LimitChromaSlider (SliderColorAdjuster):
             return True
         return vsh, cieaxes, illuminant, limit_purity
 
+class CAM16LimitLumaSlider (SliderColorAdjuster):
+    STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",
+                             "CAM16 Limit Brightness")
+    draw_background = True
+
+    @property
+    def samples(self):
+        alloc = self.get_allocation()
+        len = self.vertical and alloc.height or alloc.width
+        len -= self.BORDER_WIDTH * 2
+        return min(int(len // 20), 3)
+
+    def get_color_for_bar_amount(self, amt):
+        col = self._get_app_brush_color()
+        if amt == 1.0:
+            col.limit_brightness = None
+        else:
+            amt = max(0.0, amt)
+            col.s = amt * 120
+            col.limit_brightness = amt * 120
+        col.gamutmapping = "highlight"
+        col.cachedrgb = None
+        return col
+
+    def get_bar_amount_for_color(self, col):
+        # pull in color purity preference
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        limit_brightness = prefs['color.limit_brightness']
+        if limit_brightness >= 0.0:
+            return max(0.0, limit_brightness) / 120
+        else:
+            return 1.0
+
+    def get_background_validity(self):
+        from gui.application import get_app
+        app = get_app()
+        cm = self.get_color_manager()
+        prefs = cm.get_prefs()
+        try:
+            if app.brush.get_setting('cie_v') == '':
+                return True
+            limit_purity = prefs['color.limit_purity']
+            vsh = (
+                int(app.brush.get_setting('cie_v') * 100),
+                int(app.brush.get_setting('cie_s') * 100),
+                int(app.brush.get_setting('cie_h') * 100))
+
+            cieaxes = app.brush.get_setting('cieaxes'),
+            illuminant = (
+                app.brush.get_setting('illuminant_X'),
+                app.brush.get_setting('illuminant_Y'),
+                app.brush.get_setting('illuminant_Z'))
+        except KeyError:
+            return True
+        return vsh, cieaxes, illuminant, limit_purity
 
 class CAM16LumaSlider (SliderColorAdjuster):
     STATIC_TOOLTIP_TEXT = C_("color component slider: tooltip",

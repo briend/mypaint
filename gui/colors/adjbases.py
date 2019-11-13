@@ -1096,7 +1096,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         # return the brush color as a CAM16Color
         from gui.colors.sliders import (CAM16TempSlider,
                                         CAM16LimitChromaSlider,
-                                        CAM16HueNormSlider)
+                                        CAM16HueNormSlider,
+                                        CAM16LimitLumaSlider)
         if isinstance(self, (CAM16TempSlider)):
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
             illuminant *= 100
@@ -1114,6 +1115,17 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             col = self._get_app_brush_color()
             if limit_purity >= 0.0:
                 col.limit_purity = max(0.0, limit_purity)
+            col.cachedrgb = None
+        if isinstance(self, (CAM16LimitLumaSlider)):
+            # push chroma limiter to prefs and return new color
+            # maximum replaced with -1 to indicate no limit
+            limit_brightness = col.limit_brightness
+            if limit_brightness is None:
+                limit_brightness = -1
+            self.p['color.limit_brightness'] = limit_brightness
+            col = self._get_app_brush_color()
+            if limit_brightness >= 0.0:
+                col.limit_brightness = max(0.0, limit_brightness)
             col.cachedrgb = None
         return col
 
@@ -1191,7 +1203,8 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         # return the brush color as a CAM16Color
         from gui.colors.sliders import (CAM16TempSlider,
                                         CAM16LimitChromaSlider,
-                                        CAM16HueNormSlider)
+                                        CAM16HueNormSlider,
+                                        CAM16LimitLumaSlider)
         if isinstance(self, (CAM16TempSlider)):
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
             illuminant *= 100
@@ -1209,6 +1222,17 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             col = self._get_app_brush_color()
             if limit_purity >= 0.0:
                 col.limit_purity = max(0.0, limit_purity)
+            col.cachedrgb = None
+        if isinstance(self, (CAM16LimitLumaSlider)):
+            # push chroma limiter to prefs and return new color
+            # maximum replaced with -1 to indicate no limit
+            limit_brightness = col.limit_brightness
+            if limit_brightness is None:
+                limit_brightness = -1
+            self.p['color.limit_brightness'] = limit_brightness
+            col = self._get_app_brush_color()
+            if limit_brightness >= 0.0:
+                col.limit_brightness = max(0.0, limit_brightness)
             col.cachedrgb = None
         self.set_managed_color(col)
         return True
