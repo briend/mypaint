@@ -523,7 +523,7 @@ class _PalettePreview (Gtk.DrawingArea):
         if p['color.min_brightness'] > 0.0:
             min_brightness = p['color.min_brightness']
         else:
-            limit_brightness = None
+            min_brightness = None
         _palette_render(self._palette, cr, rows=nrows, columns=ncolumns,
                         swatch_size=s, bg_color=bg_color,
                         offset_x=dx, offset_y=dy,
