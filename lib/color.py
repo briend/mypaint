@@ -888,6 +888,11 @@ class CAM16Color (UIColor):
                 # convert from one to another (handle whitepoint changes)
                 v, s, h = color.v, color.s, color.h
                 self.illuminant = color.illuminant
+                self.limit_purity = color.limit_purity
+                self.limit_brightness = color.limit_brightness
+                self.min_purity = color.min_purity
+                self.min_brightness = color.min_brightness
+                self.reset_intent = color.reset_intent
             else:
                 # any other UIColor is assumed to be sRGB
                 rgb = color.get_rgb()
@@ -1494,7 +1499,6 @@ def CAM16_to_RGB(self):
             self.gamutexceeded = True
             return 0.5, 0.5, 0.5, 0
         if s > max_colorfulness:
-            self.gamutexceeded = True
             s = max_colorfulness
     if max_brightness is not None:
         # only return stripes for brightness slider when limiting brightness
@@ -1502,7 +1506,6 @@ def CAM16_to_RGB(self):
             self.gamutexceeded = True
             return 0.5, 0.5, 0.5, 0
         if v > max_brightness:
-            self.gamutexceeded = True
             v = max_brightness
     if min_brightness is not None:
         # only return stripes for brightness slider when min brightness
@@ -1510,7 +1513,6 @@ def CAM16_to_RGB(self):
             self.gamutexceeded = True
             return 0.5, 0.5, 0.5, 0
         if v < min_brightness:
-            self.gamutexceeded = True
             v = min_brightness
     if min_colorfulness is not None:
         # only return stripes for Chroma slider when min purity/chroma
@@ -1518,7 +1520,6 @@ def CAM16_to_RGB(self):
             self.gamutexceeded = True
             return 0.5, 0.5, 0.5, 0
         if s < min_colorfulness:
-            self.gamutexceeded = True
             s = min_colorfulness
     # build CAM spec
     zipped = zip(axes, (v, s, h))
