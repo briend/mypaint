@@ -516,12 +516,22 @@ class _PalettePreview (Gtk.DrawingArea):
             limit_brightness = p['color.limit_brightness']
         else:
             limit_brightness = None
+        if p['color.limit_purity'] > 0.0:
+            min_purity = p['color.min_purity']
+        else:
+            min_purity = None
+        if p['color.min_brightness'] > 0.0:
+            min_brightness = p['color.min_brightness']
+        else:
+            limit_brightness = None
         _palette_render(self._palette, cr, rows=nrows, columns=ncolumns,
                         swatch_size=s, bg_color=bg_color,
                         offset_x=dx, offset_y=dy,
                         rtl=False, illuminant=illuminant,
                         limit_purity=limit_purity,
-                        limit_brightness=limit_brightness)
+                        limit_brightness=limit_brightness,
+                        min_brightness=min_brightness,
+                        min_purity=min_purity)
 
     def set_palette(self, palette):
         self._palette = palette
@@ -927,10 +937,14 @@ class _PaletteGridLayout (ColorAdjusterWidget):
         # palette[i0].illuminant = None
         palette[i0].limit_purity = None
         palette[i0].limit_brightness = None
+        palette[i0].min_purity = None
+        palette[i0].min_brightness = None
         palette[i0].cachedrgb = None
         # palette[ix].illuminant = None
         palette[ix].limit_purity = None
         palette[ix].limit_brightness = None
+        palette[ix].min_purity = None
+        palette[ix].min_brightness = None
         palette[ix].cachedrgb = None
         c0 = color_class(color=palette[i0])
         cx = color_class(color=palette[ix])
@@ -1074,6 +1088,14 @@ class _PaletteGridLayout (ColorAdjusterWidget):
             limit_brightness = p['color.limit_brightness']
         else:
             limit_brightness = None
+        if p['color.min_purity'] > 0.0:
+            min_purity = p['color.min_purity']
+        else:
+            min_purity = None
+        if p['color.min_brightness'] > 0.0:
+            min_brightness = p['color.min_brightness']
+        else:
+            min_brightness = None
         _palette_render(mgr.palette, cr,
                         rows=self._rows, columns=self._columns,
                         swatch_size=self._swatch_size,
@@ -1081,7 +1103,9 @@ class _PaletteGridLayout (ColorAdjusterWidget):
                         offset_x=dx, offset_y=dy,
                         rtl=False, illuminant=illuminant,
                         limit_purity=limit_purity,
-                        limit_brightness=limit_brightness)
+                        limit_brightness=limit_brightness,
+                        min_purity=min_purity,
+                        min_brightness=min_brightness)
 
     def _paint_marker(self, cr, x, y, insert=False,
                       bg_rgb=(0, 0, 0), fg_rgb=(1, 1, 1),
@@ -1445,7 +1469,8 @@ def _palette_loadsave_dialog_update_preview_cb(dialog, preview):
 def _palette_render(palette, cr, rows, columns, swatch_size,
                     bg_color, offset_x=0, offset_y=0,
                     rtl=False, illuminant=None, limit_purity=None,
-                    limit_brightness=None):
+                    limit_brightness=None, min_purity=None,
+                    min_brightness=None):
     """Renders a Palette according to a precalculated grid.
 
     :param cr: a Cairo context
@@ -1523,11 +1548,15 @@ def _palette_render(palette, cr, rows, columns, swatch_size,
             if (not np.array_equal(np.array(col.illuminant),
                                    np.array(illuminant))
                or (limit_purity != col.limit_purity)
-               or (limit_brightness != col.limit_brightness)):
+               or (limit_brightness != col.limit_brightness)
+               or (min_purity != col.min_purity)
+               or (min_brightness != col.min_brightness)):
                 col.cachedrgb = None
                 col.illuminant = np.array(illuminant)
                 col.limit_purity = limit_purity
                 col.limit_brightness = limit_brightness
+                col.min_purity = min_purity
+                col.min_brightness = min_brightness
 
             fill_bg_rgb = col.get_rgb()
             fill_fg_rgb = None

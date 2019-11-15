@@ -855,9 +855,11 @@ class CAM16Color (UIColor):
         self.gamutexceeded = None
         self.displayexceeded = None
 
-        # limit color purity?
+        # limit color purity/brightness?
         self.limit_purity = None
         self.limit_brightness = None
+        self.min_purity = None
+        self.min_brightness = None
         self.reset_intent = False
 
         # try getting from preferences but fallback to avoid breaking doctest
@@ -869,10 +871,14 @@ class CAM16Color (UIColor):
                 self.limit_purity = p['color.limit_purity']
             if p['color.limit_brightness'] >= 0.0:
                 self.limit_brightness = p['color.limit_brightness']
+            self.min_brightness = p['color.min_brightness']
+            self.min_purity = p['color.min_purity']
             self.reset_intent = p['color.reset_intent_after_gamut_map']
         except:
             self.limit_purity = None
             self.limit_brightness = None
+            self.min_purity = None
+            self.min_brightness = None
             self.reset_intent = False
         # don't cache this until get_rgb, so we can modify 1st via
         # adjusters
@@ -988,9 +994,9 @@ class CAM16Color (UIColor):
 
         """
         try:
-            t1 = (self.v, self.s, self.h, self.limit_purity, self.limit_brightness)
+            t1 = (self.v, self.s, self.h, self.limit_purity, self.limit_brightness, self.min_brightness, self.min_purity)
             t1_ill = self.illuminant
-            t2 = (other.v, other.s, other.h, other.limit_purity, other.limit_brightness)
+            t2 = (other.v, other.s, other.h, other.limit_purity, other.limit_brightness, other.min_brightness, other.min_purity)
             t2_ill = other.illuminant
         except AttributeError:
             return UIColor.__eq__(self, other)
@@ -1471,8 +1477,10 @@ def CAM16_to_RGB(self):
         self.illuminant = np.array(
             colour.xy_to_XYZ(
                 colour.ILLUMINANTS['cie_2_1931']['D65']) * 100.0)
-    maxcolorfulness = self.limit_purity
+    max_colorfulness = self.limit_purity
     max_brightness = self.limit_brightness
+    min_colorfulness = self.min_purity
+    min_brightness = self.min_brightness
     axes = list(self.cieaxes)
     v, s, h = max(0.00001, self.v), max(0.00001, self.s), self.h
     # reset gamut/display flags since we don't know yet
@@ -1480,22 +1488,38 @@ def CAM16_to_RGB(self):
     self.displayexceeded = False
     # max colorfulness is optional limiter to help enforce limited palette
     # treat this like exceeding the gamut
-    if maxcolorfulness is not None:
+    if max_colorfulness is not None:
         # only return stripes for Chroma slider when limiting purity/chroma
-        if self.gamutmapping == "highlightC" and self.s > maxcolorfulness:
+        if self.gamutmapping == "highlightC" and s > max_colorfulness:
             self.gamutexceeded = True
             return 0.5, 0.5, 0.5, 0
-        if self.s > maxcolorfulness:
+        if s > max_colorfulness:
             self.gamutexceeded = True
-            s = maxcolorfulness
+            s = max_colorfulness
     if max_brightness is not None:
         # only return stripes for brightness slider when limiting brightness
-        if self.gamutmapping == "highlightL" and self.v > max_brightness:
+        if self.gamutmapping == "highlightL" and v > max_brightness:
             self.gamutexceeded = True
             return 0.5, 0.5, 0.5, 0
-        if self.v > max_brightness:
+        if v > max_brightness:
             self.gamutexceeded = True
             v = max_brightness
+    if min_brightness is not None:
+        # only return stripes for brightness slider when min brightness
+        if self.gamutmapping == "highlightL" and v < min_brightness:
+            self.gamutexceeded = True
+            return 0.5, 0.5, 0.5, 0
+        if v < min_brightness:
+            self.gamutexceeded = True
+            v = min_brightness
+    if min_colorfulness is not None:
+        # only return stripes for Chroma slider when min purity/chroma
+        if self.gamutmapping == "highlightC" and s < min_colorfulness:
+            self.gamutexceeded = True
+            return 0.5, 0.5, 0.5, 0
+        if s < min_colorfulness:
+            self.gamutexceeded = True
+            s = min_colorfulness
     # build CAM spec
     zipped = zip(axes, (v, s, h))
     cam = colour.utilities.as_namedtuple(dict((x, y) for x, y in zipped),

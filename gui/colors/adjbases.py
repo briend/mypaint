@@ -1097,7 +1097,9 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         from gui.colors.sliders import (CAM16TempSlider,
                                         CAM16LimitChromaSlider,
                                         CAM16HueNormSlider,
-                                        CAM16LimitLumaSlider)
+                                        CAM16LimitLumaSlider,
+                                        CAM16MinChromaSlider,
+                                        CAM16MinLumaSlider)
         if isinstance(self, (CAM16TempSlider)):
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
             illuminant *= 100
@@ -1117,7 +1119,7 @@ class SliderColorAdjuster (ColorAdjusterWidget):
                 col.limit_purity = max(0.0, limit_purity)
             col.cachedrgb = None
         if isinstance(self, (CAM16LimitLumaSlider)):
-            # push chroma limiter to prefs and return new color
+            # push Luma limiter to prefs and return new color
             # maximum replaced with -1 to indicate no limit
             limit_brightness = col.limit_brightness
             if limit_brightness is None:
@@ -1126,6 +1128,24 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             col = self._get_app_brush_color()
             if limit_brightness >= 0.0:
                 col.limit_brightness = max(0.0, limit_brightness)
+            col.cachedrgb = None
+        if isinstance(self, (CAM16MinLumaSlider)):
+            # push Luma Min to prefs and return new color
+            min_brightness = col.min_brightness
+            if min_brightness is None:
+                min_brightness = 0.0
+            self.p['color.min_brightness'] = min_brightness
+            col = self._get_app_brush_color()
+            col.min_brightness = min_brightness
+            col.cachedrgb = None
+        if isinstance(self, (CAM16MinChromaSlider)):
+            # push chroma min to prefs and return new color
+            min_purity = col.min_purity
+            if min_purity is None:
+                min_purity = 0.0
+            self.p['color.min_purity'] = min_purity
+            col = self._get_app_brush_color()
+            col.min_purity = min_purity
             col.cachedrgb = None
         return col
 
@@ -1204,7 +1224,9 @@ class SliderColorAdjuster (ColorAdjusterWidget):
         from gui.colors.sliders import (CAM16TempSlider,
                                         CAM16LimitChromaSlider,
                                         CAM16HueNormSlider,
-                                        CAM16LimitLumaSlider)
+                                        CAM16LimitLumaSlider,
+                                        CAM16MinLumaSlider,
+                                        CAM16MinChromaSlider)
         if isinstance(self, (CAM16TempSlider)):
             illuminant = colour.sRGB_to_XYZ(col.get_rgb())
             illuminant *= 100
@@ -1224,7 +1246,7 @@ class SliderColorAdjuster (ColorAdjusterWidget):
                 col.limit_purity = max(0.0, limit_purity)
             col.cachedrgb = None
         if isinstance(self, (CAM16LimitLumaSlider)):
-            # push chroma limiter to prefs and return new color
+            # push Luma limiter to prefs and return new color
             # maximum replaced with -1 to indicate no limit
             limit_brightness = col.limit_brightness
             if limit_brightness is None:
@@ -1233,6 +1255,24 @@ class SliderColorAdjuster (ColorAdjusterWidget):
             col = self._get_app_brush_color()
             if limit_brightness >= 0.0:
                 col.limit_brightness = max(0.0, limit_brightness)
+            col.cachedrgb = None
+        if isinstance(self, (CAM16MinLumaSlider)):
+            # push Luma Min to prefs and return new color
+            min_brightness = col.min_brightness
+            if min_brightness is None:
+                min_brightness = 0.0
+            self.p['color.min_brightness'] = min_brightness
+            col = self._get_app_brush_color()
+            col.min_brightness = min_brightness
+            col.cachedrgb = None
+        if isinstance(self, (CAM16MinChromaSlider)):
+            # push chroma min to prefs and return new color
+            min_purity = col.min_purity
+            if min_purity is None:
+                min_purity = 0.0
+            self.p['color.min_purity'] = min_purity
+            col = self._get_app_brush_color()
+            col.min_purity = min_purity
             col.cachedrgb = None
         self.set_managed_color(col)
         return True
