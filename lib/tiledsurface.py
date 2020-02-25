@@ -245,7 +245,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
         self.notify_observers(*lib.surface.get_tiles_bbox(trimmed))
 
     @contextlib.contextmanager
-    def tile_request(self, tx, ty, readonly):
+    def tile_request(self, tx, ty, readonly, compositing_only=False):
         """Get a tile as a NumPy array, then put it back
 
         :param int tx: Tile X coord (multiply by TILE_SIZE for pixels)
@@ -285,7 +285,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             ...     assert (t4 == t1).all()
 
         """
-        numpy_tile = self._get_tile_numpy(tx, ty, readonly)
+        numpy_tile = self._get_tile_numpy(tx, ty, readonly, compositing_only)
         yield numpy_tile
         self._set_tile_numpy(tx, ty, numpy_tile, readonly)
 
@@ -314,7 +314,7 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             t = transparent_tile
         return t
 
-    def _get_tile_numpy(self, tx, ty, readonly):
+    def _get_tile_numpy(self, tx, ty, readonly, compositing_only=False):
         # OPTIMIZE: do some profiling to check if this function is a bottleneck
         #           yes it is
         # Note: we must return memory that stays valid for writing until the
@@ -340,7 +340,31 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
         if not readonly:
             # assert self.mipmap_level == 0
             self._mark_mipmap_dirty(tx, ty)
-        return t.rgba
+        if compositing_only:
+            print(tx, ty)
+            t_right = self.tiledict.get((tx+1, ty))
+            if t_right is None:
+                t_right = transparent_tile
+            if t_right is mipmap_dirty_tile:
+                t_right = self._regenerate_mipmap(t_right, tx+1, ty)
+            t_left = self.tiledict.get((tx-1, ty))
+            if t_left is None:
+                t_left = transparent_tile
+            if t_left is mipmap_dirty_tile:
+                t_left = self._regenerate_mipmap(t_left, tx-1, ty)
+            t_north = self.tiledict.get((tx, ty-1))
+            if t_north is None:
+                t_north = transparent_tile
+            if t_north is mipmap_dirty_tile:
+                t_north = self._regenerate_mipmap(t_north, tx, ty-1)
+            t_south = self.tiledict.get((tx, ty+1))
+            if t_south is None:
+                t_south = transparent_tile
+            if t_south is mipmap_dirty_tile:
+                t_south = self._regenerate_mipmap(t_south, tx, ty+1)
+            return np.ascontiguousarray(np.concatenate((t.rgba, t_right.rgba, t_left.rgba, t_north.rgba, t_south.rgba), axis=0))
+        else:
+            return t.rgba
 
     def _set_tile_numpy(self, tx, ty, obj, readonly):
         pass  # Data can be modified directly, no action needed
@@ -430,10 +454,14 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             self.mipmap.composite_tile(dst, dst_has_alpha, tx, ty,
                                        mipmap_level, opacity, mode, opts)
             return
-
+        
+        bundle_tiles = False
+        if mode == mypaintlib.CombineBumpMapDst or mode == mypaintlib.CombineBumpMap:
+            bundle_tiles = True
+        
         # Tile request at the required level.
         # Try optimizations again if we got the special marker tile
-        with self.tile_request(tx, ty, readonly=True) as src:
+        with self.tile_request(tx, ty, readonly=True, compositing_only=bundle_tiles) as src:
             if src is transparent_tile.rgba:
                 if dst_has_alpha:
                     if mode in lib.modes.MODES_CLEARING_BACKDROP_AT_ZERO_ALPHA:
