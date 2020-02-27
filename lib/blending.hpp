@@ -38,6 +38,29 @@ extern float spectral_b[NUM_WAVES];
 */
 extern float SPECTRAL_WEIGHTS_SUM;
 
+
+
+// C fmodf function is not "arithmetic modulo"; it doesn't handle negative dividends as you might expect
+// if you expect 0 or a positive number when dealing with negatives, use
+// this function instead.
+inline float mod_arith(float a, float b)
+{
+    float ret = a - b * floor (a / b);
+    return ret;
+}
+
+// Returns the smallest angular difference
+inline float smallest_angular_difference(float angleA, float angleB)
+{
+    float a;
+    a = angleB - angleA;
+    a = mod_arith((a + 180), 360) - 180;
+    a += (a>180) ? -360 : (a<-180) ? 360 : 0;
+    return a;
+}
+
+
+
 inline void
 rgb_to_spectral (float r, float g, float b, float *spectral_) {
   float offset = 1.0 - WGM_EPSILON;
@@ -223,7 +246,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             // Calcuate bump map 
             float slopes[2] = {0.0};
-            float dir = 0.0;
+            float radians = 0.0;
+            float direction = 0.0;
             const int reach = 1;
             int o = 0;
             float center = 0.0;
@@ -241,7 +265,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                       _slope += src[o+c];
                     }
 
-                      slopes[1] += 2.0 * _slope;
+                      slopes[1] += -2.0 * _slope;
 
                   }
               } else {
@@ -252,7 +276,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                       _slope += src[o+c];
                     }
 
-                      slopes[1] += 2.0 * _slope;
+                      slopes[1] += -2.0 * _slope;
 
                   }
               }
@@ -265,7 +289,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                       _slope += src[o+c];
                     }
 
-                      slopes[0] += 2.0 * _slope;
+                      slopes[0] += -2.0 * _slope;
 
                   }
               } else {
@@ -276,7 +300,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                       _slope += src[o+c];
                     }
 
-                      slopes[0] += 2.0 * _slope;
+                      slopes[0] += -2.0 * _slope;
 
                   }
               }
@@ -289,7 +313,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                       _slope += src[o+c];
                     }
 
-                      slopes[0] += -2.0 * _slope;
+                      slopes[0] += 2.0 * _slope;
 
                   }
               } else {
@@ -300,7 +324,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                       _slope += src[o+c];
                     }
 
-                      slopes[0] += -2.0 * _slope;
+                      slopes[0] += 2.0 * _slope;
 
                   }
               }
@@ -313,7 +337,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                       _slope += src[o+c];
                     }
 
-                      slopes[1] += -2.0 * _slope;
+                      slopes[1] += 2.0 * _slope;
 
                   }
               } else {
@@ -324,19 +348,18 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                       _slope += src[o+c];
                     }
 
-                    slopes[1] += -2.0 * _slope;
+                    slopes[1] += 2.0 * _slope;
 
                 }
               }
             }
             
             // amplify slope with options array
-            float slope = abs(slopes[0]) + abs(slopes[1]);
+            float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
             slope /= fastpow(MYPAINT_NUM_CHANS-1, opts[1]);
-            if (slopes[1] != 0.0) {
-              dir = atan(abs(slopes[0]) / abs(slopes[1]));
-            }
-            float degrees = atan(slope * dir);
+            radians = atan2(slopes[1], slopes[0]);
+            direction = smallest_angular_difference(radians * 180.0f / M_PI, 270.0) ;
+            float degrees = atan(slope * direction / 360.0);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
             Slopes_Array[i / MYPAINT_NUM_CHANS] = lambert;
             
@@ -378,7 +401,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             // Calcuate bump map 
             float slopes[2] = {0.0};
-            float dir = 0.0;
+            float radians = 0.0;
+            float direction = 0.0;
             const int reach = 1;
             int o = 0;
             float center = 0.0;
@@ -396,7 +420,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                       _slope += src[o+c];
                     }
 
-                      slopes[1] += 2.0 * _slope;
+                      slopes[1] += -2.0 * _slope;
 
                   }
               } else {
@@ -407,7 +431,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                       _slope += src[o+c];
                     }
 
-                      slopes[1] += 2.0 * _slope;
+                      slopes[1] += -2.0 * _slope;
 
                   }
               }
@@ -420,7 +444,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                       _slope += src[o+c];
                     }
 
-                      slopes[0] += 2.0 * _slope;
+                      slopes[0] += -2.0 * _slope;
 
                   }
               } else {
@@ -431,7 +455,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                       _slope += src[o+c];
                     }
 
-                      slopes[0] += 2.0 * _slope;
+                      slopes[0] += -2.0 * _slope;
 
                   }
               }
@@ -444,7 +468,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                       _slope += src[o+c];
                     }
 
-                      slopes[0] += -2.0 * _slope;
+                      slopes[0] += 2.0 * _slope;
 
                   }
               } else {
@@ -455,7 +479,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                       _slope += src[o+c];
                     }
 
-                      slopes[0] += -2.0 * _slope;
+                      slopes[0] += 2.0 * _slope;
 
                   }
               }
@@ -468,7 +492,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                       _slope += src[o+c];
                     }
 
-                      slopes[1] += -2.0 * _slope;
+                      slopes[1] += 2.0 * _slope;
 
                   }
               } else {
@@ -479,23 +503,22 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                       _slope += src[o+c];
                     }
 
-                    slopes[1] += -2.0 * _slope;
+                    slopes[1] += 2.0 * _slope;
 
                 }
               }
             }
 
             // amplify slope with options array
-            float slope = abs(slopes[0]) + abs(slopes[1]);
+            float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
             slope /= fastpow(MYPAINT_NUM_CHANS-1, opts[1]);
 
-            if (slopes[1] != 0.0) {
-              dir = atan(abs(slopes[0]) / abs(slopes[1]));
-            }
             // reduce slope when dst alpha is very high, like thick paint hiding texture
             slope *= (1.0 - fastpow(dst[i+MYPAINT_NUM_CHANS-1], 16));
-        
-            float degrees = atan(slope * dir);
+
+            radians = atan2(slopes[1], slopes[0]);
+            direction = smallest_angular_difference(radians * 180.0f / M_PI, 270.0) ;
+            float degrees = atan(slope * direction / 360.0);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
             Slopes_Array[i / MYPAINT_NUM_CHANS] = lambert;
         }

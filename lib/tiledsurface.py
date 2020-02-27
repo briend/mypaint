@@ -341,7 +341,6 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             # assert self.mipmap_level == 0
             self._mark_mipmap_dirty(tx, ty)
         if compositing_only:
-            print(tx, ty)
             t_right = self.tiledict.get((tx+1, ty))
             if t_right is None:
                 t_right = transparent_tile
