@@ -320,9 +320,13 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
         # Note: we must return memory that stays valid for writing until the
         # last end_atomic(), because of the caching in tiledsurface.hpp.
 
+        mod_x = 0
+        mod_y = 0
         if self.looped:
-            tx = tx % (self.looped_size[0] // N)
-            ty = ty % (self.looped_size[1] // N)
+            mod_x = (self.looped_size[0] // N)
+            mod_y = (self.looped_size[1] // N)
+            tx = tx % mod_x
+            ty = ty % mod_y
 
         t = self.tiledict.get((tx, ty))
         if t is None:
@@ -341,27 +345,50 @@ class MyPaintSurface (TileAccessible, TileBlittable, TileCompositable):
             # assert self.mipmap_level == 0
             self._mark_mipmap_dirty(tx, ty)
         if compositing_only:
-            t_right = self.tiledict.get((tx+1, ty))
+            if self.looped:
+                otx = (tx+1) % mod_x
+            else:
+                otx = tx+1
+            t_right = self.tiledict.get((otx, ty))
             if t_right is None:
                 t_right = transparent_tile
             if t_right is mipmap_dirty_tile:
-                t_right = self._regenerate_mipmap(t_right, tx+1, ty)
-            t_left = self.tiledict.get((tx-1, ty))
+                t_right = self._regenerate_mipmap(t_right, otx, ty)
+
+            if self.looped:
+                otx = (tx-1) % mod_x
+            else:
+                otx = tx-1
+            t_left = self.tiledict.get((otx, ty))
             if t_left is None:
                 t_left = transparent_tile
             if t_left is mipmap_dirty_tile:
-                t_left = self._regenerate_mipmap(t_left, tx-1, ty)
-            t_north = self.tiledict.get((tx, ty-1))
+                t_left = self._regenerate_mipmap(t_left, otx, ty)
+
+            if self.looped:
+                oty = (ty-1) % mod_y
+            else:
+                oty = ty-1
+            t_north = self.tiledict.get((tx, oty))
             if t_north is None:
                 t_north = transparent_tile
             if t_north is mipmap_dirty_tile:
-                t_north = self._regenerate_mipmap(t_north, tx, ty-1)
-            t_south = self.tiledict.get((tx, ty+1))
+                t_north = self._regenerate_mipmap(t_north, tx, oty)
+
+            if self.looped:
+                oty = (ty+1) % mod_y
+            else:
+                oty = ty+1
+            t_south = self.tiledict.get((tx, oty))
             if t_south is None:
                 t_south = transparent_tile
             if t_south is mipmap_dirty_tile:
-                t_south = self._regenerate_mipmap(t_south, tx, ty+1)
-            return np.ascontiguousarray(np.concatenate((t.rgba, t_right.rgba, t_left.rgba, t_north.rgba, t_south.rgba), axis=0))
+                t_south = self._regenerate_mipmap(t_south, tx, oty)
+            return np.ascontiguousarray(np.concatenate((t.rgba,
+                                                        t_right.rgba,
+                                                        t_left.rgba,
+                                                        t_north.rgba,
+                                                        t_south.rgba), axis=0))
         else:
             return t.rgba
 

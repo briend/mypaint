@@ -259,74 +259,76 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
               if (i >= stride * p) {
                   int o = i - stride * p;
                   float _slope = 0.0;
-                  float _slope_a = src[o+MYPAINT_NUM_CHANS-1];
-                  if (_slope_a > 0.0) {
+
                     for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
                       _slope += src[o+c];
                     }
+                    slopes[1] += -2.0 * _slope;
 
-                      slopes[1] += -2.0 * _slope;
-
-                  }
               } else {
                   int o = i + (BUFSIZE * 4) - (stride * p);
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
 
-                      slopes[1] += -2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+                  slopes[1] += -2.0 * _slope;
               }
               // East
               if (i % stride < stride - MYPAINT_NUM_CHANS * p) {
                   int o = i + MYPAINT_NUM_CHANS * p;
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
 
-                      slopes[0] += -2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+
+                  slopes[0] += -2.0 * _slope;
+
               } else {
                   int o = i + (BUFSIZE - (stride - MYPAINT_NUM_CHANS * p));
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-
-                      slopes[0] += -2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+                  slopes[0] += -2.0 * _slope;
+
               }
               // West
               if (i % stride >= MYPAINT_NUM_CHANS * p) {
                   int o = i - MYPAINT_NUM_CHANS * p;
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-
-                      slopes[0] += 2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+
+                  slopes[0] += 2.0 * _slope;
+
               } else {
                   int o = i  + (BUFSIZE * 2) + stride - (MYPAINT_NUM_CHANS * p);
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-
-                      slopes[0] += 2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+                  slopes[0] += 2.0 * _slope;
+              }
+              // South
+              if (i < BUFSIZE - stride * p) {
+                  int o = i + stride * p;
+                  float _slope = 0.0;
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
+                  }
+
+                  slopes[1] += 2.0 * _slope;
+
+              } else {
+                  int o =  i + (BUFSIZE * 3) + (stride * p);
+                  float _slope = 0.0;
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
+                  }
+                  slopes[1] += 2.0 * _slope;
               }
               // South
               if (i < BUFSIZE - stride * p) {
@@ -414,98 +416,77 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
               if (i >= stride * p) {
                   int o = i - stride * p;
                   float _slope = 0.0;
-                  float _slope_a = src[o+MYPAINT_NUM_CHANS-1];
-                  if (_slope_a > 0.0) {
+
                     for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
                       _slope += src[o+c];
                     }
+                    slopes[1] += -2.0 * _slope;
 
-                      slopes[1] += -2.0 * _slope;
-
-                  }
               } else {
                   int o = i + (BUFSIZE * 4) - (stride * p);
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
 
-                      slopes[1] += -2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+                  slopes[1] += -2.0 * _slope;
               }
               // East
               if (i % stride < stride - MYPAINT_NUM_CHANS * p) {
                   int o = i + MYPAINT_NUM_CHANS * p;
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
 
-                      slopes[0] += -2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+
+                  slopes[0] += -2.0 * _slope;
+
               } else {
                   int o = i + (BUFSIZE - (stride - MYPAINT_NUM_CHANS * p));
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-
-                      slopes[0] += -2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+                  slopes[0] += -2.0 * _slope;
+
               }
               // West
               if (i % stride >= MYPAINT_NUM_CHANS * p) {
                   int o = i - MYPAINT_NUM_CHANS * p;
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-
-                      slopes[0] += 2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+
+                  slopes[0] += 2.0 * _slope;
+
               } else {
                   int o = i  + (BUFSIZE * 2) + stride - (MYPAINT_NUM_CHANS * p);
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-
-                      slopes[0] += 2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+                  slopes[0] += 2.0 * _slope;
               }
               // South
               if (i < BUFSIZE - stride * p) {
                   int o = i + stride * p;
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
-
-                      slopes[1] += 2.0 * _slope;
-
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
                   }
+
+                  slopes[1] += 2.0 * _slope;
+
               } else {
                   int o =  i + (BUFSIZE * 3) + (stride * p);
                   float _slope = 0.0;
-                  if (src[o+MYPAINT_NUM_CHANS-1] > 0.0) {
-                    for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                      _slope += src[o+c];
-                    }
+                  for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                    _slope += src[o+c];
+                  }
+                  slopes[1] += 2.0 * _slope;
 
-                    slopes[1] += 2.0 * _slope;
-
-                }
               }
             }
 
