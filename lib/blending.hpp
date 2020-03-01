@@ -358,9 +358,9 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             
             // amplify slope with options array
             float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
-            slope /= fastpow(MYPAINT_NUM_CHANS-1, opts[1]);
+            slope /= fastpow(slope, opts[1]);
             radians = atan2(slopes[1], slopes[0]);
-            direction = smallest_angular_difference(radians * 180.0f / M_PI, 270.0) ;
+            direction = smallest_angular_difference(radians * 180.0f / M_PI, 240.0) ;
             float degrees = atan(slope * direction / 360.0);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
             Slopes_Array[i / MYPAINT_NUM_CHANS] = lambert;
@@ -492,13 +492,13 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
 
             // amplify slope with options array
             float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
-            slope /= fastpow(MYPAINT_NUM_CHANS-1, opts[1]);
+            slope /= fastpow(slope, opts[1]);
 
             // reduce slope when dst alpha is very high, like thick paint hiding texture
             slope *= (1.0 - fastpow(dst[i+MYPAINT_NUM_CHANS-1], 16));
 
             radians = atan2(slopes[1], slopes[0]);
-            direction = smallest_angular_difference(radians * 180.0f / M_PI, 270.0) ;
+            direction = smallest_angular_difference(radians * 180.0f / M_PI, 240.0) ;
             float degrees = atan(slope * direction / 360.0);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
             Slopes_Array[i / MYPAINT_NUM_CHANS] = lambert;
