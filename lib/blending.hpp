@@ -241,15 +241,12 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
         const float Oren_exposure = 1.0 / Oren_A;
         const float amp = 1.0 - opts[1];
         const unsigned int stride = MYPAINT_TILE_SIZE * MYPAINT_NUM_CHANS;
-        float Slopes_Array[MYPAINT_TILE_SIZE * MYPAINT_TILE_SIZE] = {0};
+        float lambert_array[MYPAINT_TILE_SIZE * MYPAINT_TILE_SIZE] = {0};
 
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             // Calcuate bump map 
             float slopes[2] = {0.0};
-            float radians = 0.0;
-            float direction = 0.0;
-            const int reach = 4;
-            int o = 0;
+            const int reach = 8;
             float center = src[i+MYPAINT_NUM_CHANS-1];
             for (int p=1; p<=reach; p++) {
               // North
@@ -258,18 +255,15 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                 if (!(i >= stride * p)) {
                   o = i + (BUFSIZE * 4) - (stride * p);
                 }
-                float _slope = src[o+MYPAINT_NUM_CHANS-1];
-                slopes[1] += -2.0 * _slope;
+                slopes[1] += -2.0 * src[o+MYPAINT_NUM_CHANS-1] / p;
               }
-
               // East
               {
                 int o = i + MYPAINT_NUM_CHANS * p;
                 if (!(i % stride < stride - MYPAINT_NUM_CHANS * p)) {
                   o = i + (BUFSIZE - (stride - MYPAINT_NUM_CHANS * p));
                 }
-                float _slope = src[o+MYPAINT_NUM_CHANS-1];
-                slopes[0] += -2.0 * _slope;
+                slopes[0] += -2.0 * src[o+MYPAINT_NUM_CHANS-1] / p;
               }
               // West
               {
@@ -277,35 +271,31 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                 if (!(i % stride >= MYPAINT_NUM_CHANS * p)) {
                   o = i  + (BUFSIZE * 2) + stride - (MYPAINT_NUM_CHANS * p);
                 }
-                float _slope = src[o+MYPAINT_NUM_CHANS-1];
-                slopes[0] += 2.0 * _slope;
+                slopes[0] += 2.0 * src[o+MYPAINT_NUM_CHANS-1] / p;
               }
-
               // South
               {
                 int o = i + stride * p;
                 if (!(i < BUFSIZE - stride * p)) {
                   o =  i + (BUFSIZE * 3) + (stride * p);
                 }
-                float _slope = src[o+MYPAINT_NUM_CHANS-1];
-                slopes[1] += 2.0 * _slope;
+                slopes[1] += 2.0 * src[o+MYPAINT_NUM_CHANS-1] / p;
               }
-              
             }
             
             // amplify slope with options array
             float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
             slope *= fastpow(10.0, amp);
-            radians = atan2(slopes[1], slopes[0]);
-            direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
+            float radians = atan2(slopes[1], slopes[0]);
+            float direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
             float degrees = atan(slope * direction / 360.0);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
-            Slopes_Array[i / MYPAINT_NUM_CHANS] = lambert;
+            lambert_array[i / MYPAINT_NUM_CHANS] = lambert;
             
         }
             
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
-          float lambert = Slopes_Array[i / MYPAINT_NUM_CHANS];
+          float lambert = lambert_array[i / MYPAINT_NUM_CHANS];
           if (lambert != 0.0) {
             for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
               dst[i+c] /= lambert;
@@ -335,14 +325,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
         const float Oren_exposure = 1.0 / Oren_A;
         const float amp = 1.0 - opts[1];
         const unsigned int stride = MYPAINT_TILE_SIZE * MYPAINT_NUM_CHANS;
-        float Slopes_Array[MYPAINT_TILE_SIZE * MYPAINT_TILE_SIZE] = {0};
-
+        float lambert_array[MYPAINT_TILE_SIZE * MYPAINT_TILE_SIZE] = {0};
 
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             // Calcuate bump map 
             float slopes[2] = {0.0};
-            float radians = 0.0;
-            float direction = 0.0;
             const int reach = 1;
             int o = 0;
             float center = 0.0;
@@ -410,17 +397,17 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             // reduce slope when dst alpha is very high, like thick paint hiding texture
             slope *= (1.0 - fastpow(dst[i+MYPAINT_NUM_CHANS-1], 16));
 
-            radians = atan2(slopes[1], slopes[0]);
-            direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
+            float radians = atan2(slopes[1], slopes[0]);
+            float direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
             float degrees = atan(slope * direction / 360.0);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
-            Slopes_Array[i / MYPAINT_NUM_CHANS] = lambert;
+            lambert_array[i / MYPAINT_NUM_CHANS] = lambert;
         }
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
-          float lambert = Slopes_Array[i / MYPAINT_NUM_CHANS];
+          float lambert = lambert_array[i / MYPAINT_NUM_CHANS];
           if (lambert != 0.0) {
             for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                    dst[i+c] /= lambert;
+              dst[i+c] /= lambert;
             }
           }
         }
