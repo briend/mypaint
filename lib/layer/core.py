@@ -94,7 +94,7 @@ class LayerBase (Renderable):
         self._root_ref = None
         self._thumbnail = None
         self._bumpself = True
-        self._bumpself_rough = 0.8
+        self._bumpself_rough = 0.5
         self._bumpself_amp = 0.5
         #: True if the layer was marked as selected when loaded.
         self.initially_selected = False
