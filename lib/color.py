@@ -1681,7 +1681,7 @@ def sd_to_XYZ_integration(
     return from_range_100(XYZ)
 
 
-def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=0.9, min_refl=0.0001):
+def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=1.0, min_refl=0.0001):
 
     global spec_r, spec_g, spec_b, T_MATRIX
     # This is our target display colourspace
