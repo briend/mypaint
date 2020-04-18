@@ -317,7 +317,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
           float lambert = lambert_array[i / MYPAINT_NUM_CHANS];
           if (lambert != 0.0) {
             for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-              dst[i+c] /= lambert;
+              dst[i+c] /= fastpow(lambert, 0.45);
             }
           }
         }
@@ -422,7 +422,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
           float lambert = lambert_array[i / MYPAINT_NUM_CHANS];
           if (lambert != 0.0) {
             for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
-              dst[i+c] *= lambert;
+              dst[i+c] *= fastpow(lambert, 2.2);
             }
           }
         }

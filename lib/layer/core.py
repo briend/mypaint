@@ -94,8 +94,8 @@ class LayerBase (Renderable):
         self._root_ref = None
         self._thumbnail = None
         self._bumpself = True
-        self._bumpself_rough = 0.5
-        self._bumpself_amp = 0.5
+        self._bumpself_rough = 1.0
+        self._bumpself_amp = 0.8
         #: True if the layer was marked as selected when loaded.
         self.initially_selected = False
 
@@ -186,13 +186,13 @@ class LayerBase (Renderable):
         self.bumpself = lib.xml.xsd2bool(bumpself)
         bumpbg = attrs.get("bumpself", 'false').lower()
         self.bumpbg = lib.xml.xsd2bool(bumpbg)
-        self.bumpself_rough = helpers.clamp(float(attrs.get('bumpself_rough', '0.5')),
+        self.bumpself_rough = helpers.clamp(float(attrs.get('bumpself_rough', '1.0')),
                                      0.0, 1.0)
-        self.bumpself_amp = helpers.clamp(float(attrs.get('bumpself_amp', '0.5')),
+        self.bumpself_amp = helpers.clamp(float(attrs.get('bumpself_amp', '0.8')),
                                      0.0, 1.0)
-        self.bumpbg_rough = helpers.clamp(float(attrs.get('bumpbg_rough', '0.5')),
+        self.bumpbg_rough = helpers.clamp(float(attrs.get('bumpbg_rough', '1.0')),
                                      0.0, 1.0)
-        self.bumpbg_amp = helpers.clamp(float(attrs.get('bumpbg_amp', '0.5')),
+        self.bumpbg_amp = helpers.clamp(float(attrs.get('bumpbg_amp', '0.8')),
                                      0.0, 1.0)
         visible = attrs.get('visibility', 'visible').lower()
         self.visible = (visible != "hidden")

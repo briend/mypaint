@@ -53,7 +53,7 @@ class BackgroundWindow (windowing.Dialog):
             self,
             app=app,
             title=_('Background'),
-            modal=True
+            modal=False
         )
         self.add_button(_('Save as Default'), RESPONSE_SAVE_AS_DEFAULT)
         self.add_button(Gtk.STOCK_OK, Gtk.ResponseType.ACCEPT)
