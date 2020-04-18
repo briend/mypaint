@@ -13,7 +13,7 @@
 #ifndef __HAVE_BLENDING
 #define __HAVE_BLENDING
 #define WGM_EPSILON 0.0001
-#define NUM_WAVES 7
+#define NUM_WAVES 10
 
 #include "fix15.hpp"
 #include <mypaint-tiled-surface.h>

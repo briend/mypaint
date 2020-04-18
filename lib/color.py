@@ -1731,19 +1731,44 @@ def Generate_Spectral_Tables(wavelengths=None, illuminant_XYZ=None, max_refl=1.0
     # generate primaries for r, g, b
     red_XYZ = np.sum([1.,0.,0.] * RGB_to_XYZ_m, axis=1)
     #red_spd = XYZ_to_spectral(target_XYZ, cmfs=CMFS.align(shape), illuminant=illuminant_SPD, interval=interval, tolerance=tol, max_refl=max_refl)
-    spec_r = np.ascontiguousarray(XYZ_to_spectral(red_XYZ, cmfs=CMFS, illuminant=illuminant_SPD, max_refl=max_refl, min_refl=min_refl).values, dtype='float32')
+    #spec_r = np.ascontiguousarray(XYZ_to_spectral(red_XYZ, cmfs=CMFS, illuminant=illuminant_SPD, max_refl=max_refl, min_refl=min_refl).values, dtype='float32')
 
     green_XYZ = np.sum([0.,1.,0.] * RGB_to_XYZ_m, axis=1)
-    spec_g = np.ascontiguousarray(XYZ_to_spectral(green_XYZ, cmfs=CMFS, illuminant=illuminant_SPD, max_refl=max_refl, min_refl=min_refl).values, dtype='float32')
+    #spec_g = np.ascontiguousarray(XYZ_to_spectral(green_XYZ, cmfs=CMFS, illuminant=illuminant_SPD, max_refl=max_refl, min_refl=min_refl).values, dtype='float32')
 
     blue_XYZ = np.sum([0.,0.,1.] * RGB_to_XYZ_m, axis=1)
-    spec_b = np.ascontiguousarray(XYZ_to_spectral(blue_XYZ, cmfs=CMFS, illuminant=illuminant_SPD, max_refl=max_refl, min_refl=min_refl).values, dtype='float32')
+    #spec_b = np.ascontiguousarray(XYZ_to_spectral(blue_XYZ, cmfs=CMFS, illuminant=illuminant_SPD, max_refl=max_refl, min_refl=min_refl).values, dtype='float32')
 
     # generate matrix for spectral->RGB conversion
-    T_MATRIX = np.ascontiguousarray(np.matmul(XYZ_to_RGB_m, np.matmul(CMFS_transposed, np.diag(illuminant_SPD.values)) # weight for whitepoint
-                                   / np.matmul(CMFS_transposed[1], illuminant_SPD.values)), dtype='float32')
+    #T_MATRIX = np.ascontiguousarray(np.matmul(XYZ_to_RGB_m, np.matmul(CMFS_transposed, np.diag(illuminant_SPD.values)) # weight for whitepoint
+    #                               / np.matmul(CMFS_transposed[1], illuminant_SPD.values)), dtype='float32')
 
     # update the C++ extensions as well
+    
+    
+    T_MATRIX = np.ascontiguousarray(np.array([[0.026595621243689,0.049779426257903,0.022449850859496,-0.218453689278271
+                                    ,-0.256894883201278,0.445881722194840,0.772365886289756,0.194498761382537
+                                    ,0.014038157587820,0.007687264480513]
+                                    ,[-0.032601672674412,-0.061021043498478,-0.052490001018404
+                                    ,0.206659098273522,0.572496335158169,0.317837248815438,-0.021216624031211
+                                    ,-0.019387668756117,-0.001521339050858,-0.000835181622534]
+                                    ,[0.339475473216284,0.635401374177222,0.771520797089589,0.113222640692379
+                                    ,-0.055251113343776,-0.048222578468680,-0.012966666339586
+                                    ,-0.001523814504223,-0.000094718948810,-0.000051604594741]]), dtype='float32')
+
+    spec_r = np.ascontiguousarray(np.array([0.009281362787953,0.009732627042016,0.011254252737167,0.015105578649573
+                                  ,0.024797924177217,0.083622585502406,0.977865045723212,1.000000000000000
+                                  ,0.999961046144372,0.999999992756822]), dtype='float32')
+
+    spec_g = np.ascontiguousarray(np.array([0.002854127435775,0.003917589679914,0.012132151699187,0.748259205918013
+                                  ,1.000000000000000,0.865695937531795,0.037477469241101,0.022816789725717
+                                  ,0.021747419446456,0.021384940572308]), dtype='float32')
+
+    spec_b = np.ascontiguousarray(np.array([0.537052150373386,0.546646402401469,0.575501819073983,0.258778829633924
+                                  ,0.041709923751716,0.012662638828324,0.007485593127390,0.006766900622462
+                                  ,0.006699764779016,0.006676219883241]), dtype='float32')
+    
+    
     mypaintlib.update_spectral(spec_r, spec_g, spec_b, T_MATRIX);
 
 def RGB_to_Spectral(rgb):
