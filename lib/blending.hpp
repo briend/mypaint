@@ -416,7 +416,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             float direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
             float degrees = atan(slope * direction / 360.0);
             float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
-            lambert_array[i / MYPAINT_NUM_CHANS] = lambert;
+            lambert_array[i / MYPAINT_NUM_CHANS] = CLAMP(lambert, 0.0f, 1.0f);
         }
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
           float lambert = lambert_array[i / MYPAINT_NUM_CHANS];
