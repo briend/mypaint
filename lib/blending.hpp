@@ -412,7 +412,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             slope *= fastpow(10.0, amp);
 
             // reduce slope when dst volume is very high, like thick paint hiding texture
-            slope *= fastpow((10.0 - CLAMP(dst[i+MYPAINT_NUM_CHANS-2], 0.0, 10.0)) / 10.0, 16.0);
+            slope /= (dst[i+MYPAINT_NUM_CHANS-2] + 1.0);
             //printf("slope and vol is %f, %f \n", slope, dst[i+MYPAINT_NUM_CHANS-2]);
 
             float radians = atan2(slopes[1], slopes[0]);
