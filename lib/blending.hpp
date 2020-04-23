@@ -110,7 +110,7 @@ class BlendNormal : public BlendFunc
                             float * dst,
                             const float * const opts) const
     {
-        for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+        for (int i=0; i<MYPAINT_NUM_CHANS; i++) {
             dst[i] = src[i];
         }
     printf("%f", dst[0]);
@@ -255,12 +255,12 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                 if (!(i >= stride * p)) {
                   o = i + (BUFSIZE * 4) - (stride * p);
                 }
-                float _slope = 0.0;
-
-                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                  _slope += src[o+c];
-                }
-                slopes[1] += -2.0 * _slope;
+                //float _slope = 0.0;
+//                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+//                  _slope += src[o+c];
+//                }
+                slopes[1] += -2.0 * src[o+MYPAINT_NUM_CHANS-2];
+                //printf("%f \n", src[o+MYPAINT_NUM_CHANS-2]);
               }
 
               // East
@@ -269,11 +269,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                 if (!(i % stride < stride - MYPAINT_NUM_CHANS * p)) {
                   o = i + (BUFSIZE - (stride - MYPAINT_NUM_CHANS * p));
                 }
-                float _slope = 0.0;
-                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                  _slope += src[o+c];
-                }
-                slopes[0] += -2.0 * _slope;
+//                float _slope = 0.0;
+//                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+//                  _slope += src[o+c];
+//                }
+                slopes[0] += -2.0 * src[o+MYPAINT_NUM_CHANS-2];
               }
               // West
               {
@@ -281,11 +281,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                 if (!(i % stride >= MYPAINT_NUM_CHANS * p)) {
                   o = i  + (BUFSIZE * 2) + stride - (MYPAINT_NUM_CHANS * p);
                 }
-                float _slope = 0.0;
-                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                  _slope += src[o+c];
-                }
-                slopes[0] += 2.0 * _slope;
+//                float _slope = 0.0;
+//                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+//                  _slope += src[o+c];
+//                }
+                slopes[0] += 2.0 * src[o+MYPAINT_NUM_CHANS-2];
               }
 
               // South
@@ -294,11 +294,11 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
                 if (!(i < BUFSIZE - stride * p)) {
                   o =  i + (BUFSIZE * 3) + (stride * p);
                 }
-                float _slope = 0.0;
-                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
-                  _slope += src[o+c];
-                }
-                slopes[1] += 2.0 * _slope;
+//                float _slope = 0.0;
+//                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+//                  _slope += src[o+c];
+//                }
+                slopes[1] += 2.0 * src[o+MYPAINT_NUM_CHANS-2];
               }
             }
 
@@ -316,8 +316,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
           float lambert = lambert_array[i / MYPAINT_NUM_CHANS];
           if (lambert != 0.0) {
-            lambert = fastpow(lambert, 0.45);
-            for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+            //lambert = fastpow(lambert, 0.45);
+            for (int c=0; c<MYPAINT_NUM_CHANS-2; c++) {
               dst[i+c] /= lambert;
             }
           }
@@ -349,6 +349,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
 
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             // Calcuate bump map 
+            //printf("vol is %f \n", dst[i+MYPAINT_NUM_CHANS-2]);
             float slopes[2] = {0.0};
             const int reach = 1;
             int o = 0;
@@ -361,7 +362,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                 }
                 float _slope = 0.0;
 
-                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                for (int c=0; c<MYPAINT_NUM_CHANS-2; c++) {
                   _slope += src[o+c];
                 }
                 slopes[1] += -2.0 * _slope;
@@ -374,7 +375,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                   o = i + (BUFSIZE - (stride - MYPAINT_NUM_CHANS * p));
                 }
                 float _slope = 0.0;
-                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                for (int c=0; c<MYPAINT_NUM_CHANS-2; c++) {
                   _slope += src[o+c];
                 }
                 slopes[0] += -2.0 * _slope;
@@ -386,7 +387,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                   o = i  + (BUFSIZE * 2) + stride - (MYPAINT_NUM_CHANS * p);
                 }
                 float _slope = 0.0;
-                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                for (int c=0; c<MYPAINT_NUM_CHANS-2; c++) {
                   _slope += src[o+c];
                 }
                 slopes[0] += 2.0 * _slope;
@@ -399,7 +400,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
                   o =  i + (BUFSIZE * 3) + (stride * p);
                 }
                 float _slope = 0.0;
-                for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+                for (int c=0; c<MYPAINT_NUM_CHANS-2; c++) {
                   _slope += src[o+c];
                 }
                 slopes[1] += 2.0 * _slope;
@@ -410,8 +411,9 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
             slope *= fastpow(10.0, amp);
 
-            // reduce slope when dst alpha is very high, like thick paint hiding texture
-            slope *= (1.0 - fastpow(dst[i+MYPAINT_NUM_CHANS-1], 16));
+            // reduce slope when dst volume is very high, like thick paint hiding texture
+            slope *= fastpow((10.0 - CLAMP(dst[i+MYPAINT_NUM_CHANS-2], 0.0, 10.0)) / 10.0, 16.0);
+            //printf("slope and vol is %f, %f \n", slope, dst[i+MYPAINT_NUM_CHANS-2]);
 
             float radians = atan2(slopes[1], slopes[0]);
             float direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
@@ -424,9 +426,10 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
           if (lambert != 0.0) {
             float lambertpow = fastpow(lambert, 2.2);
             for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
+              if (c==MYPAINT_NUM_CHANS-2) continue;
               dst[i+c] *= lambertpow;
             }
-            for (int c=0; c<MYPAINT_NUM_CHANS-1; c++) {
+            for (int c=0; c<MYPAINT_NUM_CHANS-2; c++) {
               dst[i+c] /= lambert;
             }
           }

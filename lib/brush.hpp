@@ -48,7 +48,7 @@ public:
   void set_brush_chans (PyObject * chans) {
       PyArrayObject* b_chans = ((PyArrayObject*)chans);
       float *arr_chans = (float*)PyArray_DATA(b_chans);
-      for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+      for (int i=0; i<MYPAINT_NUM_CHANS-2; i++) {
           brushchans[i] = arr_chans[i];
           //printf("brush is %f", brushchans[i]);
       }

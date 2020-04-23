@@ -205,16 +205,16 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       // convert N channels to RGB
       // 8 bit buffers will always be 3/4 channels
-      float spectral[MYPAINT_NUM_CHANS] = {0.0};
-      for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
+      float spectral[MYPAINT_NUM_CHANS-2] = {0.0};
+      for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
         spectral[chan] = *src_p++;
       }
 
       float rgba[4] = {0.0};
 
-      rgba[3] = spectral[MYPAINT_NUM_CHANS-1];
+      rgba[3] = spectral[MYPAINT_NUM_CHANS-2];
       if (rgba[3] > 0.0) {
-        for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
+        for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
           spectral[chan] /= rgba[3];
         }
       }
@@ -286,10 +286,12 @@ tile_convert_rgbu16_to_rgbu8_c(const float* const src,
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       // convert from spectral to RGB here
       
-      float spectral[MYPAINT_NUM_CHANS] = {0.0};
-      for (int chan=0; chan<MYPAINT_NUM_CHANS; chan++) {
+      float spectral[MYPAINT_NUM_CHANS-2] = {0.0};
+      for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
         spectral[chan] = *src_p++;
       }
+      src_p++;
+      src_p++;
       
       float rgba[4] = {0.0};
       
@@ -376,15 +378,16 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       b = (float)(fastpow((float)b/255.0, EOTF));
       a = (float)a / 255.0;
       
-      float spectral[MYPAINT_NUM_CHANS] = {0.0}; 
+      float spectral[MYPAINT_NUM_CHANS-2] = {0.0}; 
 
       rgb_to_spectral(r, g, b, spectral);
       
       // convert to spectral here
       // premultiply after log
-      for (int chan=0; chan<MYPAINT_NUM_CHANS-1; chan++) {
+      for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
           *dst_p++ = spectral[chan] * a;
       }
+      *dst_p++;
       *dst_p++ = a;
 
     }
@@ -420,16 +423,16 @@ void tile_perceptual_change_strokemap(PyObject * a_obj, PyObject * b_obj, PyObje
       // each component with the alpha of the other image, so they are
       // scaled the same and can be compared.
 
-      for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
-        float a_col = a_p[i] * b_p[MYPAINT_NUM_CHANS-1] / 1.0; // a.color * a.alpha*b.alpha
-        float b_col = b_p[i] * a_p[MYPAINT_NUM_CHANS-1] / 1.0; // b.color * a.alpha*b.alpha
+      for (int i=0; i<MYPAINT_NUM_CHANS-2; i++) {
+        float a_col = a_p[i] * b_p[MYPAINT_NUM_CHANS-2] / 1.0; // a.color * a.alpha*b.alpha
+        float b_col = b_p[i] * a_p[MYPAINT_NUM_CHANS-2] / 1.0; // b.color * a.alpha*b.alpha
         color_change += abs(b_col - a_col);
       }
       // "color_change" is in the range [0, 3*a_a]
       // if either old or new alpha is (near) zero, "color_change" is (near) zero
 
-      float alpha_old = a_p[MYPAINT_NUM_CHANS-1];
-      float alpha_new = b_p[MYPAINT_NUM_CHANS-1];
+      float alpha_old = a_p[MYPAINT_NUM_CHANS-2];
+      float alpha_new = b_p[MYPAINT_NUM_CHANS-2];
 
       // Note: the thresholds below are arbitrary choices found to work okay
 
