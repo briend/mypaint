@@ -424,13 +424,9 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
           float lambert = lambert_array[i / MYPAINT_NUM_CHANS];
           if (lambert != 0.0) {
-            float lambertpow = fastpow(lambert, 2.2);
             for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
-              if (c==MYPAINT_NUM_CHANS-2) continue;
-              dst[i+c] *= lambertpow;
-            }
-            for (int c=0; c<MYPAINT_NUM_CHANS-2; c++) {
-              dst[i+c] /= lambert;
+              if (c==MYPAINT_NUM_CHANS-2) continue; //don't reduce volume
+              dst[i+c] *= lambert;
             }
           }
         }
@@ -453,9 +449,10 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
             const float one_minus_Sa = 1.0 - Sa;
-            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+            for (int p=0; p<MYPAINT_NUM_CHANS-2; p++) {
                 dst[i+p] = float_sumprods(src[i+p], opac, one_minus_Sa, dst[i+p]);
             }
+            dst[i+MYPAINT_NUM_CHANS-2] = src[i+MYPAINT_NUM_CHANS-2] * opac + dst[i+MYPAINT_NUM_CHANS-2];
             if (DSTALPHA) {
                 dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
             }
