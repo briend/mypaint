@@ -213,9 +213,10 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendMultiply, CompositeSourceOver>
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
             const float one_minus_Sa = 1.0 - Sa;
-            for (int p=0; p<MYPAINT_NUM_CHANS-1; p++) {
+            for (int p=0; p<MYPAINT_NUM_CHANS-2; p++) {
                 dst[i+p] += src[i+p] * opac;
             }
+            dst[i+MYPAINT_NUM_CHANS-2] = src[i+MYPAINT_NUM_CHANS-2] * opac + dst[i+MYPAINT_NUM_CHANS-2];
             if (DSTALPHA) {
                 dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
             }
