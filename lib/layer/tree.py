@@ -807,7 +807,7 @@ class RootLayerStack (group.LayerStack):
             # use the composite mode from the first layer in the stack for
             if first_child_mode == None:
                 first_child_mode = child_layer.mode
-            bumpbg = self._background_bumpmapped
+            bumpbg = (self._background_bumpmapped and filter != "ByPass")
             bumpbg_amp = self._background_bumpmap_amplify
             bumpbg_rough = self._background_bumpmap_roughness
             should_bump = (filter != "ByPass"

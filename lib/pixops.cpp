@@ -211,10 +211,11 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
       for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
         spectral[chan] = *src_p++;
       }
+      src_p++; // skip over volume
 
       float rgba[4] = {0.0};
 
-      rgba[3] = spectral[MYPAINT_NUM_CHANS-2];
+      rgba[3] = *src_p++; // alpha
       if (rgba[3] > 0.0) {
         for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
           spectral[chan] /= rgba[3];
