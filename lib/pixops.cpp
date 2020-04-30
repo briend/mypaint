@@ -390,7 +390,7 @@ void tile_convert_rgba8_to_rgba16(PyObject * src, PyObject * dst, const float EO
       for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
           *dst_p++ = spectral[chan] * a;
       }
-      *dst_p++;
+      *dst_p++ = 1.0; // set vol to 1.0 to start fresh
       *dst_p++ = a;
 
     }

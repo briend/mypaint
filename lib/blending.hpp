@@ -239,7 +239,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
         const float Oren_rough = opts[0];
         const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
         const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
-        const float Oren_exposure = 1.0 / Oren_A;
+        const float Oren_exposure = 1.0 / Oren_A; // dumb hack to avoid darkening
         const float amp = 1.0 - opts[1];
         const unsigned int stride = MYPAINT_TILE_SIZE * MYPAINT_NUM_CHANS;
         float lambert_array[MYPAINT_TILE_SIZE * MYPAINT_TILE_SIZE] = {0};
@@ -309,7 +309,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
             float radians = atan2(slopes[1], slopes[0]);
             float direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
             float degrees = atan(slope * direction / 360.0);
-            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))));// * Oren_exposure;
+            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
             lambert_array[i / MYPAINT_NUM_CHANS] = CLAMP(lambert, 0.0, 1.0);
             
         }
@@ -317,7 +317,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
           float lambert = lambert_array[i / MYPAINT_NUM_CHANS];
           if (lambert != 0.0) {
-            lambert = fastpow(lambert, 0.45);
+            //lambert = fastpow(lambert, 0.45);
             for (int c=0; c<MYPAINT_NUM_CHANS-2; c++) {
               dst[i+c] /= lambert;
             }
@@ -331,9 +331,7 @@ template <bool DSTALPHA, unsigned int BUFSIZE>
 class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
 {
     // apply SRC as bump map to DST.
-    // optimize for Background tiles as SRC
-    // read pixels from opposite side of tile for edges
-    // introduces artifacts if BG texture is not TILE_SIZE
+    // optimized for Background tiles as SRC
   public:
     inline void operator() (const float * const src,
                             float * dst,
@@ -343,16 +341,16 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
         const float Oren_rough = opts[0];
         const float Oren_A = 1.0 - 0.5 * (Oren_rough / (Oren_rough + 0.33));
         const float Oren_B = 0.45 * (Oren_rough / (Oren_rough + 0.09));
-        const float Oren_exposure = 1.0 / Oren_A;
+        const float Oren_exposure = 1.0 / Oren_A;  // dumb hack to avoid darkening
         const float amp = 1.0 - opts[1];
         const unsigned int stride = MYPAINT_TILE_SIZE * MYPAINT_NUM_CHANS;
-        float lambert_array[MYPAINT_TILE_SIZE * MYPAINT_TILE_SIZE] = {0};
+        float lambert_array[MYPAINT_TILE_SIZE * MYPAINT_TILE_SIZE] = {0.0};
+        const int reach = 1;
 
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             // Calcuate bump map 
             //printf("vol is %f \n", dst[i+MYPAINT_NUM_CHANS-2]);
             float slopes[2] = {0.0};
-            const int reach = 1;
             int o = 0;
             for (int p=1; p<=reach; p++) {
               // North
@@ -411,6 +409,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             // amplify slope with options array
             float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
             slope *= fastpow(100.0, amp);
+            //printf("slope before vol is %f \n", slope);
 
             // reduce slope when dst volume is very high, like thick paint hiding texture
             slope /= (dst[i+MYPAINT_NUM_CHANS-2] + 1.0);
@@ -419,16 +418,18 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
             float radians = atan2(slopes[1], slopes[0]);
             float direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
             float degrees = atan(slope * direction / 360.0);
-            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees))));// * Oren_exposure;
+            float lambert = (fastcos(degrees) * (Oren_A + (Oren_B * fastsin(degrees) * fasttan(degrees)))) * Oren_exposure;
             lambert_array[i / MYPAINT_NUM_CHANS] = CLAMP(lambert, 0.0f, 1.0f);
         }
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
           float lambert = lambert_array[i / MYPAINT_NUM_CHANS];
           if (lambert != 0.0) {
+            //lambert = fastpow(lambert, 2.2);
             for (int c=0; c<MYPAINT_NUM_CHANS; c++) {
-              if (c==MYPAINT_NUM_CHANS-2) continue; //don't reduce volume
               dst[i+c] *= lambert;
             }
+            //printf("lambert is %f \n", lambert);
+            //dst[i+MYPAINT_NUM_CHANS-1] *= lambert;
           }
         }
     }
