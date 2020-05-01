@@ -305,7 +305,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMap>
 
             // amplify slope with options array
             float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
-            slope *= fastpow(10.0, amp);
+            slope = CLAMP(amp * slope, 0.0, 50.0);
             float radians = atan2(slopes[1], slopes[0]);
             float direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
             float degrees = atan(slope * direction / 360.0);
@@ -408,7 +408,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
 
             // amplify slope with options array
             float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
-            slope *= CLAMP(fastpow(100.0, amp), 0.0, 50.0);  //clamp slope at 50
+            slope = CLAMP(100.0 * amp * slope, 0.0, 50.0);  //clamp slope at 50
             //printf("slope before vol is %f \n", slope);
 
             // reduce slope when dst volume is very high, like thick paint hiding texture
