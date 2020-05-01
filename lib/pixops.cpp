@@ -73,10 +73,10 @@ tile_downscale_rgba16_c(const float *src, int src_strides, float *dst,
     dst_p += MYPAINT_NUM_CHANS*dst_x;
     for(int x=0; x<MYPAINT_TILE_SIZE/2; x++) {
       for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
-        dst_p[chan] = log2f(exp2f(src_p[chan])/4 + exp2f((src_p+MYPAINT_NUM_CHANS)[chan])/4 + exp2f((src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[chan])/4 + exp2f((src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[chan])/4);
+        dst_p[chan] = log2f(exp2f(src_p[chan])/4.0 + exp2f((src_p+MYPAINT_NUM_CHANS)[chan])/4.0 + exp2f((src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[chan])/4.0 + exp2f((src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[chan])/4.0);
         }
-        dst_p[MYPAINT_NUM_CHANS-1] = dst_p[MYPAINT_NUM_CHANS-1] = src_p[MYPAINT_NUM_CHANS-1]/4 + (src_p+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-1]/4 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[MYPAINT_NUM_CHANS-1]/4 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-1]/4;
-        dst_p[MYPAINT_NUM_CHANS-2] = dst_p[MYPAINT_NUM_CHANS-2] = src_p[MYPAINT_NUM_CHANS-2]/4 + (src_p+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-2]/4 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[MYPAINT_NUM_CHANS-2]/4 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-2]/4;
+        dst_p[MYPAINT_NUM_CHANS-1] = src_p[MYPAINT_NUM_CHANS-1]/4.0 + (src_p+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-1]/4.0 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[MYPAINT_NUM_CHANS-1]/4.0 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-1]/4.0;
+        dst_p[MYPAINT_NUM_CHANS-2] = (src_p[MYPAINT_NUM_CHANS-2] + (src_p+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-2] + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[MYPAINT_NUM_CHANS-2] + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-2]) / 8.0;
       src_p += 2*MYPAINT_NUM_CHANS;
       dst_p += MYPAINT_NUM_CHANS;
     }
@@ -206,7 +206,7 @@ tile_convert_rgba16_to_rgba8_c (const float* const src,
     uint8_t *dst_p = (uint8_t*)((char *)dst + y*dst_strides);
     for (int x=0; x<MYPAINT_TILE_SIZE; x++) {
       // convert N channels to RGB
-      // 8 bit buffers will always be 3/4 channels
+      // 8 bit buffers will always be 3 or 4 channels
       float spectral[MYPAINT_NUM_CHANS-2] = {0.0};
       for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
         spectral[chan] = *src_p++;
@@ -445,7 +445,7 @@ void tile_perceptual_change_strokemap(PyObject * a_obj, PyObject * b_obj, PyObje
 
       float alpha_diff = alpha_new - alpha_old; // no abs() here (ignore erasers)
       // We check the alpha increase relative to the previous alpha.
-      bool is_perceptual_alpha_increase = alpha_diff > 1.0/4;
+      bool is_perceptual_alpha_increase = alpha_diff > 1.0/4.0;
 
       // this one is responsible for making fat big ugly easy-to-hit pointer targets
       bool is_big_relative_alpha_increase  = alpha_diff > 1.0/64 && alpha_diff > alpha_old/2;
