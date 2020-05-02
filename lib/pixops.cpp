@@ -68,16 +68,16 @@ tile_downscale_rgba16_c(const float *src, int src_strides, float *dst,
                         int dst_strides, int dst_x, int dst_y)
 {
   for (int y=0; y<MYPAINT_TILE_SIZE/2; y++) {
-    float * src_p = (float*)((char *)src + (2*y)*src_strides);
-    float * dst_p = (float*)((char *)dst + (y+dst_y)*dst_strides);
-    dst_p += MYPAINT_NUM_CHANS*dst_x;
-    for(int x=0; x<MYPAINT_TILE_SIZE/2; x++) {
-      for (int chan=0; chan<MYPAINT_NUM_CHANS-2; chan++) {
-        dst_p[chan] = log2f(exp2f(src_p[chan])/4.0 + exp2f((src_p+MYPAINT_NUM_CHANS)[chan])/4.0 + exp2f((src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[chan])/4.0 + exp2f((src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[chan])/4.0);
+    float * src_p = (float*)((char *)src + (2 * y) * src_strides);
+    float * dst_p = (float*)((char *)dst + (y + dst_y) * dst_strides);
+    dst_p += MYPAINT_NUM_CHANS * dst_x;
+    for(int x=0; x<MYPAINT_TILE_SIZE / 2; x++) {
+      for (int chan=0; chan < MYPAINT_NUM_CHANS - 2; chan++) {
+        dst_p[chan] = log2f( (exp2f(src_p[chan]) + exp2f( (src_p + MYPAINT_NUM_CHANS)[chan]) + exp2f( (src_p + MYPAINT_NUM_CHANS * MYPAINT_TILE_SIZE)[chan]) + exp2f( (src_p + MYPAINT_NUM_CHANS * MYPAINT_TILE_SIZE + MYPAINT_NUM_CHANS)[chan]) ) / 4.0);
         }
-        dst_p[MYPAINT_NUM_CHANS-1] = src_p[MYPAINT_NUM_CHANS-1]/4.0 + (src_p+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-1]/4.0 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[MYPAINT_NUM_CHANS-1]/4.0 + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-1]/4.0;
-        dst_p[MYPAINT_NUM_CHANS-2] = (src_p[MYPAINT_NUM_CHANS-2] + (src_p+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-2] + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE)[MYPAINT_NUM_CHANS-2] + (src_p+MYPAINT_NUM_CHANS*MYPAINT_TILE_SIZE+MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS-2]) / 4.0;
-      src_p += 2*MYPAINT_NUM_CHANS;
+        dst_p[MYPAINT_NUM_CHANS - 1] = (src_p[MYPAINT_NUM_CHANS - 1] + (src_p + MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS - 1] + (src_p + MYPAINT_NUM_CHANS * MYPAINT_TILE_SIZE)[MYPAINT_NUM_CHANS - 1] + (src_p + MYPAINT_NUM_CHANS * MYPAINT_TILE_SIZE + MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS - 1]) / 4.0;
+        dst_p[MYPAINT_NUM_CHANS - 2] = (src_p[MYPAINT_NUM_CHANS - 2] + (src_p + MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS - 2] + (src_p + MYPAINT_NUM_CHANS * MYPAINT_TILE_SIZE)[MYPAINT_NUM_CHANS - 2] + (src_p + MYPAINT_NUM_CHANS * MYPAINT_TILE_SIZE + MYPAINT_NUM_CHANS)[MYPAINT_NUM_CHANS - 2]) / 8.0;
+      src_p += 2 * MYPAINT_NUM_CHANS;
       dst_p += MYPAINT_NUM_CHANS;
     }
   }
