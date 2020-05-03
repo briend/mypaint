@@ -582,6 +582,8 @@ class PaintingModeOptionsWidgetBase (Gtk.Grid):
         ('radius_logarithmic', _("Size:")),
         # TRANSLATORS:"Brush opacity" for the options panel. Short.
         ('opaque', _("Opaque:")),
+        # TRANSLATORS:"Volume Rate" for the options panel. Short.
+        ('volume', _("Volume:")),
         # TRANSLATORS:"Brush hardness/sharpness" for the options panel. Short.
         ('hardness', _("Sharp:")),
         # TRANSLATORS:"Additional pressure gain" for the options panel. Short.
