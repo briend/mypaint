@@ -332,6 +332,8 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
 {
     // apply SRC as bump map to DST.
     // optimized for Background tiles as SRC
+    // Since background doesn't have a (used) vol channel, we
+    // have to pass mipmap_level in to scale the slope. ugh
   public:
     inline void operator() (const float * const src,
                             float * dst,
@@ -459,6 +461,24 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeSpectralWGM>
             if (DSTALPHA) {
                 dst[i+MYPAINT_NUM_CHANS-1] = (Sa + float_mul(dst[i+MYPAINT_NUM_CHANS-1], one_minus_Sa));
             }
+        }
+    }
+};
+
+template <bool DSTALPHA, unsigned int BUFSIZE>
+class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeVolume>
+{
+    // Only affect vol channel SRC to DST
+  public:
+    inline void operator() (const float * const src,
+                            float * dst,
+                            const float opac,
+                            const float * const opts) const
+    {
+        for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
+            const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
+            const float one_minus_Sa = 1.0 - Sa;
+            dst[i+MYPAINT_NUM_CHANS-2] = src[i+MYPAINT_NUM_CHANS-2] * opac + dst[i+MYPAINT_NUM_CHANS-2];
         }
     }
 };

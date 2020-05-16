@@ -554,7 +554,8 @@ static const TileDataCombineOp * combine_mode_info[NumCombineModes] =
     new TileDataCombine<BlendNormal, CompositeDestinationAtop>("svg:dst-atop"),
     new TileDataCombine<BlendNormal, CompositeSpectralWGM>("mypaint:spectral-wgm"),
     new TileDataCombine<BlendNormal, CompositeBumpMap>("mypaint:bumpmap"),
-    new TileDataCombine<BlendNormal, CompositeBumpMapDst>("mypaint:bumpmapdst")
+    new TileDataCombine<BlendNormal, CompositeBumpMapDst>("mypaint:bumpmapdst"),
+    new TileDataCombine<BlendNormal, CompositeVolume>("mypaint:volume")
 };
 
 

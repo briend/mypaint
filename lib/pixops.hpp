@@ -101,6 +101,7 @@ enum CombineMode {
     CombineSpectralWGM,
     CombineBumpMap,
     CombineBumpMapDst,
+    CombineVolume,
     NumCombineModes
 };
 

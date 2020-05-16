@@ -266,6 +266,26 @@ class CompositeBumpMapDst : public CompositeFunc
     static const bool zero_alpha_clears_backdrop = false;
 };
 
+class CompositeVolume : public CompositeFunc
+{
+  public:
+    inline void operator() (float * const src,
+                            float * dst) const
+    {
+//        const float j = 1.0 - as;
+//        const float k = float_mul(ab, j);
+
+//        rb = (float_sumprods(as, Rs, j, rb));
+//        gb = (float_sumprods(as, Gs, j, gb));
+//        bb = (float_sumprods(as, Bs, j, bb));
+//        ab = (as + k);
+    }
+
+    static const bool zero_alpha_has_effect = true;
+    static const bool can_decrease_alpha = false;
+    static const bool zero_alpha_clears_backdrop = false;
+};
+
 
 // Destination-In: the painted areas make stencil voids. The backdrop shows
 // through only within the painted areas of the source.

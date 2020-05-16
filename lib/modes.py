@@ -134,6 +134,10 @@ MODE_STRINGS = {
         _("Destination Atop"),
         _("Destination which overlaps the source replaces the source. "
           "Source is placed elsewhere.")),
+    lib.mypaintlib.CombineVolume: (
+        _("Volume"),
+        _("Source Volume blends with Destination volume. "
+          "Other Destination channels unaffected.")),
 }
 for mode in STANDARD_MODES + STACK_MODES:
     assert mode in MODE_STRINGS
