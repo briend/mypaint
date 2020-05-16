@@ -472,7 +472,7 @@ class RootLayerStack (group.LayerStack):
             spec.background = bool(background)
 
         dst_has_alpha = not self.get_render_is_opaque(spec=spec)
-        ops = self.get_render_ops(spec, filter=filter)
+        ops = self.get_render_ops(spec, filter=filter, mipmap_level=mipmap_level)
 
         target_surface_is_8bpc = False
         use_cache = False
@@ -704,7 +704,7 @@ class RootLayerStack (group.LayerStack):
                 if layer is None:
                     layer = self.current
                 spec = self._get_render_spec_for_layer(layer)
-            ops = self.get_render_ops(spec, filter="ByPass")
+            ops = self.get_render_ops(spec, filter="ByPass", mipmap_level=mipmap_level)
 
         dst_is_8bpc = (dst.dtype == 'uint8')
         if dst_is_8bpc:
@@ -787,7 +787,7 @@ class RootLayerStack (group.LayerStack):
 
     ## Renderable implementation
 
-    def get_render_ops(self, spec, filter=None):
+    def get_render_ops(self, spec, filter=None, mipmap_level=0):
         """Get rendering instructions."""
         # Render each layer with an optional bump map effect
         ops = []
@@ -829,7 +829,7 @@ class RootLayerStack (group.LayerStack):
         if spec.global_overlay is not None:
             ops.extend(spec.global_overlay.get_render_ops(spec))
         if self._get_render_background(spec) and bumpbg:
-            opts = np.array([bumpbg_rough, bumpbg_amp], dtype='float32')
+            opts = np.array([bumpbg_rough, bumpbg_amp, mipmap_level], dtype='float32')
             ops.append((rendering.Opcode.COMPOSITE, bg_surf, lib.mypaintlib.CombineBumpMapDst, 1.0, opts))
         # render all the layers onto the background using the first child's mode
         ops.append((4, None, first_child_mode, 1.0, None))

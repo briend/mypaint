@@ -406,14 +406,17 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeBumpMapDst>
               }
             }
 
-            // amplify slope with options array
+
             float slope = sqrt(slopes[0] * slopes[0] + slopes[1] * slopes[1]);
+            // amplify slope with options array
             slope = CLAMP(100.0 * amp * slope, 0.0, 50.0);  //clamp slope at 50
             //printf("slope before vol is %f \n", slope);
-
+            // scale down slope with mipmap level
+            slope /= powf(2.0, opts[2]);
             // reduce slope when dst volume is very high, like thick paint hiding texture
             slope /= (dst[i+MYPAINT_NUM_CHANS-2] + 1.0);
             //printf("slope and vol is %f, %f \n", slope, dst[i+MYPAINT_NUM_CHANS-2]);
+
 
             float radians = atan2(slopes[1], slopes[0]);
             float direction = smallest_angular_difference(radians * 180.0f / M_PI, 60.0) ;
