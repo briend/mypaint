@@ -478,7 +478,7 @@ class BufferCombineFunc <DSTALPHA, BUFSIZE, BlendNormal, CompositeVolume>
         for (unsigned int i=0; i<BUFSIZE; i+=MYPAINT_NUM_CHANS) {
             const float Sa = float_mul(src[i+MYPAINT_NUM_CHANS-1], opac);
             const float one_minus_Sa = 1.0 - Sa;
-            dst[i+MYPAINT_NUM_CHANS-2] = src[i+MYPAINT_NUM_CHANS-2] * opac + dst[i+MYPAINT_NUM_CHANS-2];
+            dst[i+MYPAINT_NUM_CHANS-2] = (src[i+MYPAINT_NUM_CHANS-2] * opac) + (one_minus_Sa * dst[i+MYPAINT_NUM_CHANS-2]);
         }
     }
 };

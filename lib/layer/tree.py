@@ -816,6 +816,7 @@ class RootLayerStack (group.LayerStack):
                           and child_layer.mode != lib.mypaintlib.CombineDestinationIn
                           and child_layer.mode != lib.mypaintlib.CombineDestinationOut
                           and child_layer.mode != lib.mypaintlib.CombineLighten
+                          and child_layer.mode != lib.mypaintlib.CombineVolume
                           and child_layer.bumpself)
             if should_bump:
                 # render separately so we can apply the bumpself effect
