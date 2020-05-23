@@ -110,10 +110,10 @@ class BlendNormal : public BlendFunc
                             float * dst,
                             const float * const opts) const
     {
-        for (int i=0; i<MYPAINT_NUM_CHANS; i++) {
-            dst[i] = src[i];
-        }
-    printf("%f", dst[0]);
+//        for (int i=0; i<MYPAINT_NUM_CHANS; i++) {
+//            dst[i] = src[i];
+//        }
+    //printf("%f", dst[0]);
     }
 };
 

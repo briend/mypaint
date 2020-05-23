@@ -191,12 +191,12 @@ class CompositeSourceOver : public CompositeFunc
     inline void operator() (float * const src,
                             float * dst) const
     {
-        const float j = 1.0 - src[MYPAINT_NUM_CHANS-1];
-        const float k = float_mul(dst[MYPAINT_NUM_CHANS-1], j);
-        for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
-            dst[i] = (float_sumprods(src[MYPAINT_NUM_CHANS-1], src[i], j, dst[i]));
-        }
-        dst[MYPAINT_NUM_CHANS-1] = (src[MYPAINT_NUM_CHANS-1] + k);
+//        const float j = 1.0 - src[MYPAINT_NUM_CHANS-1];
+//        const float k = float_mul(dst[MYPAINT_NUM_CHANS-1], j);
+//        for (int i=0; i<MYPAINT_NUM_CHANS-1; i++) {
+//            dst[i] = (float_sumprods(src[MYPAINT_NUM_CHANS-1], src[i], j, dst[i]));
+//        }
+//        dst[MYPAINT_NUM_CHANS-1] = (src[MYPAINT_NUM_CHANS-1] + k);
     }
 
     static const bool zero_alpha_has_effect = false;
